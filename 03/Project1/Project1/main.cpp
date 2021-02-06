@@ -11,8 +11,9 @@ using namespace std;
 
 static void DebugOutputFormatString(const char* format, ...);
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
-static int32_t initGraphics();
-static int32_t listUpAdaptors();
+static HRESULT initGraphics();
+static HRESULT listUpAdaptors();
+static HRESULT createDevice(IUnknown *pAdapter);
 
 static constexpr int32_t kWindowWidth = 640;
 static constexpr int32_t kWindowHeight = 480;
@@ -27,7 +28,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	DebugOutputFormatString("[Debug window]\n");
 	getchar();
 
-	initGraphics();
+	auto ret = initGraphics();
+	assert(ret == S_OK);
 
 	WNDCLASSEX w = { };
 	{
@@ -113,41 +115,27 @@ ID3D12Device* _dev = nullptr;
 IDXGIFactory6* _dxgiFactory = nullptr;
 IDXGISwapChain4* _swapchain = nullptr;
 
-int32_t initGraphics()
+HRESULT initGraphics()
 {
-	const D3D_FEATURE_LEVEL levels[] = {
-		D3D_FEATURE_LEVEL_12_1,
-		D3D_FEATURE_LEVEL_12_0,
-		D3D_FEATURE_LEVEL_11_1,
-		D3D_FEATURE_LEVEL_11_0,
-	};
-
-	D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_1_0_CORE;
-
-	for (const auto &lv : levels)
-	{
-		auto ret = D3D12CreateDevice(nullptr, lv, IID_PPV_ARGS(&_dev));
-
-		if (FAILED(ret))
-			continue;
-
-		featureLevel = lv;
-		break;
-	}
-
-	DebugOutputFormatString("feature level: 0x%x\n", featureLevel);
-
 	auto result = CreateDXGIFactory1(IID_PPV_ARGS(&_dxgiFactory));
 	assert(result == S_OK);
 
-	listUpAdaptors();
+	IUnknown *adapter = nullptr;
+
+	auto ret = listUpAdaptors();
+	assert(ret == S_OK);
+
+	ret = createDevice(adapter);
+	assert(ret == S_OK);
 
 	return S_OK;
 }
 
 #include <vector>
-int32_t listUpAdaptors()
+HRESULT listUpAdaptors()
 {
+	assert(_dxgiFactory != nullptr);
+
 	std::vector<IDXGIAdapter*> adapters;
 
 	IDXGIAdapter* tmpAdapter = nullptr;
@@ -166,10 +154,37 @@ int32_t listUpAdaptors()
 
 		const std::wstring &strDesc = adesc.Description;
 
-		DebugOutputFormatString("%ls\n", strDesc); // TODO: printf()されない
+		DebugOutputFormatString(" - %ls\n", strDesc.c_str());
 	}
-
-	// TODO: dev branchを作ってコミットしていく
+	DebugOutputFormatString("\n");
 
 	return S_OK;
 }
+
+HRESULT createDevice(IUnknown *pAdapter)
+{
+	constexpr D3D_FEATURE_LEVEL levels[] = {
+		D3D_FEATURE_LEVEL_12_1,
+		D3D_FEATURE_LEVEL_12_0,
+		D3D_FEATURE_LEVEL_11_1,
+		D3D_FEATURE_LEVEL_11_0,
+	};
+
+	D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL::D3D_FEATURE_LEVEL_1_0_CORE;
+
+	for (const auto &lv : levels)
+	{
+		auto ret = D3D12CreateDevice(pAdapter, lv, IID_PPV_ARGS(&_dev));
+
+		if (FAILED(ret))
+			continue;
+
+		featureLevel = lv;
+		break;
+	}
+
+	DebugOutputFormatString("D3D feature level: 0x%x\n", featureLevel);
+
+	return S_OK;
+}
+
