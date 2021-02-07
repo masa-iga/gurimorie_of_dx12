@@ -1,17 +1,14 @@
 #include <Windows.h>
 #include <cstdio>
-#include <cstdint>
 #include <cassert>
 #include <tchar.h>
 #include "init.h"
 #include "debug.h"
+#include "config.h"
 
 using namespace std;
 
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
-
-static constexpr int32_t kWindowWidth = 640;
-static constexpr int32_t kWindowHeight = 480;
 
 #ifdef _DEBUG
 int main()
@@ -22,9 +19,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 #endif // _DEBUG
 	DebugOutputFormatString("[Debug window]\n");
 	getchar();
-
-	auto ret = initGraphics();
-	assert(ret == S_OK);
 
 	WNDCLASSEX w = { };
 	{
@@ -53,6 +47,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		nullptr,
 		w.hInstance,
 		nullptr);
+
+	auto ret = initGraphics(hwnd);
+	assert(ret == S_OK);
 
 	ShowWindow(hwnd, SW_SHOW);
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <Windows.h>
 #include <winerror.h>
 
-HRESULT initGraphics();
+HRESULT initGraphics(HWND hwnd);
