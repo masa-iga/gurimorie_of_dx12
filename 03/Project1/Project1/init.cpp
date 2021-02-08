@@ -14,6 +14,7 @@ static HRESULT listUpAdaptors();
 static HRESULT createDevice(IUnknown *pAdapter);
 static HRESULT createCommandBuffers();
 static HRESULT createSwapChain(HWND hwnd);
+static HRESULT createDescriptorHeap();
 
 ID3D12Device* _dev = nullptr;
 IDXGIFactory6* _dxgiFactory = nullptr;
@@ -40,6 +41,9 @@ HRESULT initGraphics(HWND hwnd)
 	assert(ret == S_OK);
 
 	ret = createSwapChain(hwnd);
+	assert(ret == S_OK);
+
+	ret = createDescriptorHeap();
 	assert(ret == S_OK);
 
 	return S_OK;
@@ -156,6 +160,43 @@ HRESULT createSwapChain(HWND hwnd)
 		nullptr,
 		(IDXGISwapChain1**)&_swapchain
 	);
+
+	return S_OK;
+}
+
+HRESULT createDescriptorHeap()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+	{
+		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		heapDesc.NodeMask = 0;
+		heapDesc.NumDescriptors = 2;
+		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	}
+
+	ID3D12DescriptorHeap* rtvHeaps = nullptr;
+	auto result = _dev->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&rtvHeaps));
+	assert(result == S_OK);
+
+	DXGI_SWAP_CHAIN_DESC swcDesc = { };
+	result = _swapchain->GetDesc(&swcDesc);
+	assert(result == S_OK);
+
+	std::vector<ID3D12Resource*> _backBuffers(swcDesc.BufferCount);
+
+	for (uint32_t i = 0; i < swcDesc.BufferCount; ++i)
+	{
+		result = _swapchain->GetBuffer(i, IID_PPV_ARGS(&_backBuffers[i]));
+		assert(result == S_OK);
+
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeaps->GetCPUDescriptorHandleForHeapStart();
+		handle.ptr += i * _dev->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+		_dev->CreateRenderTargetView(
+			_backBuffers[i],
+			nullptr,
+			handle);
+	}
 
 	return S_OK;
 }
