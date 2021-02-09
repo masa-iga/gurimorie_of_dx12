@@ -5,6 +5,7 @@
 #include "init.h"
 #include "debug.h"
 #include "config.h"
+#include "render.h"
 
 using namespace std;
 
@@ -57,6 +58,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	while (true)
 	{
+		render();
+
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
 			TranslateMessage(&msg);

@@ -20,10 +20,6 @@ ID3D12Device* _dev = nullptr;
 IDXGIFactory6* _dxgiFactory = nullptr;
 IDXGISwapChain4* _swapchain = nullptr;
 
-ID3D12CommandAllocator* _cmdAllocator = nullptr;
-ID3D12GraphicsCommandList* _cmdList = nullptr;
-ID3D12CommandQueue* _cmdQueue = nullptr;
-
 HRESULT initGraphics(HWND hwnd)
 {
 	auto result = CreateDXGIFactory1(IID_PPV_ARGS(&_dxgiFactory));
@@ -107,18 +103,57 @@ HRESULT createDevice(IUnknown *pAdapter)
 
 HRESULT createCommandBuffers()
 {
+	[[maybe_unused]] const auto commandAllocator = getCommandAllocatorInstance();
+	assert(commandAllocator != nullptr);
+
+	[[maybe_unused]] const auto commandList = getCommandListInstance();
+	assert(commandList != nullptr);
+
+	[[maybe_unused]] const auto commandQueue = getCommandQueueInstance();
+	assert(commandQueue != nullptr);
+
+	return S_OK;
+}
+
+ID3D12CommandAllocator* getCommandAllocatorInstance()
+{
+	static ID3D12CommandAllocator *pCommandAllocator = nullptr;
+
+	if (pCommandAllocator != nullptr)
+		return pCommandAllocator;
+
 	auto result = _dev->CreateCommandAllocator(
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(&_cmdAllocator));
+		IID_PPV_ARGS(&pCommandAllocator));
 	assert(result == S_OK);
 
-	result = _dev->CreateCommandList(
+	return pCommandAllocator;
+}
+
+ID3D12GraphicsCommandList* getCommandListInstance()
+{
+	static ID3D12GraphicsCommandList* pCommandList = nullptr;
+
+	if (pCommandList != nullptr)
+		return pCommandList;
+
+	auto result = _dev->CreateCommandList(
 		0,
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		_cmdAllocator,
+		getCommandAllocatorInstance(),
 		nullptr,
-		IID_PPV_ARGS(&_cmdList));
+		IID_PPV_ARGS(&pCommandList));
 	assert(result == S_OK);
+
+	return pCommandList;
+}
+
+ID3D12CommandQueue* getCommandQueueInstance()
+{
+	static ID3D12CommandQueue* pCommandQueue = nullptr;
+
+	if (pCommandQueue != nullptr)
+		return pCommandQueue;
 
 	D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = { };
 	{
@@ -128,10 +163,10 @@ HRESULT createCommandBuffers()
 		cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	}
 
-	result = _dev->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&_cmdQueue));
+	auto result = _dev->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&pCommandQueue));
 	assert(result == S_OK);
 
-	return S_OK;
+	return pCommandQueue;
 }
 
 HRESULT createSwapChain(HWND hwnd)
@@ -153,7 +188,7 @@ HRESULT createSwapChain(HWND hwnd)
 	}
 
 	auto result = _dxgiFactory->CreateSwapChainForHwnd(
-		_cmdQueue,
+		getCommandQueueInstance(),
 		hwnd,
 		&swapchainDesc,
 		nullptr,
