@@ -1,6 +1,4 @@
 #include "init.h"
-#include <d3d12.h>
-#include <dxgi1_6.h>
 #include <cassert>
 #include <string>
 #include <vector>
@@ -16,9 +14,9 @@ static HRESULT createCommandBuffers();
 static HRESULT createSwapChain(HWND hwnd);
 static HRESULT createDescriptorHeap();
 
-ID3D12Device* _dev = nullptr;
-IDXGIFactory6* _dxgiFactory = nullptr;
-IDXGISwapChain4* _swapchain = nullptr;
+static IDXGISwapChain4 *s_pSwapChain = nullptr;
+static ID3D12Device* _dev = nullptr;
+static IDXGIFactory6* _dxgiFactory = nullptr;
 
 HRESULT initGraphics(HWND hwnd)
 {
@@ -89,11 +87,11 @@ HRESULT createDevice(IUnknown *pAdapter)
 	{
 		auto ret = D3D12CreateDevice(pAdapter, lv, IID_PPV_ARGS(&_dev));
 
-		if (FAILED(ret))
-			continue;
-
-		featureLevel = lv;
-		break;
+		if (SUCCEEDED(ret))
+		{
+			featureLevel = lv;
+			break;
+		}
 	}
 
 	DebugOutputFormatString("D3D feature level: 0x%x\n", featureLevel);
@@ -169,6 +167,12 @@ ID3D12CommandQueue* getCommandQueueInstance()
 	return pCommandQueue;
 }
 
+IDXGISwapChain4* getSwapChainInstance()
+{
+	assert(s_pSwapChain != nullptr, "need to create swap chain before get the instance.\n");
+	return s_pSwapChain;
+}
+
 HRESULT createSwapChain(HWND hwnd)
 {
 	DXGI_SWAP_CHAIN_DESC1 swapchainDesc = { };
@@ -193,10 +197,10 @@ HRESULT createSwapChain(HWND hwnd)
 		&swapchainDesc,
 		nullptr,
 		nullptr,
-		(IDXGISwapChain1**)&_swapchain
+		(IDXGISwapChain1**)&s_pSwapChain
 	);
 
-	return S_OK;
+	return result;
 }
 
 HRESULT createDescriptorHeap()
@@ -214,14 +218,14 @@ HRESULT createDescriptorHeap()
 	assert(result == S_OK);
 
 	DXGI_SWAP_CHAIN_DESC swcDesc = { };
-	result = _swapchain->GetDesc(&swcDesc);
+	result = getSwapChainInstance()->GetDesc(&swcDesc);
 	assert(result == S_OK);
 
 	std::vector<ID3D12Resource*> _backBuffers(swcDesc.BufferCount);
 
 	for (uint32_t i = 0; i < swcDesc.BufferCount; ++i)
 	{
-		result = _swapchain->GetBuffer(i, IID_PPV_ARGS(&_backBuffers[i]));
+		result = getSwapChainInstance()->GetBuffer(i, IID_PPV_ARGS(&_backBuffers[i]));
 		assert(result == S_OK);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeaps->GetCPUDescriptorHandleForHeapStart();
