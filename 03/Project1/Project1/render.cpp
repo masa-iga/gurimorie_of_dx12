@@ -6,34 +6,34 @@
 HRESULT render()
 {
 	// link to swap chain's memory
-	const UINT bbIdx = getSwapChainInstance()->GetCurrentBackBufferIndex();
+	const UINT bbIdx = getInstanceOfSwapChain()->GetCurrentBackBufferIndex();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
-	rtvH.ptr += bbIdx * getDeviceInstance()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	rtvH.ptr += bbIdx * getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-	getCommandListInstance()->OMSetRenderTargets(1, &rtvH, true, nullptr);
+	getInstanceOfCommandList()->OMSetRenderTargets(1, &rtvH, true, nullptr);
 
 
 	// clear render target
 	constexpr float clearColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
-	getCommandListInstance()->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
+	getInstanceOfCommandList()->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
 
 
 	// execute command lists
-	ThrowIfFailed(getCommandListInstance()->Close());
+	ThrowIfFailed(getInstanceOfCommandList()->Close());
 
-	ID3D12CommandList* cmdLists[] = { getCommandListInstance() };
+	ID3D12CommandList* cmdLists[] = { getInstanceOfCommandList() };
 
-	getCommandQueueInstance()->ExecuteCommandLists(1, cmdLists);
+	getInstanceOfCommandQueue()->ExecuteCommandLists(1, cmdLists);
 
 
 	// reset command allocator & list
-	ThrowIfFailed(getCommandAllocatorInstance()->Reset());
-	ThrowIfFailed(getCommandListInstance()->Reset(getCommandAllocatorInstance(), nullptr));
+	ThrowIfFailed(getInstanceOfCommandAllocator()->Reset());
+	ThrowIfFailed(getInstanceOfCommandList()->Reset(getInstanceOfCommandAllocator(), nullptr));
 
 
 	// swap
-	ThrowIfFailed(getSwapChainInstance()->Present(1, 0));
+	ThrowIfFailed(getInstanceOfSwapChain()->Present(1, 0));
 
 	return S_OK;
 }

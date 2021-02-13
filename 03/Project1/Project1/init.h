@@ -5,9 +5,9 @@
 #include <winerror.h>
 
 HRESULT initGraphics(HWND hwnd);
-ID3D12Device* getDeviceInstance();
-ID3D12CommandAllocator* getCommandAllocatorInstance();
-ID3D12GraphicsCommandList* getCommandListInstance();
-ID3D12CommandQueue* getCommandQueueInstance();
-IDXGISwapChain4* getSwapChainInstance();
+ID3D12Device* getInstanceOfDevice();
+ID3D12CommandAllocator* getInstanceOfCommandAllocator();
+ID3D12GraphicsCommandList* getInstanceOfCommandList();
+ID3D12CommandQueue* getInstanceOfCommandQueue();
+IDXGISwapChain4* getInstanceOfSwapChain();
 ID3D12DescriptorHeap* getRtvHeaps();

@@ -44,20 +44,20 @@ HRESULT initGraphics(HWND hwnd)
 	return S_OK;
 }
 
-ID3D12Device* getDeviceInstance()
+ID3D12Device* getInstanceOfDevice()
 {
 	assert(s_pDevice != nullptr);
 	return s_pDevice;
 }
 
-ID3D12CommandAllocator* getCommandAllocatorInstance()
+ID3D12CommandAllocator* getInstanceOfCommandAllocator()
 {
 	static ID3D12CommandAllocator *pCommandAllocator = nullptr;
 
 	if (pCommandAllocator != nullptr)
 		return pCommandAllocator;
 
-	auto result = getDeviceInstance()->CreateCommandAllocator(
+	auto result = getInstanceOfDevice()->CreateCommandAllocator(
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		IID_PPV_ARGS(&pCommandAllocator));
 	ThrowIfFailed(result);
@@ -65,17 +65,17 @@ ID3D12CommandAllocator* getCommandAllocatorInstance()
 	return pCommandAllocator;
 }
 
-ID3D12GraphicsCommandList* getCommandListInstance()
+ID3D12GraphicsCommandList* getInstanceOfCommandList()
 {
 	static ID3D12GraphicsCommandList* pCommandList = nullptr;
 
 	if (pCommandList != nullptr)
 		return pCommandList;
 
-	auto result = getDeviceInstance()->CreateCommandList(
+	auto result = getInstanceOfDevice()->CreateCommandList(
 		0,
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		getCommandAllocatorInstance(),
+		getInstanceOfCommandAllocator(),
 		nullptr,
 		IID_PPV_ARGS(&pCommandList));
 	ThrowIfFailed(result);
@@ -83,7 +83,7 @@ ID3D12GraphicsCommandList* getCommandListInstance()
 	return pCommandList;
 }
 
-ID3D12CommandQueue* getCommandQueueInstance()
+ID3D12CommandQueue* getInstanceOfCommandQueue()
 {
 	static ID3D12CommandQueue* pCommandQueue = nullptr;
 
@@ -98,13 +98,13 @@ ID3D12CommandQueue* getCommandQueueInstance()
 		cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	}
 
-	auto result = getDeviceInstance()->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&pCommandQueue));
+	auto result = getInstanceOfDevice()->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&pCommandQueue));
 	ThrowIfFailed(result);
 
 	return pCommandQueue;
 }
 
-IDXGISwapChain4* getSwapChainInstance()
+IDXGISwapChain4* getInstanceOfSwapChain()
 {
 	assert(s_pSwapChain != nullptr);
 	return s_pSwapChain;
@@ -174,13 +174,13 @@ HRESULT createDevice(IUnknown *pAdapter)
 
 HRESULT createCommandBuffers()
 {
-	[[maybe_unused]] const auto commandAllocator = getCommandAllocatorInstance();
+	[[maybe_unused]] const auto commandAllocator = getInstanceOfCommandAllocator();
 	assert(commandAllocator != nullptr);
 
-	[[maybe_unused]] const auto commandList = getCommandListInstance();
+	[[maybe_unused]] const auto commandList = getInstanceOfCommandList();
 	assert(commandList != nullptr);
 
-	[[maybe_unused]] const auto commandQueue = getCommandQueueInstance();
+	[[maybe_unused]] const auto commandQueue = getInstanceOfCommandQueue();
 	assert(commandQueue != nullptr);
 
 	return S_OK;
@@ -205,7 +205,7 @@ HRESULT createSwapChain(HWND hwnd)
 	}
 
 	auto result = _dxgiFactory->CreateSwapChainForHwnd(
-		getCommandQueueInstance(),
+		getInstanceOfCommandQueue(),
 		hwnd,
 		&swapchainDesc,
 		nullptr,
@@ -226,24 +226,24 @@ HRESULT createDescriptorHeap()
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	}
 
-	auto result = getDeviceInstance()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&s_pRtvHeaps));
+	auto result = getInstanceOfDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&s_pRtvHeaps));
 	ThrowIfFailed(result);
 
 	DXGI_SWAP_CHAIN_DESC swcDesc = { };
-	result = getSwapChainInstance()->GetDesc(&swcDesc);
+	result = getInstanceOfSwapChain()->GetDesc(&swcDesc);
 	ThrowIfFailed(result);
 
 	std::vector<ID3D12Resource*> _backBuffers(swcDesc.BufferCount);
 
 	for (uint32_t i = 0; i < swcDesc.BufferCount; ++i)
 	{
-		result = getSwapChainInstance()->GetBuffer(i, IID_PPV_ARGS(&_backBuffers[i]));
+		result = getInstanceOfSwapChain()->GetBuffer(i, IID_PPV_ARGS(&_backBuffers[i]));
 		ThrowIfFailed(result);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = s_pRtvHeaps->GetCPUDescriptorHandleForHeapStart();
-		handle.ptr += i * getDeviceInstance()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		handle.ptr += i * getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-		getDeviceInstance()->CreateRenderTargetView(
+		getInstanceOfDevice()->CreateRenderTargetView(
 			_backBuffers[i],
 			nullptr,
 			handle);
