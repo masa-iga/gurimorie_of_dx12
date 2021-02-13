@@ -49,8 +49,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		w.hInstance,
 		nullptr);
 
-	auto ret = initGraphics(hwnd);
-	assert(ret == S_OK);
+	ThrowIfFailed(initGraphics(hwnd));
 
 	ShowWindow(hwnd, SW_SHOW);
 

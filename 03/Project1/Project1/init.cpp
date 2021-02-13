@@ -14,33 +14,106 @@ static HRESULT createCommandBuffers();
 static HRESULT createSwapChain(HWND hwnd);
 static HRESULT createDescriptorHeap();
 
+static ID3D12Device* s_pDevice = nullptr;
 static IDXGISwapChain4 *s_pSwapChain = nullptr;
-static ID3D12Device* _dev = nullptr;
 static IDXGIFactory6* _dxgiFactory = nullptr;
+static ID3D12DescriptorHeap* s_pRtvHeaps = nullptr;
 
 HRESULT initGraphics(HWND hwnd)
 {
 	auto result = CreateDXGIFactory1(IID_PPV_ARGS(&_dxgiFactory));
-	assert(result == S_OK);
+	ThrowIfFailed(result);
 
 	IUnknown *adapter = nullptr;
 
 	auto ret = listUpAdaptors();
-	assert(ret == S_OK);
+	ThrowIfFailed(ret);
 
 	ret = createDevice(adapter);
-	assert(ret == S_OK);
+	ThrowIfFailed(ret);
 
 	ret = createCommandBuffers();
-	assert(ret == S_OK);
+	ThrowIfFailed(ret);
 
 	ret = createSwapChain(hwnd);
-	assert(ret == S_OK);
+	ThrowIfFailed(ret);
 
 	ret = createDescriptorHeap();
-	assert(ret == S_OK);
+	ThrowIfFailed(ret);
 
 	return S_OK;
+}
+
+ID3D12Device* getDeviceInstance()
+{
+	assert(s_pDevice != nullptr);
+	return s_pDevice;
+}
+
+ID3D12CommandAllocator* getCommandAllocatorInstance()
+{
+	static ID3D12CommandAllocator *pCommandAllocator = nullptr;
+
+	if (pCommandAllocator != nullptr)
+		return pCommandAllocator;
+
+	auto result = getDeviceInstance()->CreateCommandAllocator(
+		D3D12_COMMAND_LIST_TYPE_DIRECT,
+		IID_PPV_ARGS(&pCommandAllocator));
+	ThrowIfFailed(result);
+
+	return pCommandAllocator;
+}
+
+ID3D12GraphicsCommandList* getCommandListInstance()
+{
+	static ID3D12GraphicsCommandList* pCommandList = nullptr;
+
+	if (pCommandList != nullptr)
+		return pCommandList;
+
+	auto result = getDeviceInstance()->CreateCommandList(
+		0,
+		D3D12_COMMAND_LIST_TYPE_DIRECT,
+		getCommandAllocatorInstance(),
+		nullptr,
+		IID_PPV_ARGS(&pCommandList));
+	ThrowIfFailed(result);
+
+	return pCommandList;
+}
+
+ID3D12CommandQueue* getCommandQueueInstance()
+{
+	static ID3D12CommandQueue* pCommandQueue = nullptr;
+
+	if (pCommandQueue != nullptr)
+		return pCommandQueue;
+
+	D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = { };
+	{
+		cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE; // no time out
+		cmdQueueDesc.NodeMask = 0;
+		cmdQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL; // no priority
+		cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	}
+
+	auto result = getDeviceInstance()->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&pCommandQueue));
+	ThrowIfFailed(result);
+
+	return pCommandQueue;
+}
+
+IDXGISwapChain4* getSwapChainInstance()
+{
+	assert(s_pSwapChain != nullptr);
+	return s_pSwapChain;
+}
+
+ID3D12DescriptorHeap* getRtvHeaps()
+{
+	assert(s_pRtvHeaps != nullptr);
+	return s_pRtvHeaps;
 }
 
 HRESULT listUpAdaptors()
@@ -85,7 +158,7 @@ HRESULT createDevice(IUnknown *pAdapter)
 
 	for (const auto &lv : levels)
 	{
-		auto ret = D3D12CreateDevice(pAdapter, lv, IID_PPV_ARGS(&_dev));
+		auto ret = D3D12CreateDevice(pAdapter, lv, IID_PPV_ARGS(&s_pDevice));
 
 		if (SUCCEEDED(ret))
 		{
@@ -111,66 +184,6 @@ HRESULT createCommandBuffers()
 	assert(commandQueue != nullptr);
 
 	return S_OK;
-}
-
-ID3D12CommandAllocator* getCommandAllocatorInstance()
-{
-	static ID3D12CommandAllocator *pCommandAllocator = nullptr;
-
-	if (pCommandAllocator != nullptr)
-		return pCommandAllocator;
-
-	auto result = _dev->CreateCommandAllocator(
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(&pCommandAllocator));
-	assert(result == S_OK);
-
-	return pCommandAllocator;
-}
-
-ID3D12GraphicsCommandList* getCommandListInstance()
-{
-	static ID3D12GraphicsCommandList* pCommandList = nullptr;
-
-	if (pCommandList != nullptr)
-		return pCommandList;
-
-	auto result = _dev->CreateCommandList(
-		0,
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		getCommandAllocatorInstance(),
-		nullptr,
-		IID_PPV_ARGS(&pCommandList));
-	assert(result == S_OK);
-
-	return pCommandList;
-}
-
-ID3D12CommandQueue* getCommandQueueInstance()
-{
-	static ID3D12CommandQueue* pCommandQueue = nullptr;
-
-	if (pCommandQueue != nullptr)
-		return pCommandQueue;
-
-	D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = { };
-	{
-		cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE; // no time out
-		cmdQueueDesc.NodeMask = 0;
-		cmdQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL; // no priority
-		cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-	}
-
-	auto result = _dev->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&pCommandQueue));
-	assert(result == S_OK);
-
-	return pCommandQueue;
-}
-
-IDXGISwapChain4* getSwapChainInstance()
-{
-	assert(s_pSwapChain != nullptr, "need to create swap chain before get the instance.\n");
-	return s_pSwapChain;
 }
 
 HRESULT createSwapChain(HWND hwnd)
@@ -213,25 +226,24 @@ HRESULT createDescriptorHeap()
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	}
 
-	ID3D12DescriptorHeap* rtvHeaps = nullptr;
-	auto result = _dev->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&rtvHeaps));
-	assert(result == S_OK);
+	auto result = getDeviceInstance()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&s_pRtvHeaps));
+	ThrowIfFailed(result);
 
 	DXGI_SWAP_CHAIN_DESC swcDesc = { };
 	result = getSwapChainInstance()->GetDesc(&swcDesc);
-	assert(result == S_OK);
+	ThrowIfFailed(result);
 
 	std::vector<ID3D12Resource*> _backBuffers(swcDesc.BufferCount);
 
 	for (uint32_t i = 0; i < swcDesc.BufferCount; ++i)
 	{
 		result = getSwapChainInstance()->GetBuffer(i, IID_PPV_ARGS(&_backBuffers[i]));
-		assert(result == S_OK);
+		ThrowIfFailed(result);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeaps->GetCPUDescriptorHandleForHeapStart();
-		handle.ptr += i * _dev->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = s_pRtvHeaps->GetCPUDescriptorHandleForHeapStart();
+		handle.ptr += i * getDeviceInstance()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-		_dev->CreateRenderTargetView(
+		getDeviceInstance()->CreateRenderTargetView(
 			_backBuffers[i],
 			nullptr,
 			handle);
