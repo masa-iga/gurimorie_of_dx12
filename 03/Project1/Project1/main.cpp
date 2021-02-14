@@ -55,7 +55,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	MSG msg = {};
 
-	while (true)
+	for (UINT i = 0; ; ++i)
 	{
 		render();
 

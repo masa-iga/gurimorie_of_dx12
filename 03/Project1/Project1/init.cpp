@@ -8,11 +8,13 @@
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
+static HRESULT createDxFactory();
 static HRESULT listUpAdaptors();
 static HRESULT createDevice(IUnknown *pAdapter);
 static HRESULT createCommandBuffers();
 static HRESULT createSwapChain(HWND hwnd);
 static HRESULT createDescriptorHeap();
+static HRESULT enableDebugLayer();
 
 static ID3D12Device* s_pDevice = nullptr;
 static IDXGISwapChain4 *s_pSwapChain = nullptr;
@@ -21,12 +23,17 @@ static ID3D12DescriptorHeap* s_pRtvHeaps = nullptr;
 
 HRESULT initGraphics(HWND hwnd)
 {
-	auto result = CreateDXGIFactory1(IID_PPV_ARGS(&_dxgiFactory));
-	ThrowIfFailed(result);
+	auto ret = createDxFactory();
+	ThrowIfFailed(ret);
+
+#ifdef _DEBUG
+	ret = enableDebugLayer();
+	ThrowIfFailed(ret);
+#endif // _DEBUG
 
 	IUnknown *adapter = nullptr;
 
-	auto ret = listUpAdaptors();
+	ret = listUpAdaptors();
 	ThrowIfFailed(ret);
 
 	ret = createDevice(adapter);
@@ -114,6 +121,15 @@ ID3D12DescriptorHeap* getRtvHeaps()
 {
 	assert(s_pRtvHeaps != nullptr);
 	return s_pRtvHeaps;
+}
+
+HRESULT createDxFactory()
+{
+#ifdef _DEBUG
+	return CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&_dxgiFactory));
+#else
+	return CreateDXGIFactory1(IID_PPV_ARGS(&_dxgiFactory));
+#endif // _DEBUG
 }
 
 HRESULT listUpAdaptors()
@@ -248,6 +264,19 @@ HRESULT createDescriptorHeap()
 			nullptr,
 			handle);
 	}
+
+	return S_OK;
+}
+
+static HRESULT enableDebugLayer()
+{
+	ID3D12Debug* debugLayer = nullptr;
+
+	auto result = D3D12GetDebugInterface(IID_PPV_ARGS(&debugLayer));
+	ThrowIfFailed(result);
+
+	debugLayer->EnableDebugLayer();
+	debugLayer->Release();
 
 	return S_OK;
 }
