@@ -1,9 +1,18 @@
+#include "render.h"
 #include <cassert>
 #include "init.h"
-#include "render.h"
 #include "debug.h"
 
-HRESULT render()
+static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
+
+HRESULT Render::init()
+{
+	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
+
+	return S_OK;
+}
+
+HRESULT Render::render()
 {
 	// link to swap chain's memory
 	const UINT bbIdx = getInstanceOfSwapChain()->GetCurrentBackBufferIndex();
@@ -26,14 +35,37 @@ HRESULT render()
 
 	getInstanceOfCommandQueue()->ExecuteCommandLists(1, cmdLists);
 
+	// send signal
+	ThrowIfFailed(getInstanceOfCommandQueue()->Signal(m_pFence, ++m_fenceVal));
+
+	return S_OK;
+}
+
+HRESULT Render::waitForEndOfRendering()
+{
+	while (m_pFence->GetCompletedValue() != m_fenceVal)
+	{
+		;
+	}
 
 	// reset command allocator & list
 	ThrowIfFailed(getInstanceOfCommandAllocator()->Reset());
 	ThrowIfFailed(getInstanceOfCommandList()->Reset(getInstanceOfCommandAllocator(), nullptr));
 
+	return S_OK;
+}
 
-	// swap
+HRESULT Render::swap()
+{
 	ThrowIfFailed(getInstanceOfSwapChain()->Present(1, 0));
 
 	return S_OK;
+}
+
+static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence)
+{
+	return getInstanceOfDevice()->CreateFence(
+		initVal,
+		D3D12_FENCE_FLAG_NONE,
+		IID_PPV_ARGS(ppFence));
 }

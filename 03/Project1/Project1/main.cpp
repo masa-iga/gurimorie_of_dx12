@@ -53,11 +53,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	ShowWindow(hwnd, SW_SHOW);
 
+	Render render;
+	ThrowIfFailed(render.init());
+
 	MSG msg = {};
 
 	for (UINT i = 0; ; ++i)
 	{
-		render();
+		ThrowIfFailed(render.render());
+
+		ThrowIfFailed(render.waitForEndOfRendering());
+
+		ThrowIfFailed(render.swap());
 
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
