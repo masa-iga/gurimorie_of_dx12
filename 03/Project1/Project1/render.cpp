@@ -19,7 +19,7 @@ HRESULT Render::render()
 	const UINT bbIdx = getInstanceOfSwapChain()->GetCurrentBackBufferIndex();
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
-	rtvH.ptr += bbIdx * getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	rtvH.ptr += bbIdx * static_cast<SIZE_T>(getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 
 	getInstanceOfCommandList()->OMSetRenderTargets(1, &rtvH, true, nullptr);
 
