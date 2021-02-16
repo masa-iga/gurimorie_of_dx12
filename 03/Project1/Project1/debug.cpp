@@ -17,6 +17,16 @@ private:
 	const HRESULT m_hr;
 };
 
+class BlException : public std::runtime_error
+{
+public:
+	BlException(BOOL bl) : std::runtime_error("unexpected result"), m_bl(bl) {}
+	BOOL Error() const { return m_bl; }
+
+private:
+	const BOOL m_bl;
+};
+
 void DebugOutputFormatString(const char* format, ...)
 {
 #ifdef _DEBUG
@@ -32,6 +42,14 @@ void ThrowIfFailed(HRESULT hr)
 	if (FAILED(hr))
 	{
 		throw HrException(hr);
+	}
+}
+
+void ThrowIfFalse(BOOL b)
+{
+	if (b == FALSE)
+	{
+		throw BlException(b);
 	}
 }
 

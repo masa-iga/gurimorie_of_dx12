@@ -5,4 +5,5 @@
 
 void DebugOutputFormatString(const char* format, ...);
 void ThrowIfFailed(HRESULT hr);
+void ThrowIfFalse(BOOL b);
 

@@ -1,5 +1,6 @@
 #include "render.h"
 #include <cassert>
+#include <synchapi.h>
 #include "init.h"
 #include "debug.h"
 
@@ -45,7 +46,20 @@ HRESULT Render::waitForEndOfRendering()
 {
 	while (m_pFence->GetCompletedValue() != m_fenceVal)
 	{
-		;
+		HANDLE event = CreateEvent(nullptr, false, false, nullptr);
+
+		ThrowIfFailed(m_pFence->SetEventOnCompletion(m_fenceVal, event));
+
+		auto ret = WaitForSingleObject(event, INFINITE);
+		ThrowIfFalse(ret == WAIT_OBJECT_0);
+
+		BOOL ret2 = CloseHandle(event); // fail‚·‚é
+
+		if (!ret2)
+		{
+			DebugOutputFormatString("failed to close handle. (ret %d error %d)\n", ret2, GetLastError());
+			ThrowIfFalse(FALSE);
+		}
 	}
 
 	// reset command allocator & list
