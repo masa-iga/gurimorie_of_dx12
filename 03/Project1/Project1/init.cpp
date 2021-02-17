@@ -22,7 +22,7 @@ static ID3D12Device* s_pDevice = nullptr;
 static IDXGISwapChain4 *s_pSwapChain = nullptr;
 static IDXGIFactory6* _dxgiFactory = nullptr;
 static ID3D12DescriptorHeap* s_pRtvHeaps = nullptr;
-static std::vector<ID3D12Resource*> s_backBuffers(kNumOfSwapBuffer);
+static std::vector<ID3D12Resource*> s_backBuffers(kNumOfSwapBuffer, nullptr);
 
 HRESULT initGraphics(HWND hwnd)
 {

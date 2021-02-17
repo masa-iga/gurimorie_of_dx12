@@ -15,9 +15,22 @@ HRESULT Render::init()
 
 HRESULT Render::render()
 {
-	// link to swap chain's memory
 	const UINT bbIdx = getInstanceOfSwapChain()->GetCurrentBackBufferIndex();
 
+	// resource barrier
+	D3D12_RESOURCE_BARRIER barrier = { };
+	{
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrier.Transition.pResource = getBackBuffer(bbIdx);
+		barrier.Transition.Subresource = 0;
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	}
+	getInstanceOfCommandList()->ResourceBarrier(1, &barrier);
+
+
+	// link swap chain's memory to output merger
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
 	rtvH.ptr += bbIdx * static_cast<SIZE_T>(getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 
@@ -27,6 +40,14 @@ HRESULT Render::render()
 	// clear render target
 	constexpr float clearColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
 	getInstanceOfCommandList()->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
+
+
+	// resource barrier
+	{
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+	}
+	getInstanceOfCommandList()->ResourceBarrier(1, &barrier);
 
 
 	// execute command lists
