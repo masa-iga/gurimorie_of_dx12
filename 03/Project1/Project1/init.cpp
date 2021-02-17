@@ -257,7 +257,7 @@ HRESULT createDescriptorHeap()
 		ThrowIfFailed(result);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = s_pRtvHeaps->GetCPUDescriptorHandleForHeapStart();
-		handle.ptr += i * getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		handle.ptr += i * static_cast<SIZE_T>(getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 
 		getInstanceOfDevice()->CreateRenderTargetView(
 			_backBuffers[i],
