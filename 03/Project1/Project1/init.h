@@ -11,3 +11,4 @@ ID3D12GraphicsCommandList* getInstanceOfCommandList();
 ID3D12CommandQueue* getInstanceOfCommandQueue();
 IDXGISwapChain4* getInstanceOfSwapChain();
 ID3D12DescriptorHeap* getRtvHeaps();
+ID3D12Resource* getBackBuffer(UINT index);

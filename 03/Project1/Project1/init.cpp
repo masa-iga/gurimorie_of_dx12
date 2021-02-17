@@ -16,10 +16,13 @@ static HRESULT createSwapChain(HWND hwnd);
 static HRESULT createDescriptorHeap();
 static HRESULT enableDebugLayer();
 
+static constexpr UINT kNumOfSwapBuffer = 2;
+
 static ID3D12Device* s_pDevice = nullptr;
 static IDXGISwapChain4 *s_pSwapChain = nullptr;
 static IDXGIFactory6* _dxgiFactory = nullptr;
 static ID3D12DescriptorHeap* s_pRtvHeaps = nullptr;
+static std::vector<ID3D12Resource*> s_backBuffers(kNumOfSwapBuffer);
 
 HRESULT initGraphics(HWND hwnd)
 {
@@ -123,6 +126,13 @@ ID3D12DescriptorHeap* getRtvHeaps()
 	return s_pRtvHeaps;
 }
 
+ID3D12Resource* getBackBuffer(UINT index)
+{
+	auto buffer = s_backBuffers.at(index);
+	ThrowIfFalse(buffer != nullptr);
+	return buffer;
+}
+
 HRESULT createDxFactory()
 {
 #ifdef _DEBUG
@@ -213,7 +223,7 @@ HRESULT createSwapChain(HWND hwnd)
 		swapchainDesc.SampleDesc.Count = 1;
 		swapchainDesc.SampleDesc.Quality = 0;
 		swapchainDesc.BufferUsage = DXGI_USAGE_BACK_BUFFER;
-		swapchainDesc.BufferCount = 2;
+		swapchainDesc.BufferCount = kNumOfSwapBuffer;
 		swapchainDesc.Scaling = DXGI_SCALING_STRETCH;
 		swapchainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		swapchainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
@@ -238,7 +248,7 @@ HRESULT createDescriptorHeap()
 	{
 		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		heapDesc.NodeMask = 0;
-		heapDesc.NumDescriptors = 2;
+		heapDesc.NumDescriptors = kNumOfSwapBuffer;
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	}
 
@@ -249,18 +259,16 @@ HRESULT createDescriptorHeap()
 	result = getInstanceOfSwapChain()->GetDesc(&swcDesc);
 	ThrowIfFailed(result);
 
-	std::vector<ID3D12Resource*> _backBuffers(swcDesc.BufferCount);
-
 	for (uint32_t i = 0; i < swcDesc.BufferCount; ++i)
 	{
-		result = getInstanceOfSwapChain()->GetBuffer(i, IID_PPV_ARGS(&_backBuffers[i]));
+		result = getInstanceOfSwapChain()->GetBuffer(i, IID_PPV_ARGS(&s_backBuffers[i]));
 		ThrowIfFailed(result);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE handle = s_pRtvHeaps->GetCPUDescriptorHandleForHeapStart();
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
 		handle.ptr += i * static_cast<SIZE_T>(getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 
 		getInstanceOfDevice()->CreateRenderTargetView(
-			_backBuffers[i],
+			s_backBuffers[i],
 			nullptr,
 			handle);
 	}
