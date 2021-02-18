@@ -132,7 +132,7 @@ UINT64 FrameCounter::getInUsec() const
 	constexpr UINT kPeriod = 60;
 	static_assert(kPeriod <= kNumOfTrack);
 
-	auto prev_idx = (m_idx + kNumOfTrack - kPeriod) % kNumOfTrack;
+	const auto prev_idx = (m_idx + kNumOfTrack - kPeriod) % kNumOfTrack;
 	const auto previous = m_times.at(prev_idx).QuadPart;
 	const auto current = m_times.at(m_idx).QuadPart;
 
