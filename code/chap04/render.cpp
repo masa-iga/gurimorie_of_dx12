@@ -1,14 +1,18 @@
 #include "render.h"
 #include <cassert>
+#include <DirectXMath.h>
 #include <synchapi.h>
 #include "init.h"
 #include "debug.h"
 
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
+static HRESULT createVertexBuffer();
 
 HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
+
+	ThrowIfFailed(createVertexBuffer());
 
 	return S_OK;
 }
@@ -103,4 +107,50 @@ static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence)
 		initVal,
 		D3D12_FENCE_FLAG_NONE,
 		IID_PPV_ARGS(ppFence));
+}
+
+static HRESULT createVertexBuffer()
+{
+	const DirectX::XMFLOAT3 vertices[] = {
+		{-1.0f, -1.0f, 0.0f},
+		{-1.0f,  1.0f, 0.0f},
+		{ 1.0f, -1.0f, 0.0f},
+	};
+
+	D3D12_HEAP_PROPERTIES heapProp = { };
+	{
+		heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+		heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		heapProp.CreationNodeMask = 0;
+		heapProp.VisibleNodeMask = 0;
+	}
+
+	D3D12_RESOURCE_DESC resourceDesc = { };
+	{
+		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		resourceDesc.Alignment = 0;
+		resourceDesc.Width = sizeof(vertices);
+		resourceDesc.Height = 1;
+		resourceDesc.DepthOrArraySize = 1;
+		resourceDesc.MipLevels = 1;
+		resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+		resourceDesc.SampleDesc.Count = 1;
+		resourceDesc.SampleDesc.Quality = 0;
+		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	}
+
+	ID3D12Resource* vertBuff = nullptr;
+
+	auto ret = getInstanceOfDevice()->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&vertBuff));
+	ThrowIfFailed(ret);
+
+	return S_OK;
 }
