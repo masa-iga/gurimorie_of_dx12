@@ -143,6 +143,7 @@ static HRESULT createVertexBuffer()
 
 	ID3D12Resource* vertBuff = nullptr;
 
+	// create both a resrouce and an implicit heap
 	auto ret = getInstanceOfDevice()->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
@@ -151,6 +152,31 @@ static HRESULT createVertexBuffer()
 		nullptr,
 		IID_PPV_ARGS(&vertBuff));
 	ThrowIfFailed(ret);
+
+
+	// copy vertices to the allocated resource memory
+	DirectX::XMFLOAT3* vertMap = nullptr;
+
+	ret = vertBuff->Map(
+		0,
+		nullptr,
+		(void**)&vertMap);
+	ThrowIfFailed(ret);
+
+	std::copy(std::begin(vertices), std::end(vertices), vertMap);
+
+	vertBuff->Unmap(0, nullptr);
+
+
+	// create VB view
+	D3D12_VERTEX_BUFFER_VIEW vbView = { };
+	{
+		vbView.BufferLocation = vertBuff->GetGPUVirtualAddress();
+		vbView.SizeInBytes = sizeof(vertices);
+		vbView.StrideInBytes = sizeof(vertices[0]);
+	}
+
+	// TODO: getInstanceOfCommandList()->IASetVertexBuffers(0, 1, &vbView);
 
 	return S_OK;
 }
