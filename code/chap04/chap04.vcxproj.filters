@@ -42,4 +42,7 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="BasicVertexShader.hlsl" />
+  </ItemGroup>
 </Project>
