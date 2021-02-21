@@ -1,18 +1,25 @@
 #include "render.h"
 #include <cassert>
+#include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <synchapi.h>
 #include "init.h"
 #include "debug.h"
 
+#pragma comment(lib, "d3dcompiler.lib")
+
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
 static HRESULT createVertexBuffer();
+static HRESULT loadShaders();
+static void outputDebugMessage(ID3DBlob* errorBlob);
 
 HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
 
 	ThrowIfFailed(createVertexBuffer());
+
+	ThrowIfFailed(loadShaders());
 
 	return S_OK;
 }
@@ -180,3 +187,67 @@ static HRESULT createVertexBuffer()
 
 	return S_OK;
 }
+
+HRESULT loadShaders()
+{
+	ID3DBlob* vsBlob = nullptr;
+	ID3DBlob* psBlob = nullptr;
+	ID3DBlob* errorBlob = nullptr;
+
+	auto ret = D3DCompileFromFile(
+		L"BasicVertexShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"BasicVs",
+		"vs_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		&vsBlob,
+		&errorBlob
+	);
+
+	if (FAILED(ret))
+	{
+		outputDebugMessage(errorBlob);
+	}
+	ThrowIfFailed(ret);
+
+
+	ret = D3DCompileFromFile(
+		L"BasicPixelShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"BasicPs",
+		"ps_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		&psBlob,
+		&errorBlob
+	);
+
+	if (FAILED(ret))
+	{
+		outputDebugMessage(errorBlob);
+	}
+	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
+static void outputDebugMessage(ID3DBlob* errorBlob)
+{
+	if (errorBlob == nullptr)
+		return;
+
+	std::string errStr;
+	errStr.resize(errorBlob->GetBufferSize());
+
+	std::copy_n(
+		static_cast<char*>(errorBlob->GetBufferPointer()),
+		errorBlob->GetBufferSize(),
+		errStr.begin());
+	errStr += "\n";
+
+	OutputDebugStringA(errStr.c_str());
+}
+
