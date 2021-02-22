@@ -183,7 +183,20 @@ static HRESULT createVertexBuffer()
 		vbView.StrideInBytes = sizeof(vertices[0]);
 	}
 
+
 	// TODO: getInstanceOfCommandList()->IASetVertexBuffers(0, 1, &vbView);
+
+
+	D3D12_INPUT_ELEMENT_DESC elementDesc = { };
+	{
+		elementDesc.SemanticName = "POSITION";
+		elementDesc.SemanticIndex = 0;
+		elementDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
+		elementDesc.InputSlot = 0;
+		elementDesc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+		elementDesc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+		elementDesc.InstanceDataStepRate = 0;
+	}
 
 	return S_OK;
 }
