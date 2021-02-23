@@ -10,7 +10,6 @@
 
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
 static HRESULT createVertexBuffer();
-static HRESULT loadShaders();
 static void outputDebugMessage(ID3DBlob* errorBlob);
 
 HRESULT Render::init()
@@ -26,6 +25,8 @@ HRESULT Render::init()
 
 HRESULT Render::render()
 {
+	//ThrowIfFailed(setPipelineState());
+
 	const UINT bbIdx = getInstanceOfSwapChain()->GetCurrentBackBufferIndex();
 
 	// resource barrier
@@ -108,6 +109,111 @@ HRESULT Render::swap()
 	return S_OK;
 }
 
+HRESULT Render::loadShaders()
+{
+	ID3DBlob* errorBlob = nullptr;
+
+	auto ret = D3DCompileFromFile(
+		L"BasicVertexShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"BasicVs",
+		"vs_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		&m_vsBlob,
+		&errorBlob
+	);
+
+	if (FAILED(ret))
+	{
+		outputDebugMessage(errorBlob);
+	}
+	ThrowIfFailed(ret);
+
+
+	ret = D3DCompileFromFile(
+		L"BasicPixelShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"BasicPs",
+		"ps_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		&m_psBlob,
+		&errorBlob
+	);
+
+	if (FAILED(ret))
+	{
+		outputDebugMessage(errorBlob);
+	}
+	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
+HRESULT Render::setPipelineState()
+{
+	D3D12_INPUT_ELEMENT_DESC elementDescs[] = {
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			0,
+		},
+	};
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
+	{
+		gpipeDesc.pRootSignature = nullptr;
+		gpipeDesc.VS = { m_vsBlob->GetBufferPointer(), m_vsBlob->GetBufferSize() };
+		gpipeDesc.PS = { m_psBlob->GetBufferPointer(), m_psBlob->GetBufferSize() };
+		// D3D12_SHADER_BYTECODE gpipeDesc.DS;
+		// D3D12_SHADER_BYTECODE gpipeDesc.HS;
+		// D3D12_SHADER_BYTECODE gpipeDesc.GS;
+		// D3D12_STREAM_OUTPUT_DESC StreamOutput;
+		gpipeDesc.BlendState.AlphaToCoverageEnable = false;
+		gpipeDesc.BlendState.IndependentBlendEnable = false;
+		gpipeDesc.BlendState.RenderTarget[0].BlendEnable = false;
+		gpipeDesc.BlendState.RenderTarget[0].LogicOpEnable = false;
+		gpipeDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+		gpipeDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+		gpipeDesc.RasterizerState = {
+			D3D12_FILL_MODE_SOLID,
+			D3D12_CULL_MODE_NONE,
+			true /* DepthClipEnable */,
+			false /* MultisampleEnable */
+		};
+		// D3D12_DEPTH_STENCIL_DESC DepthStencilState;
+		gpipeDesc.InputLayout = {
+			elementDescs,
+			_countof(elementDescs)
+		};
+		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		gpipeDesc.NumRenderTargets = 1;
+		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		// DXGI_FORMAT DSVFormat;
+		gpipeDesc.SampleDesc = {
+			1 /* count */,
+			0 /* quality */
+		};
+		// UINT NodeMask;
+		// D3D12_CACHED_PIPELINE_STATE CachedPSO;
+		// D3D12_PIPELINE_STATE_FLAGS Flags;
+	}
+
+	ID3D12PipelineState* pipelineState = nullptr;
+	auto ret = getInstanceOfDevice()->CreateGraphicsPipelineState(&gpipeDesc, IID_PPV_ARGS(&pipelineState));
+	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence)
 {
 	return getInstanceOfDevice()->CreateFence(
@@ -185,64 +291,6 @@ static HRESULT createVertexBuffer()
 
 
 	// TODO: getInstanceOfCommandList()->IASetVertexBuffers(0, 1, &vbView);
-
-
-	D3D12_INPUT_ELEMENT_DESC elementDesc = { };
-	{
-		elementDesc.SemanticName = "POSITION";
-		elementDesc.SemanticIndex = 0;
-		elementDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-		elementDesc.InputSlot = 0;
-		elementDesc.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
-		elementDesc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-		elementDesc.InstanceDataStepRate = 0;
-	}
-
-	return S_OK;
-}
-
-HRESULT loadShaders()
-{
-	ID3DBlob* vsBlob = nullptr;
-	ID3DBlob* psBlob = nullptr;
-	ID3DBlob* errorBlob = nullptr;
-
-	auto ret = D3DCompileFromFile(
-		L"BasicVertexShader.hlsl",
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"BasicVs",
-		"vs_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
-		0,
-		&vsBlob,
-		&errorBlob
-	);
-
-	if (FAILED(ret))
-	{
-		outputDebugMessage(errorBlob);
-	}
-	ThrowIfFailed(ret);
-
-
-	ret = D3DCompileFromFile(
-		L"BasicPixelShader.hlsl",
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"BasicPs",
-		"ps_5_0",
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
-		0,
-		&psBlob,
-		&errorBlob
-	);
-
-	if (FAILED(ret))
-	{
-		outputDebugMessage(errorBlob);
-	}
-	ThrowIfFailed(ret);
 
 	return S_OK;
 }
