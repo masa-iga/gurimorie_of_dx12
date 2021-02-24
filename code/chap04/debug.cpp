@@ -5,6 +5,8 @@
 #include <cstdarg>
 #endif // _DEBUG
 
+#define OUTPUT_DEBUG_MESSAGE_TO_VS_WINDOW (1)
+
 static std::string HrToString(HRESULT hr);
 
 class HrException : public std::runtime_error
@@ -30,10 +32,20 @@ private:
 void DebugOutputFormatString(const char* format, ...)
 {
 #ifdef _DEBUG
+#if OUTPUT_DEBUG_MESSAGE_TO_VS_WINDOW
+	va_list valist;
+	va_start(valist, format);
+	char tmp[256];
+	auto ret = vsprintf_s(tmp, format, valist);
+	ThrowIfFalse(ret >= 0);
+	OutputDebugStringA(tmp);
+	va_end(valist);
+#else
 	va_list valist;
 	va_start(valist, format);
 	vprintf(format, valist);
 	va_end(valist);
+#endif // OUTPUT_DEBUG_MESSAGE_TO_VS_WINDOW
 #endif // _DEBUG
 }
 
