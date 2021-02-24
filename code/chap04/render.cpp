@@ -8,6 +8,7 @@
 
 #pragma comment(lib, "d3dcompiler.lib")
 
+static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature);
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
 static HRESULT createVertexBuffer();
 static void outputDebugMessage(ID3DBlob* errorBlob);
@@ -25,7 +26,7 @@ HRESULT Render::init()
 
 HRESULT Render::render()
 {
-	//ThrowIfFailed(setPipelineState());
+	ThrowIfFailed(setPipelineState());
 
 	const UINT bbIdx = getInstanceOfSwapChain()->GetCurrentBackBufferIndex();
 
@@ -167,9 +168,13 @@ HRESULT Render::setPipelineState()
 		},
 	};
 
+	ID3D12RootSignature* pRootSignature = nullptr;
+	ThrowIfFailed(createRootSignature(&pRootSignature));
+	ThrowIfFalse(pRootSignature != nullptr);
+
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
 	{
-		gpipeDesc.pRootSignature = nullptr;
+		gpipeDesc.pRootSignature = pRootSignature;
 		gpipeDesc.VS = { m_vsBlob->GetBufferPointer(), m_vsBlob->GetBufferSize() };
 		gpipeDesc.PS = { m_psBlob->GetBufferPointer(), m_psBlob->GetBufferSize() };
 		// D3D12_SHADER_BYTECODE gpipeDesc.DS;
@@ -209,6 +214,40 @@ HRESULT Render::setPipelineState()
 
 	ID3D12PipelineState* pipelineState = nullptr;
 	auto ret = getInstanceOfDevice()->CreateGraphicsPipelineState(&gpipeDesc, IID_PPV_ARGS(&pipelineState));
+	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
+static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature)
+{
+	ThrowIfFalse(ppRootSignature != nullptr);
+
+	// need to input vertex
+	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
+	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	ID3DBlob* rootSigBlob = nullptr;
+	ID3DBlob* errorBlob = nullptr;
+
+	auto ret = D3D12SerializeRootSignature(
+		&rootSignatureDesc,
+		D3D_ROOT_SIGNATURE_VERSION_1_0,
+		&rootSigBlob,
+		&errorBlob);
+
+	if (FAILED(ret))
+	{
+		outputDebugMessage(errorBlob);
+	}
+	ThrowIfFailed(ret);
+
+	ret = getInstanceOfDevice()->CreateRootSignature(
+		0,
+		rootSigBlob->GetBufferPointer(),
+		rootSigBlob->GetBufferSize(),
+		IID_PPV_ARGS(ppRootSignature)
+	);
 	ThrowIfFailed(ret);
 
 	return S_OK;
