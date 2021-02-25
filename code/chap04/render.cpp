@@ -3,8 +3,9 @@
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <synchapi.h>
-#include "init.h"
+#include "config.h"
 #include "debug.h"
+#include "init.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 
@@ -249,6 +250,33 @@ static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature)
 		IID_PPV_ARGS(ppRootSignature)
 	);
 	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
+HRESULT setViewportScissor()
+{
+	D3D12_VIEWPORT viewport = { };
+	{
+		viewport.Width = kWindowWidth;
+		viewport.Height = kWindowHeight;
+		viewport.TopLeftX = 0;
+		viewport.TopLeftY = 0;
+		viewport.MaxDepth = 1.0f;
+		viewport.MaxDepth = 0.0f;
+	}
+
+	getInstanceOfCommandList()->RSSetViewports(0, &viewport);
+
+	D3D12_RECT scissorRect = { };
+	{
+		scissorRect.top = 0;
+		scissorRect.left = 0;
+		scissorRect.right = scissorRect.left + kWindowWidth;
+		scissorRect.bottom = scissorRect.top + kWindowHeight;
+	}
+
+	getInstanceOfCommandList()->RSSetScissorRects(0, &scissorRect);
 
 	return S_OK;
 }
