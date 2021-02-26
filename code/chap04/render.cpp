@@ -10,8 +10,8 @@
 #pragma comment(lib, "d3dcompiler.lib")
 
 static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature);
+static HRESULT setViewportScissor();
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
-static HRESULT createVertexBuffer();
 static void outputDebugMessage(ID3DBlob* errorBlob);
 
 HRESULT Render::init()
@@ -22,13 +22,13 @@ HRESULT Render::init()
 
 	ThrowIfFailed(loadShaders());
 
+	ThrowIfFailed(createPipelineState());
+
 	return S_OK;
 }
 
 HRESULT Render::render()
 {
-	ThrowIfFailed(setPipelineState());
-
 	const UINT bbIdx = getInstanceOfSwapChain()->GetCurrentBackBufferIndex();
 
 	// resource barrier
@@ -52,8 +52,21 @@ HRESULT Render::render()
 
 
 	// clear render target
-	constexpr float clearColor[] = { 1.0f, 1.0f, 0.0f, 1.0f };
+	constexpr float clearColor[] = { 0.05f, 0.05f, 0.4f, 1.0f };
 	getInstanceOfCommandList()->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
+
+
+	// draw triangle
+	ThrowIfFalse(m_pipelineState != nullptr);
+	getInstanceOfCommandList()->SetPipelineState(m_pipelineState);
+
+	ThrowIfFalse(m_rootSignature != nullptr);
+	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature);
+
+	setViewportScissor();
+	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	getInstanceOfCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
+	getInstanceOfCommandList()->DrawInstanced(3, 1, 0, 0);
 
 
 	// resource barrier
@@ -155,7 +168,7 @@ HRESULT Render::loadShaders()
 	return S_OK;
 }
 
-HRESULT Render::setPipelineState()
+HRESULT Render::createPipelineState()
 {
 	D3D12_INPUT_ELEMENT_DESC elementDescs[] = {
 		{
@@ -169,13 +182,12 @@ HRESULT Render::setPipelineState()
 		},
 	};
 
-	ID3D12RootSignature* pRootSignature = nullptr;
-	ThrowIfFailed(createRootSignature(&pRootSignature));
-	ThrowIfFalse(pRootSignature != nullptr);
+	ThrowIfFailed(createRootSignature(&m_rootSignature));
+	ThrowIfFalse(m_rootSignature != nullptr);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
 	{
-		gpipeDesc.pRootSignature = pRootSignature;
+		gpipeDesc.pRootSignature = m_rootSignature;
 		gpipeDesc.VS = { m_vsBlob->GetBufferPointer(), m_vsBlob->GetBufferSize() };
 		gpipeDesc.PS = { m_psBlob->GetBufferPointer(), m_psBlob->GetBufferSize() };
 		// D3D12_SHADER_BYTECODE gpipeDesc.DS;
@@ -213,83 +225,13 @@ HRESULT Render::setPipelineState()
 		// D3D12_PIPELINE_STATE_FLAGS Flags;
 	}
 
-	ID3D12PipelineState* pipelineState = nullptr;
-	auto ret = getInstanceOfDevice()->CreateGraphicsPipelineState(&gpipeDesc, IID_PPV_ARGS(&pipelineState));
+	auto ret = getInstanceOfDevice()->CreateGraphicsPipelineState(&gpipeDesc, IID_PPV_ARGS(&m_pipelineState));
 	ThrowIfFailed(ret);
 
 	return S_OK;
 }
 
-static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature)
-{
-	ThrowIfFalse(ppRootSignature != nullptr);
-
-	// need to input vertex
-	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
-	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-	ID3DBlob* rootSigBlob = nullptr;
-	ID3DBlob* errorBlob = nullptr;
-
-	auto ret = D3D12SerializeRootSignature(
-		&rootSignatureDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1_0,
-		&rootSigBlob,
-		&errorBlob);
-
-	if (FAILED(ret))
-	{
-		outputDebugMessage(errorBlob);
-	}
-	ThrowIfFailed(ret);
-
-	ret = getInstanceOfDevice()->CreateRootSignature(
-		0,
-		rootSigBlob->GetBufferPointer(),
-		rootSigBlob->GetBufferSize(),
-		IID_PPV_ARGS(ppRootSignature)
-	);
-	ThrowIfFailed(ret);
-
-	return S_OK;
-}
-
-HRESULT setViewportScissor()
-{
-	D3D12_VIEWPORT viewport = { };
-	{
-		viewport.Width = kWindowWidth;
-		viewport.Height = kWindowHeight;
-		viewport.TopLeftX = 0;
-		viewport.TopLeftY = 0;
-		viewport.MaxDepth = 1.0f;
-		viewport.MaxDepth = 0.0f;
-	}
-
-	getInstanceOfCommandList()->RSSetViewports(0, &viewport);
-
-	D3D12_RECT scissorRect = { };
-	{
-		scissorRect.top = 0;
-		scissorRect.left = 0;
-		scissorRect.right = scissorRect.left + kWindowWidth;
-		scissorRect.bottom = scissorRect.top + kWindowHeight;
-	}
-
-	getInstanceOfCommandList()->RSSetScissorRects(0, &scissorRect);
-
-	return S_OK;
-}
-
-static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence)
-{
-	return getInstanceOfDevice()->CreateFence(
-		initVal,
-		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(ppFence));
-}
-
-static HRESULT createVertexBuffer()
+HRESULT Render::createVertexBuffer()
 {
 	const DirectX::XMFLOAT3 vertices[] = {
 		{-1.0f, -1.0f, 0.0f},
@@ -347,19 +289,83 @@ static HRESULT createVertexBuffer()
 
 	vertBuff->Unmap(0, nullptr);
 
-
 	// create VB view
-	D3D12_VERTEX_BUFFER_VIEW vbView = { };
 	{
-		vbView.BufferLocation = vertBuff->GetGPUVirtualAddress();
-		vbView.SizeInBytes = sizeof(vertices);
-		vbView.StrideInBytes = sizeof(vertices[0]);
+		m_vbView.BufferLocation = vertBuff->GetGPUVirtualAddress();
+		m_vbView.SizeInBytes = sizeof(vertices);
+		m_vbView.StrideInBytes = sizeof(vertices[0]);
 	}
 
+	return S_OK;
+}
 
-	// TODO: getInstanceOfCommandList()->IASetVertexBuffers(0, 1, &vbView);
+static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature)
+{
+	ThrowIfFalse(ppRootSignature != nullptr);
+
+	// need to input vertex
+	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
+	rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	ID3DBlob* rootSigBlob = nullptr;
+	ID3DBlob* errorBlob = nullptr;
+
+	auto ret = D3D12SerializeRootSignature(
+		&rootSignatureDesc,
+		D3D_ROOT_SIGNATURE_VERSION_1_0,
+		&rootSigBlob,
+		&errorBlob);
+
+	if (FAILED(ret))
+	{
+		outputDebugMessage(errorBlob);
+	}
+	ThrowIfFailed(ret);
+
+	ret = getInstanceOfDevice()->CreateRootSignature(
+		0,
+		rootSigBlob->GetBufferPointer(),
+		rootSigBlob->GetBufferSize(),
+		IID_PPV_ARGS(ppRootSignature)
+	);
+	ThrowIfFailed(ret);
 
 	return S_OK;
+}
+
+HRESULT setViewportScissor()
+{
+	D3D12_VIEWPORT viewport = { };
+	{
+		viewport.Width = kWindowWidth;
+		viewport.Height = kWindowHeight;
+		viewport.TopLeftX = 0;
+		viewport.TopLeftY = 0;
+		viewport.MaxDepth = 1.0f;
+		viewport.MaxDepth = 0.0f;
+	}
+
+	getInstanceOfCommandList()->RSSetViewports(1, &viewport);
+
+	D3D12_RECT scissorRect = { };
+	{
+		scissorRect.top = 0;
+		scissorRect.left = 0;
+		scissorRect.right = scissorRect.left + kWindowWidth;
+		scissorRect.bottom = scissorRect.top + kWindowHeight;
+	}
+
+	getInstanceOfCommandList()->RSSetScissorRects(1, &scissorRect);
+
+	return S_OK;
+}
+
+static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence)
+{
+	return getInstanceOfDevice()->CreateFence(
+		initVal,
+		D3D12_FENCE_FLAG_NONE,
+		IID_PPV_ARGS(ppFence));
 }
 
 static void outputDebugMessage(ID3DBlob* errorBlob)
