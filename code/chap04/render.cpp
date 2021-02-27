@@ -64,9 +64,10 @@ HRESULT Render::render()
 	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature);
 
 	setViewportScissor();
-	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	getInstanceOfCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
-	getInstanceOfCommandList()->DrawInstanced(4, 1, 0, 0);
+	getInstanceOfCommandList()->IASetIndexBuffer(&m_ibView);
+	getInstanceOfCommandList()->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
 
 	// resource barrier
@@ -240,6 +241,11 @@ HRESULT Render::createVertexBuffer()
 		{ 0.5f,  0.7f, 0.0f},
 	};
 
+	const uint16_t indices[] = {
+		0, 1, 2,
+		2, 1, 3
+	};
+
 	D3D12_HEAP_PROPERTIES heapProp = { };
 	{
 		heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -290,11 +296,43 @@ HRESULT Render::createVertexBuffer()
 
 	vertBuff->Unmap(0, nullptr);
 
-	// create VB view
+	// create vertex buffer view
 	{
 		m_vbView.BufferLocation = vertBuff->GetGPUVirtualAddress();
 		m_vbView.SizeInBytes = sizeof(vertices);
 		m_vbView.StrideInBytes = sizeof(vertices[0]);
+	}
+
+
+	// create a resource for index buffer
+	ID3D12Resource* idxBuff = nullptr;
+
+	resourceDesc.Width = sizeof(indices);
+
+	ret = getInstanceOfDevice()->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&idxBuff));
+	ThrowIfFailed(ret);
+
+
+	uint16_t* mappedIdx = nullptr;
+
+	ret = idxBuff->Map(0, nullptr, (void**)&mappedIdx);
+	ThrowIfFailed(ret);
+
+	std::copy(std::begin(indices), std::end(indices), mappedIdx);
+
+	idxBuff->Unmap(0, nullptr);
+
+	// create index buffer view
+	{
+		m_ibView.BufferLocation = idxBuff->GetGPUVirtualAddress();
+		m_ibView.Format = DXGI_FORMAT_R16_UINT;
+		m_ibView.SizeInBytes = sizeof(indices);
 	}
 
 	return S_OK;
