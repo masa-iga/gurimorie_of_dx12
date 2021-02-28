@@ -9,6 +9,12 @@
 
 #pragma comment(lib, "d3dcompiler.lib")
 
+struct Vertex
+{
+	DirectX::XMFLOAT3 pos = { 0.0f, 0.0f, 0.0f };
+	DirectX::XMFLOAT2 uv = { 0.0f, 0.0f };
+};
+
 static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature);
 static HRESULT setViewportScissor();
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
@@ -234,11 +240,11 @@ HRESULT Render::createPipelineState()
 
 HRESULT Render::createVertexBuffer()
 {
-	const DirectX::XMFLOAT3 vertices[] = {
-		{-0.5f, -0.7f, 0.0f},
-		{-0.5f,  0.7f, 0.0f},
-		{ 0.5f, -0.7f, 0.0f},
-		{ 0.5f,  0.7f, 0.0f},
+	const Vertex vertices[] = {
+		{{-0.5f, -0.7f, 0.0f}, {0.0f, 1.0f}},
+		{{-0.5f,  0.7f, 0.0f}, {0.0f, 0.0f}},
+		{{ 0.5f, -0.7f, 0.0f}, {1.0f, 1.0f}},
+		{{ 0.5f,  0.7f, 0.0f}, {1.0f, 0.0f}},
 	};
 
 	const uint16_t indices[] = {
@@ -284,7 +290,7 @@ HRESULT Render::createVertexBuffer()
 
 
 	// copy vertices to the allocated resource memory
-	DirectX::XMFLOAT3* vertMap = nullptr;
+	Vertex* vertMap = nullptr;
 
 	ret = vertBuff->Map(
 		0,
