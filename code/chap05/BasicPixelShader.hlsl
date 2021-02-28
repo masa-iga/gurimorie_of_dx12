@@ -1,9 +1,6 @@
-struct Input {
-	float4 pos : POSITION;
-	float4 svpos : SV_POSITION;
-};
+#include "BasicShaderHeader.hlsli"
 
-float4 BasicPs(Input input) : SV_TARGET
+float4 BasicPs(Output input) : SV_TARGET
 {
-	return float4(input.pos.x, input.pos.y, 1, 1);
+	return float4(input.uv, 1, 1);
 }
