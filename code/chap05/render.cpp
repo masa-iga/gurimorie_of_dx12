@@ -23,11 +23,10 @@ static void outputDebugMessage(ID3DBlob* errorBlob);
 HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
-
 	ThrowIfFailed(createVertexBuffer());
-
 	ThrowIfFailed(loadShaders());
-
+	ThrowIfFailed(createTexture());
+	ThrowIfFailed(createTextureBuffer());
 	ThrowIfFailed(createPipelineState());
 
 	return S_OK;
@@ -171,6 +170,19 @@ HRESULT Render::loadShaders()
 		outputDebugMessage(errorBlob);
 	}
 	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
+HRESULT Render::createTexture()
+{
+	for (auto& tex : m_texData)
+	{
+		tex.r = rand() % 256;
+		tex.g = rand() % 256;
+		tex.b = rand() % 256;
+		tex.a = 255;
+	}
 
 	return S_OK;
 }
@@ -350,6 +362,55 @@ HRESULT Render::createVertexBuffer()
 		m_ibView.Format = DXGI_FORMAT_R16_UINT;
 		m_ibView.SizeInBytes = sizeof(indices);
 	}
+
+	return S_OK;
+}
+
+HRESULT Render::createTextureBuffer()
+{
+	D3D12_HEAP_PROPERTIES heapProp = { };
+	{
+		heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
+		heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+		heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+		heapProp.CreationNodeMask = 0;
+		heapProp.VisibleNodeMask = 0;
+	}
+
+	D3D12_RESOURCE_DESC resDesc = {};
+	{
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resDesc.Alignment = 0;
+		resDesc.Width = 256;
+		resDesc.Height = 256;
+		resDesc.DepthOrArraySize = 1;
+		resDesc.MipLevels = 1;
+		resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		resDesc.SampleDesc = { 1, 0 };
+		resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	}
+
+	ID3D12Resource* texBuff = nullptr;
+
+	auto ret = getInstanceOfDevice()->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+		nullptr,
+		IID_PPV_ARGS(&texBuff));
+	ThrowIfFailed(ret);
+
+	// upload texture to device
+	ret = texBuff->WriteToSubresource(
+		0,
+		nullptr,
+		m_texData.data(),
+		sizeof(TexRgba) * 256,
+		sizeof(TexRgba) * m_texData.size()
+	);
+	ThrowIfFailed(ret);
 
 	return S_OK;
 }

@@ -1,6 +1,15 @@
 #pragma once
 #include <Windows.h>
 #include <d3d12.h>
+#include <vector>
+
+struct TexRgba
+{
+	uint8_t r = 0;
+	uint8_t g = 0;
+	uint8_t b = 0;
+	uint8_t a = 0;
+};
 
 class Render {
 public:
@@ -11,11 +20,14 @@ public:
 
 private:
 	HRESULT loadShaders();
+	HRESULT createTexture();
 	HRESULT createPipelineState();
 	HRESULT createVertexBuffer();
+	HRESULT createTextureBuffer();
 
 	ID3DBlob* m_vsBlob = nullptr;
 	ID3DBlob* m_psBlob = nullptr;
+	std::vector<TexRgba> m_texData = std::vector<TexRgba>(256 * 256);
 	ID3D12RootSignature* m_rootSignature = nullptr;
 	ID3D12PipelineState* m_pipelineState = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
