@@ -368,6 +368,7 @@ HRESULT Render::createVertexBuffer()
 
 HRESULT Render::createTextureBuffer()
 {
+	// create a heap for texture
 	D3D12_HEAP_PROPERTIES heapProp = { };
 	{
 		heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
@@ -411,6 +412,38 @@ HRESULT Render::createTextureBuffer()
 		sizeof(TexRgba) * m_texData.size()
 	);
 	ThrowIfFailed(ret);
+
+	// create a descriptor heap for shader resource
+	D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = { };
+	{
+		descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		descHeapDesc.NumDescriptors = 1;
+		descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		descHeapDesc.NodeMask = 0;
+	}
+
+	ID3D12DescriptorHeap* texDescHeap = nullptr;
+
+	ret = getInstanceOfDevice()->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&texDescHeap));
+	ThrowIfFailed(ret);
+
+	// create a shader resource view on the heap
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
+	{
+		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UINT;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.PlaneSlice = 0;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+	}
+
+	getInstanceOfDevice()->CreateShaderResourceView(
+		texBuff,
+		&srvDesc,
+		texDescHeap->GetCPUDescriptorHandleForHeapStart()
+	);
 
 	return S_OK;
 }
