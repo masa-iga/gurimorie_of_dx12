@@ -409,7 +409,7 @@ HRESULT Render::createTextureBuffer()
 		nullptr,
 		m_texData.data(),
 		sizeof(TexRgba) * 256,
-		sizeof(TexRgba) * m_texData.size()
+		sizeof(TexRgba) * static_cast<UINT>(m_texData.size())
 	);
 	ThrowIfFailed(ret);
 
@@ -452,26 +452,26 @@ static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature)
 {
 	ThrowIfFalse(ppRootSignature != nullptr);
 
-	D3D12_DESCRIPTOR_RANGE descTblRange = { };
-	{
-		descTblRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		descTblRange.NumDescriptors = 1;
-		descTblRange.BaseShaderRegister = 0;
-		descTblRange.RegisterSpace = 0;
-		descTblRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-	}
-
-	D3D12_ROOT_PARAMETER rootParam = { };
-	{
-		rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParam.DescriptorTable.NumDescriptorRanges = 1;
-		rootParam.DescriptorTable.pDescriptorRanges = &descTblRange;
-		rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	}
-
 	// need to input vertex
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
+		D3D12_ROOT_PARAMETER rootParam = { };
+		{
+			D3D12_DESCRIPTOR_RANGE descTblRange = { };
+			{
+				descTblRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+				descTblRange.NumDescriptors = 1;
+				descTblRange.BaseShaderRegister = 0;
+				descTblRange.RegisterSpace = 0;
+				descTblRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+			}
+
+			rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParam.DescriptorTable.NumDescriptorRanges = 1;
+			rootParam.DescriptorTable.pDescriptorRanges = &descTblRange;
+			rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		}
+
 		rootSignatureDesc.NumParameters = 1; // for texture
 		rootSignatureDesc.pParameters = &rootParam;
 		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
