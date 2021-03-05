@@ -68,6 +68,12 @@ HRESULT Render::render()
 	ThrowIfFalse(m_rootSignature != nullptr);
 	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature);
 
+	ThrowIfFalse(m_texDescHeap != nullptr);
+	getInstanceOfCommandList()->SetDescriptorHeaps(1, &m_texDescHeap);
+	getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
+		0,
+		m_texDescHeap->GetGPUDescriptorHandleForHeapStart());
+
 	setViewportScissor();
 	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	getInstanceOfCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
@@ -422,9 +428,7 @@ HRESULT Render::createTextureBuffer()
 		descHeapDesc.NodeMask = 0;
 	}
 
-	ID3D12DescriptorHeap* texDescHeap = nullptr;
-
-	ret = getInstanceOfDevice()->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&texDescHeap));
+	ret = getInstanceOfDevice()->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&m_texDescHeap));
 	ThrowIfFailed(ret);
 
 	// create a shader resource view on the heap
@@ -442,7 +446,7 @@ HRESULT Render::createTextureBuffer()
 	getInstanceOfDevice()->CreateShaderResourceView(
 		texBuff,
 		&srvDesc,
-		texDescHeap->GetCPUDescriptorHandleForHeapStart()
+		m_texDescHeap->GetCPUDescriptorHandleForHeapStart()
 	);
 
 	return S_OK;

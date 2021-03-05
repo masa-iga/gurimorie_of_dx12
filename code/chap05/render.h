@@ -31,6 +31,7 @@ private:
 	ID3D12PipelineState* m_pipelineState = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
+	ID3D12DescriptorHeap* m_texDescHeap = nullptr;
 	std::vector<TexRgba> m_texData = std::vector<TexRgba>(256 * 256);
 
 	ID3D12Fence* m_pFence = nullptr;
