@@ -2,12 +2,14 @@
 #include <cassert>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
+#include <DirectXTex.h>
 #include <synchapi.h>
 #include "config.h"
 #include "debug.h"
 #include "init.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "DirectXTex.lib")
 
 struct Vertex
 {
