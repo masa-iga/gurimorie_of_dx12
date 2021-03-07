@@ -51,4 +51,9 @@
       <Filter>ヘッダー ファイル</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="img\textest.png">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

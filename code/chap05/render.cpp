@@ -2,7 +2,6 @@
 #include <cassert>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
-#include <DirectXTex.h>
 #include <synchapi.h>
 #include "config.h"
 #include "debug.h"
@@ -27,7 +26,7 @@ HRESULT Render::init()
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
 	ThrowIfFailed(createVertexBuffer());
 	ThrowIfFailed(loadShaders());
-	ThrowIfFailed(createTexture());
+	ThrowIfFailed(loadImage());
 	ThrowIfFailed(createTextureBuffer());
 	ThrowIfFailed(createPipelineState());
 
@@ -182,15 +181,18 @@ HRESULT Render::loadShaders()
 	return S_OK;
 }
 
-HRESULT Render::createTexture()
+HRESULT Render::loadImage()
 {
-	for (auto& tex : m_texData)
-	{
-		tex.r = rand() % 256;
-		tex.g = rand() % 256;
-		tex.b = rand() % 256;
-		tex.a = 255;
-	}
+	using namespace DirectX;
+
+	auto ret = LoadFromWICFile(
+		L"img/textest.png",
+		DirectX::WIC_FLAGS_NONE,
+		&m_metadata,
+		m_scratchImage);
+	ThrowIfFailed(ret);
+
+	auto img = m_scratchImage.GetImage(0, 0, 0);
 
 	return S_OK;
 }
@@ -388,12 +390,12 @@ HRESULT Render::createTextureBuffer()
 
 	D3D12_RESOURCE_DESC resDesc = {};
 	{
-		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(m_metadata.dimension);
 		resDesc.Alignment = 0;
-		resDesc.Width = 256;
-		resDesc.Height = 256;
-		resDesc.DepthOrArraySize = 1;
-		resDesc.MipLevels = 1;
+		resDesc.Width = m_metadata.width;
+		resDesc.Height = static_cast<UINT>(m_metadata.height);
+		resDesc.DepthOrArraySize = static_cast<UINT16>(m_metadata.arraySize);
+		resDesc.MipLevels = static_cast<UINT16>(m_metadata.mipLevels);
 		resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		resDesc.SampleDesc = { 1, 0 };
 		resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -411,13 +413,16 @@ HRESULT Render::createTextureBuffer()
 		IID_PPV_ARGS(&texBuff));
 	ThrowIfFailed(ret);
 
+	auto img = m_scratchImage.GetImage(0, 0, 0);
+	ThrowIfFalse(img != nullptr);
+
 	// upload texture to device
 	ret = texBuff->WriteToSubresource(
 		0,
 		nullptr,
-		m_texData.data(),
-		sizeof(TexRgba) * 256,
-		sizeof(TexRgba) * static_cast<UINT>(m_texData.size())
+		img->pixels,
+		static_cast<UINT>(img->rowPitch),
+		static_cast<UINT>(img->slicePitch)
 	);
 	ThrowIfFailed(ret);
 

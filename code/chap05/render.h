@@ -1,5 +1,6 @@
 #pragma once
 #include <Windows.h>
+#include <DirectXTex.h>
 #include <d3d12.h>
 #include <vector>
 
@@ -20,7 +21,7 @@ public:
 
 private:
 	HRESULT loadShaders();
-	HRESULT createTexture();
+	HRESULT loadImage();
 	HRESULT createPipelineState();
 	HRESULT createVertexBuffer();
 	HRESULT createTextureBuffer();
@@ -32,7 +33,8 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
 	ID3D12DescriptorHeap* m_texDescHeap = nullptr;
-	std::vector<TexRgba> m_texData = std::vector<TexRgba>(256 * 256);
+	DirectX::TexMetadata m_metadata = { };
+	DirectX::ScratchImage m_scratchImage = { };
 
 	ID3D12Fence* m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
