@@ -192,8 +192,6 @@ HRESULT Render::loadImage()
 		m_scratchImage);
 	ThrowIfFailed(ret);
 
-	auto img = m_scratchImage.GetImage(0, 0, 0);
-
 	return S_OK;
 }
 
@@ -396,7 +394,7 @@ HRESULT Render::createTextureBuffer()
 		resDesc.Height = static_cast<UINT>(m_metadata.height);
 		resDesc.DepthOrArraySize = static_cast<UINT16>(m_metadata.arraySize);
 		resDesc.MipLevels = static_cast<UINT16>(m_metadata.mipLevels);
-		resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		resDesc.Format = m_metadata.format;
 		resDesc.SampleDesc = { 1, 0 };
 		resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
@@ -413,7 +411,7 @@ HRESULT Render::createTextureBuffer()
 		IID_PPV_ARGS(&texBuff));
 	ThrowIfFailed(ret);
 
-	auto img = m_scratchImage.GetImage(0, 0, 0);
+	const auto img = m_scratchImage.GetImage(0, 0, 0);
 	ThrowIfFalse(img != nullptr);
 
 	// upload texture to device
@@ -441,7 +439,7 @@ HRESULT Render::createTextureBuffer()
 	// create a shader resource view on the heap
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
 	{
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		srvDesc.Format = m_metadata.format;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srvDesc.Texture2D.MostDetailedMip = 0;
