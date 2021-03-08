@@ -252,8 +252,16 @@ HRESULT createDescriptorHeap()
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	}
 
-	auto result = getInstanceOfDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&s_pRtvHeaps));
+	auto result = getInstanceOfDevice()->CreateDescriptorHeap(
+		&heapDesc,
+		IID_PPV_ARGS(&s_pRtvHeaps));
 	ThrowIfFailed(result);
+
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = { };
+	{
+		rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+	}
 
 	DXGI_SWAP_CHAIN_DESC swcDesc = { };
 	result = getInstanceOfSwapChain()->GetDesc(&swcDesc);
@@ -261,7 +269,9 @@ HRESULT createDescriptorHeap()
 
 	for (uint32_t i = 0; i < swcDesc.BufferCount; ++i)
 	{
-		result = getInstanceOfSwapChain()->GetBuffer(i, IID_PPV_ARGS(&s_backBuffers[i]));
+		result = getInstanceOfSwapChain()->GetBuffer(
+			i,
+			IID_PPV_ARGS(&s_backBuffers[i]));
 		ThrowIfFailed(result);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
@@ -269,7 +279,7 @@ HRESULT createDescriptorHeap()
 
 		getInstanceOfDevice()->CreateRenderTargetView(
 			s_backBuffers[i],
-			nullptr,
+			&rtvDesc,
 			handle);
 	}
 
