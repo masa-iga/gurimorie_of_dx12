@@ -6,6 +6,7 @@
 #include "config.h"
 #include "debug.h"
 #include "init.h"
+#include "util.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "DirectXTex.lib")
