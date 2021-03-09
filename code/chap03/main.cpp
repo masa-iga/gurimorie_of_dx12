@@ -1,7 +1,7 @@
 #include <Windows.h>
+#include <array>
 #include <cstdio>
 #include <cassert>
-#include <vector>
 #include <tchar.h>
 #include "init.h"
 #include "debug.h"
@@ -110,12 +110,11 @@ public:
 
 private:
 	LARGE_INTEGER m_freq = {};
-	std::vector<LARGE_INTEGER> m_times;
+	std::array<LARGE_INTEGER, kNumOfTrack> m_times;
 	UINT m_idx = 0;
 };
 
 FrameCounter::FrameCounter()
-	: m_times(kNumOfTrack)
 {
 	ThrowIfFalse(QueryPerformanceFrequency(&m_freq));
 };
