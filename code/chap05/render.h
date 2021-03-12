@@ -25,6 +25,7 @@ private:
 	HRESULT createPipelineState();
 	HRESULT createVertexBuffer();
 	HRESULT createTextureBuffer();
+	HRESULT createTextureBuffer2();
 
 	ID3DBlob* m_vsBlob = nullptr;
 	ID3DBlob* m_psBlob = nullptr;

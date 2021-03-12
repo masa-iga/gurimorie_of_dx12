@@ -29,6 +29,7 @@ HRESULT Render::init()
 	ThrowIfFailed(loadShaders());
 	ThrowIfFailed(loadImage());
 	ThrowIfFailed(createTextureBuffer());
+	ThrowIfFailed(createTextureBuffer2());
 	ThrowIfFailed(createPipelineState());
 
 	return S_OK;
@@ -454,6 +455,176 @@ HRESULT Render::createTextureBuffer()
 		&srvDesc,
 		m_texDescHeap->GetCPUDescriptorHandleForHeapStart()
 	);
+
+	return S_OK;
+}
+
+HRESULT Render::createTextureBuffer2()
+{
+	// create a resource for uploading
+	const auto img = m_scratchImage.GetImage(0, 0, 0);
+	ThrowIfFalse(img != nullptr);
+
+	ID3D12Resource* texUploadBuff = nullptr;
+	{
+		D3D12_HEAP_PROPERTIES uploadHeapProp = { };
+		{
+			uploadHeapProp.Type = D3D12_HEAP_TYPE_UPLOAD; // to be able to map
+			uploadHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			uploadHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			uploadHeapProp.CreationNodeMask = 0;
+			uploadHeapProp.VisibleNodeMask = 0;
+		}
+
+		D3D12_RESOURCE_DESC resDesc = { };
+		{
+
+			resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			resDesc.Alignment = 0;
+			resDesc.Width = img->slicePitch;
+			resDesc.Height = 1;
+			resDesc.DepthOrArraySize = 1;
+			resDesc.MipLevels = 1;
+			resDesc.Format = DXGI_FORMAT_UNKNOWN; // this is chunk of data, so should be unknown
+			resDesc.SampleDesc = { 1, 0 };
+			resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto result = getInstanceOfDevice()->CreateCommittedResource(
+			&uploadHeapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ, // CPU writable and GPU redable
+			nullptr,
+			IID_PPV_ARGS(&texUploadBuff)
+		);
+		ThrowIfFailed(result);
+	}
+
+
+	// map
+	{
+		uint8_t* mapForImg = nullptr;
+
+		auto result = texUploadBuff->Map(
+			0,
+			nullptr,
+			reinterpret_cast<void**>(&mapForImg)
+		);
+		ThrowIfFailed(result);
+
+		std::copy_n(
+			img->pixels,
+			img->slicePitch,
+			mapForImg);
+
+		texUploadBuff->Unmap(0, nullptr);
+	}
+
+
+	// create a resource for reading from GPU
+	ID3D12Resource* texBuff = nullptr;
+	{
+		D3D12_HEAP_PROPERTIES texHeapProp = { };
+		{
+			texHeapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+			texHeapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			texHeapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			texHeapProp.CreationNodeMask = 0;
+			texHeapProp.VisibleNodeMask = 0;
+		}
+
+		D3D12_RESOURCE_DESC resDesc = { };
+		{
+			resDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(m_metadata.dimension);
+			resDesc.Alignment = 0;
+			resDesc.Width = m_metadata.width;
+			resDesc.Height = static_cast<UINT>(m_metadata.height);
+			resDesc.DepthOrArraySize = static_cast<UINT16>(m_metadata.arraySize);
+			resDesc.MipLevels = static_cast<UINT16>(m_metadata.mipLevels);
+			resDesc.Format = m_metadata.format;
+			resDesc.SampleDesc = { 1, 0 };
+			resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto result = getInstanceOfDevice()->CreateCommittedResource(
+			&texHeapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&texBuff)
+		);
+		ThrowIfFailed(result);
+	}
+
+
+	// copy texture
+	D3D12_TEXTURE_COPY_LOCATION src = { };
+	{
+		src.pResource = texUploadBuff;
+		src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		src.PlacedFootprint.Offset = 0;
+		src.PlacedFootprint.Footprint.Format = img->format;
+		src.PlacedFootprint.Footprint.Width = static_cast<UINT>(m_metadata.width);
+		src.PlacedFootprint.Footprint.Height = static_cast<UINT>(m_metadata.height);
+		src.PlacedFootprint.Footprint.Depth = static_cast<UINT>(m_metadata.depth);
+		src.PlacedFootprint.Footprint.RowPitch = static_cast<UINT>(img->rowPitch);
+	}
+	D3D12_TEXTURE_COPY_LOCATION dst = { };
+	{
+		dst.pResource = texBuff;
+		dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dst.SubresourceIndex = 0;
+	}
+	getInstanceOfCommandList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+
+	// barrier
+	D3D12_RESOURCE_BARRIER barrierDesc = { };
+	{
+		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrierDesc.Transition.pResource = texBuff;
+		barrierDesc.Transition.Subresource = 0;
+		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	}
+	getInstanceOfCommandList()->ResourceBarrier(1, &barrierDesc);
+	ThrowIfFailed(getInstanceOfCommandList()->Close());
+
+
+	ID3D12CommandList* cmdLists[] = { getInstanceOfCommandList() };
+	getInstanceOfCommandQueue()->ExecuteCommandLists(1, cmdLists);
+
+	// wait until the copy is done
+	ID3D12Fence* fence = nullptr;
+	ThrowIfFailed(createFence(0, &fence));
+	ThrowIfFailed(getInstanceOfCommandQueue()->Signal(fence, 1));
+
+	if (fence->GetCompletedValue() != 1)
+	{
+		HANDLE event = CreateEvent(nullptr, false, false, nullptr);
+
+		ThrowIfFailed(fence->SetEventOnCompletion(1, event));
+
+		auto ret = WaitForSingleObject(event, INFINITE);
+		ThrowIfFalse(ret == WAIT_OBJECT_0);
+
+		BOOL ret2 = CloseHandle(event); // fail‚·‚é
+
+		if (!ret2)
+		{
+			DebugOutputFormatString("failed to close handle. (ret %d error %d)\n", ret2, GetLastError());
+			ThrowIfFalse(FALSE);
+		}
+	}
+
+	// reset command allocator & list
+	ThrowIfFailed(getInstanceOfCommandAllocator()->Reset());
+	ThrowIfFailed(getInstanceOfCommandList()->Reset(getInstanceOfCommandAllocator(), nullptr));
 
 	return S_OK;
 }
