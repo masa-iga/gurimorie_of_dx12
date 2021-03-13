@@ -1,6 +1,8 @@
 #include "util.h"
 #include "debug.h"
 
+namespace Util {
+
 TimeCounter::TimeCounter(std::string str)
 	: m_str(str)
 {
@@ -24,3 +26,10 @@ TimeCounter::~TimeCounter()
 	else
 		DebugOutputFormatString("%s %zd usec\n", m_str.c_str(), elapsed);
 }
+
+size_t Util::alignmentedSize(size_t size, size_t alignment)
+{
+	return size + alignment - (size % alignment);
+}
+
+} // namespace Util

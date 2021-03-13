@@ -582,6 +582,7 @@ HRESULT Render::createTextureBuffer2()
 		src.PlacedFootprint.Footprint.Depth = static_cast<UINT>(m_metadata.depth);
 		src.PlacedFootprint.Footprint.RowPitch = static_cast<UINT>(img->rowPitch);
 	}
+	ThrowIfFalse(src.PlacedFootprint.Footprint.RowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT == 0);
 	D3D12_TEXTURE_COPY_LOCATION dst = { };
 	{
 		dst.pResource = texBuff;
@@ -631,10 +632,10 @@ HRESULT Render::createTextureBuffer2()
 		}
 	}
 
+
 	// reset command allocator & list
 	ThrowIfFailed(getInstanceOfCommandAllocator()->Reset());
 	ThrowIfFailed(getInstanceOfCommandList()->Reset(getInstanceOfCommandAllocator(), nullptr));
-
 
 
 	// create a descriptor heap for shader resource
