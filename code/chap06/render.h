@@ -26,6 +26,7 @@ private:
 	HRESULT createVertexBuffer();
 	HRESULT createTextureBuffer();
 	HRESULT createTextureBuffer2();
+	HRESULT createViews();
 
 	ID3DBlob* m_vsBlob = nullptr;
 	ID3DBlob* m_psBlob = nullptr;
@@ -33,6 +34,7 @@ private:
 	ID3D12PipelineState* m_pipelineState = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
+	ID3D12Resource* m_texResource = nullptr;
 	ID3D12DescriptorHeap* m_texDescHeap = nullptr;
 	DirectX::TexMetadata m_metadata = { };
 	DirectX::ScratchImage m_scratchImage = { };

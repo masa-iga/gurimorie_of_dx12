@@ -42,6 +42,7 @@ HRESULT Render::init()
 	}
 
 	ThrowIfFailed(createConstantBuffer());
+	ThrowIfFailed(createViews());
 	ThrowIfFailed(createPipelineState());
 
 	return S_OK;
@@ -414,22 +415,20 @@ HRESULT Render::createTextureBuffer()
 		resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	}
 
-	ID3D12Resource* texBuff = nullptr;
-
 	auto ret = getInstanceOfDevice()->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&resDesc,
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 		nullptr,
-		IID_PPV_ARGS(&texBuff));
+		IID_PPV_ARGS(&m_texResource));
 	ThrowIfFailed(ret);
 
 	const auto img = m_scratchImage.GetImage(0, 0, 0);
 	ThrowIfFalse(img != nullptr);
 
 	// upload texture to device
-	ret = texBuff->WriteToSubresource(
+	ret = m_texResource->WriteToSubresource(
 		0,
 		nullptr,
 		img->pixels,
@@ -437,36 +436,6 @@ HRESULT Render::createTextureBuffer()
 		static_cast<UINT>(img->slicePitch)
 	);
 	ThrowIfFailed(ret);
-
-	// create a descriptor heap for shader resource
-	D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = { };
-	{
-		descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		descHeapDesc.NumDescriptors = 1;
-		descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		descHeapDesc.NodeMask = 0;
-	}
-
-	ret = getInstanceOfDevice()->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&m_texDescHeap));
-	ThrowIfFailed(ret);
-
-	// create a shader resource view on the heap
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
-	{
-		srvDesc.Format = m_metadata.format;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Texture2D.MipLevels = 1;
-		srvDesc.Texture2D.PlaneSlice = 0;
-		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	}
-
-	getInstanceOfDevice()->CreateShaderResourceView(
-		texBuff,
-		&srvDesc,
-		m_texDescHeap->GetCPUDescriptorHandleForHeapStart()
-	);
 
 	return S_OK;
 }
@@ -536,7 +505,6 @@ HRESULT Render::createTextureBuffer2()
 
 
 	// create a resource for reading from GPU
-	ID3D12Resource* texBuff = nullptr;
 	{
 		D3D12_HEAP_PROPERTIES texHeapProp = { };
 		{
@@ -567,7 +535,7 @@ HRESULT Render::createTextureBuffer2()
 			&resDesc,
 			D3D12_RESOURCE_STATE_COPY_DEST,
 			nullptr,
-			IID_PPV_ARGS(&texBuff)
+			IID_PPV_ARGS(&m_texResource)
 		);
 		ThrowIfFailed(result);
 	}
@@ -588,7 +556,7 @@ HRESULT Render::createTextureBuffer2()
 	ThrowIfFalse(src.PlacedFootprint.Footprint.RowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT == 0);
 	D3D12_TEXTURE_COPY_LOCATION dst = { };
 	{
-		dst.pResource = texBuff;
+		dst.pResource = m_texResource;
 		dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 		dst.SubresourceIndex = 0;
 	}
@@ -600,7 +568,7 @@ HRESULT Render::createTextureBuffer2()
 	{
 		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrierDesc.Transition.pResource = texBuff;
+		barrierDesc.Transition.pResource = m_texResource;
 		barrierDesc.Transition.Subresource = 0;
 		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
 		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
@@ -635,12 +603,15 @@ HRESULT Render::createTextureBuffer2()
 		}
 	}
 
-
 	// reset command allocator & list
 	ThrowIfFailed(getInstanceOfCommandAllocator()->Reset());
 	ThrowIfFailed(getInstanceOfCommandList()->Reset(getInstanceOfCommandAllocator(), nullptr));
 
+	return S_OK;
+}
 
+HRESULT Render::createViews()
+{
 	// create a descriptor heap for shader resource
 	D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = { };
 	{
@@ -666,7 +637,7 @@ HRESULT Render::createTextureBuffer2()
 		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 	}
 	getInstanceOfDevice()->CreateShaderResourceView(
-		texBuff,
+		m_texResource,
 		&srvDesc,
 		m_texDescHeap->GetCPUDescriptorHandleForHeapStart()
 	);
@@ -876,7 +847,7 @@ static HRESULT createConstantBuffer()
 	D3D12_CONSTANT_BUFFER_VIEW_DESC bvDesc = { };
 	{
 		bvDesc.BufferLocation = constBuff->GetGPUVirtualAddress();
-		bvDesc.SizeInBytes = constBuff->GetDesc().Width;
+		bvDesc.SizeInBytes = static_cast<UINT>(constBuff->GetDesc().Width);
 	}
 
 	auto descHandle = descHeap->GetCPUDescriptorHandleForHeapStart();
