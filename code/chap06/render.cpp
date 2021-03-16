@@ -1,6 +1,7 @@
 #include "render.h"
 #include <cassert>
 #include <d3dcompiler.h>
+#include <d3dx12.h>
 #include <DirectXMath.h>
 #include <synchapi.h>
 #include "config.h"
@@ -21,6 +22,7 @@ static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature);
 static HRESULT setViewportScissor();
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
 static void outputDebugMessage(ID3DBlob* errorBlob);
+static HRESULT createConstantBuffer();
 
 HRESULT Render::init()
 {
@@ -39,6 +41,7 @@ HRESULT Render::init()
 		ThrowIfFailed(createTextureBuffer());
 	}
 
+	ThrowIfFailed(createConstantBuffer());
 	ThrowIfFailed(createPipelineState());
 
 	return S_OK;
@@ -798,3 +801,93 @@ static void outputDebugMessage(ID3DBlob* errorBlob)
 	OutputDebugStringA(errStr.c_str());
 }
 
+static HRESULT createConstantBuffer()
+{
+	using namespace DirectX;
+
+	XMMATRIX matrix = DirectX::XMMatrixIdentity();
+	const size_t w = Util::alignmentedSize(sizeof(matrix), 256);
+
+	ID3D12Resource* constBuff = nullptr;
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = w;
+			resourceDesc.Height = 1;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto result = getInstanceOfDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&constBuff)
+		);
+		ThrowIfFailed(result);
+	}
+
+	XMMATRIX* mapMatrix = nullptr;
+	{
+		auto result = constBuff->Map(
+			0,
+			nullptr,
+			reinterpret_cast<void**>(&mapMatrix)
+		);
+		ThrowIfFailed(result);
+	}
+	*mapMatrix = matrix;
+
+
+	ID3D12DescriptorHeap* descHeap = nullptr;
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = getInstanceOfDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(&descHeap)
+		);
+		ThrowIfFailed(result);
+	}
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC bvDesc = { };
+	{
+		bvDesc.BufferLocation = constBuff->GetGPUVirtualAddress();
+		bvDesc.SizeInBytes = constBuff->GetDesc().Width;
+	}
+
+	auto descHandle = descHeap->GetCPUDescriptorHandleForHeapStart();
+	//descHandle.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	getInstanceOfDevice()->CreateConstantBufferView(
+		&bvDesc,
+		descHandle
+	);
+
+	// TODO: merge desc heap to SRV's one ?
+
+	return S_OK;
+}
