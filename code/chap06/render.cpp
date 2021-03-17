@@ -22,7 +22,6 @@ static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature);
 static HRESULT setViewportScissor();
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
 static void outputDebugMessage(ID3DBlob* errorBlob);
-static HRESULT createConstantBuffer();
 
 HRESULT Render::init()
 {
@@ -84,11 +83,11 @@ HRESULT Render::render()
 	ThrowIfFalse(m_rootSignature != nullptr);
 	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature);
 
-	ThrowIfFalse(m_texDescHeap != nullptr);
-	getInstanceOfCommandList()->SetDescriptorHeaps(1, &m_texDescHeap);
+	ThrowIfFalse(m_basicDescHeap != nullptr);
+	getInstanceOfCommandList()->SetDescriptorHeaps(1, &m_basicDescHeap);
 	getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
 		0,
-		m_texDescHeap->GetGPUDescriptorHandleForHeapStart());
+		m_basicDescHeap->GetGPUDescriptorHandleForHeapStart());
 
 	setViewportScissor();
 	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -610,37 +609,114 @@ HRESULT Render::createTextureBuffer2()
 	return S_OK;
 }
 
+HRESULT Render::createConstantBuffer()
+{
+	using namespace DirectX;
+
+	XMMATRIX matrix = DirectX::XMMatrixIdentity();
+
+	{
+		const size_t w = Util::alignmentedSize(sizeof(matrix), 256);
+
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = w;
+			resourceDesc.Height = 1;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto result = getInstanceOfDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&m_cbResource)
+		);
+		ThrowIfFailed(result);
+	}
+
+	XMMATRIX* mapMatrix = nullptr;
+	{
+		auto result = m_cbResource->Map(
+			0,
+			nullptr,
+			reinterpret_cast<void**>(&mapMatrix)
+		);
+		ThrowIfFailed(result);
+	}
+
+	*mapMatrix = matrix;
+
+	return S_OK;
+}
+
 HRESULT Render::createViews()
 {
 	// create a descriptor heap for shader resource
 	D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = { };
 	{
 		descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		descHeapDesc.NumDescriptors = 1;
+		descHeapDesc.NumDescriptors = 2;
 		descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		descHeapDesc.NodeMask = 0;
 	}
 	auto ret = getInstanceOfDevice()->CreateDescriptorHeap(
 		&descHeapDesc,
-		IID_PPV_ARGS(&m_texDescHeap));
+		IID_PPV_ARGS(&m_basicDescHeap));
 	ThrowIfFailed(ret);
 
+
 	// create a shader resource view on the heap
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
+	auto basicHeapHandle = m_basicDescHeap->GetCPUDescriptorHandleForHeapStart();
 	{
-		srvDesc.Format = m_metadata.format;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Texture2D.MipLevels = 1;
-		srvDesc.Texture2D.PlaneSlice = 0;
-		srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
+		{
+			srvDesc.Format = m_metadata.format;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.PlaneSlice = 0;
+			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		}
+		getInstanceOfDevice()->CreateShaderResourceView(
+			m_texResource,
+			&srvDesc,
+			basicHeapHandle
+		);
 	}
-	getInstanceOfDevice()->CreateShaderResourceView(
-		m_texResource,
-		&srvDesc,
-		m_texDescHeap->GetCPUDescriptorHandleForHeapStart()
-	);
+
+
+	// create a constant buffer view on the heap
+	basicHeapHandle.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	{
+		D3D12_CONSTANT_BUFFER_VIEW_DESC bvDesc = { };
+		{
+			bvDesc.BufferLocation = m_cbResource->GetGPUVirtualAddress();
+			bvDesc.SizeInBytes = static_cast<UINT>(m_cbResource->GetDesc().Width);
+		}
+		getInstanceOfDevice()->CreateConstantBufferView(
+			&bvDesc,
+			basicHeapHandle
+		);
+	}
 
 	return S_OK;
 }
@@ -772,93 +848,3 @@ static void outputDebugMessage(ID3DBlob* errorBlob)
 	OutputDebugStringA(errStr.c_str());
 }
 
-static HRESULT createConstantBuffer()
-{
-	using namespace DirectX;
-
-	XMMATRIX matrix = DirectX::XMMatrixIdentity();
-	const size_t w = Util::alignmentedSize(sizeof(matrix), 256);
-
-	ID3D12Resource* constBuff = nullptr;
-	{
-		D3D12_HEAP_PROPERTIES heapProp = { };
-		{
-			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
-			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			heapProp.CreationNodeMask = 0;
-			heapProp.VisibleNodeMask = 0;
-		}
-
-		D3D12_RESOURCE_DESC resourceDesc = { };
-		{
-			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-			resourceDesc.Alignment = 0;
-			resourceDesc.Width = w;
-			resourceDesc.Height = 1;
-			resourceDesc.DepthOrArraySize = 1;
-			resourceDesc.MipLevels = 1;
-			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-			resourceDesc.SampleDesc = { 1, 0 };
-			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		}
-
-		auto result = getInstanceOfDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&constBuff)
-		);
-		ThrowIfFailed(result);
-	}
-
-	XMMATRIX* mapMatrix = nullptr;
-	{
-		auto result = constBuff->Map(
-			0,
-			nullptr,
-			reinterpret_cast<void**>(&mapMatrix)
-		);
-		ThrowIfFailed(result);
-	}
-	*mapMatrix = matrix;
-
-
-	ID3D12DescriptorHeap* descHeap = nullptr;
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
-		{
-			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = 1;
-			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-			heapDesc.NodeMask = 0;
-		}
-
-		auto result = getInstanceOfDevice()->CreateDescriptorHeap(
-			&heapDesc,
-			IID_PPV_ARGS(&descHeap)
-		);
-		ThrowIfFailed(result);
-	}
-
-	D3D12_CONSTANT_BUFFER_VIEW_DESC bvDesc = { };
-	{
-		bvDesc.BufferLocation = constBuff->GetGPUVirtualAddress();
-		bvDesc.SizeInBytes = static_cast<UINT>(constBuff->GetDesc().Width);
-	}
-
-	auto descHandle = descHeap->GetCPUDescriptorHandleForHeapStart();
-	//descHandle.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-	getInstanceOfDevice()->CreateConstantBufferView(
-		&bvDesc,
-		descHandle
-	);
-
-	// TODO: merge desc heap to SRV's one ?
-
-	return S_OK;
-}
