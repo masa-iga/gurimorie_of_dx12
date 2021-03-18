@@ -83,11 +83,20 @@ HRESULT Render::render()
 	ThrowIfFalse(m_rootSignature != nullptr);
 	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature);
 
-	ThrowIfFalse(m_basicDescHeap != nullptr);
-	getInstanceOfCommandList()->SetDescriptorHeaps(1, &m_basicDescHeap);
-	getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
-		0,
-		m_basicDescHeap->GetGPUDescriptorHandleForHeapStart());
+	{
+		ThrowIfFalse(m_basicDescHeap != nullptr);
+		getInstanceOfCommandList()->SetDescriptorHeaps(1, &m_basicDescHeap);
+
+		auto heapHandle = m_basicDescHeap->GetGPUDescriptorHandleForHeapStart();
+		getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
+			0,
+			heapHandle);
+
+		heapHandle.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
+			1,
+			heapHandle);
+	}
 
 	setViewportScissor();
 	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
