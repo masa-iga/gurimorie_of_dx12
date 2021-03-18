@@ -729,7 +729,7 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
 		// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
-		D3D12_ROOT_PARAMETER rootParam = { };
+		D3D12_ROOT_PARAMETER rootParam[2] = { };
 		{
 			D3D12_DESCRIPTOR_RANGE descTblRange[2] = { };
 			{
@@ -749,10 +749,18 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 				}
 			}
 
-			rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			rootParam.DescriptorTable.NumDescriptorRanges = 1;
-			rootParam.DescriptorTable.pDescriptorRanges = descTblRange;
-			rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			{
+				rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+				rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
+				rootParam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
+				rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			}
+			{
+				rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+				rootParam[1].DescriptorTable.NumDescriptorRanges = 1;
+				rootParam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
+				rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+			}
 		}
 
 		D3D12_STATIC_SAMPLER_DESC samplerDesc = { };
@@ -772,8 +780,8 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 			samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		}
 
-		rootSignatureDesc.NumParameters = 1; // for texture
-		rootSignatureDesc.pParameters = &rootParam;
+		rootSignatureDesc.NumParameters = 2;
+		rootSignatureDesc.pParameters = &rootParam[0];
 		rootSignatureDesc.NumStaticSamplers = 1;
 		rootSignatureDesc.pStaticSamplers = &samplerDesc;
 		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
