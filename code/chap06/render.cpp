@@ -18,7 +18,7 @@ struct Vertex
 	DirectX::XMFLOAT2 uv = { 0.0f, 0.0f };
 };
 
-static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature);
+static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature);
 static HRESULT setViewportScissor();
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
 static void outputDebugMessage(ID3DBlob* errorBlob);
@@ -233,7 +233,7 @@ HRESULT Render::createPipelineState()
 		},
 	};
 
-	ThrowIfFailed(createRootSignature(&m_rootSignature));
+	ThrowIfFailed(setupRootSignature(&m_rootSignature));
 	ThrowIfFalse(m_rootSignature != nullptr);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
@@ -721,28 +721,37 @@ HRESULT Render::createViews()
 	return S_OK;
 }
 
-static HRESULT createRootSignature(ID3D12RootSignature** ppRootSignature)
+static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 {
 	ThrowIfFalse(ppRootSignature != nullptr);
 
 	// need to input vertex
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
-		// create descriptor table to bind a texture
+		// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
 		D3D12_ROOT_PARAMETER rootParam = { };
 		{
-			D3D12_DESCRIPTOR_RANGE descTblRange = { };
+			D3D12_DESCRIPTOR_RANGE descTblRange[2] = { };
 			{
-				descTblRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-				descTblRange.NumDescriptors = 1;
-				descTblRange.BaseShaderRegister = 0;
-				descTblRange.RegisterSpace = 0;
-				descTblRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+				{
+					descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+					descTblRange[0].NumDescriptors = 1;
+					descTblRange[0].BaseShaderRegister = 0;
+					descTblRange[0].RegisterSpace = 0;
+					descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+				}
+				{
+					descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+					descTblRange[1].NumDescriptors = 1;
+					descTblRange[1].BaseShaderRegister = 0;
+					descTblRange[1].RegisterSpace = 0;
+					descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+				}
 			}
 
 			rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 			rootParam.DescriptorTable.NumDescriptorRanges = 1;
-			rootParam.DescriptorTable.pDescriptorRanges = &descTblRange;
+			rootParam.DescriptorTable.pDescriptorRanges = descTblRange;
 			rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		}
 
