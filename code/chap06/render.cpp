@@ -286,10 +286,10 @@ HRESULT Render::createPipelineState()
 HRESULT Render::createVertexBuffer()
 {
 	const Vertex vertices[] = {
-		{{-0.5f, -0.7f, 0.0f}, {0.0f, 1.0f}},
-		{{-0.5f,  0.7f, 0.0f}, {0.0f, 0.0f}},
-		{{ 0.5f, -0.7f, 0.0f}, {1.0f, 1.0f}},
-		{{ 0.5f,  0.7f, 0.0f}, {1.0f, 0.0f}},
+		{{  0.0f, 100.0f, 0.0f}, {0.0f, 1.0f}},
+		{{  0.0f,   0.0f, 0.0f}, {0.0f, 0.0f}},
+		{{100.0f, 100.0f, 0.0f}, {1.0f, 1.0f}},
+		{{100.0f,   0.0f, 0.0f}, {1.0f, 0.0f}},
 	};
 
 	const uint16_t indices[] = {
@@ -661,6 +661,13 @@ HRESULT Render::createConstantBuffer()
 			reinterpret_cast<void**>(&mapMatrix)
 		);
 		ThrowIfFailed(result);
+	}
+
+	{
+		matrix.r[0].m128_f32[0] =  2.0f / kWindowWidth;
+		matrix.r[1].m128_f32[1] = -2.0f / kWindowHeight;
+		matrix.r[3].m128_f32[0] = -1.0f;
+		matrix.r[3].m128_f32[1] =  1.0f;
 	}
 
 	*mapMatrix = matrix;
