@@ -286,10 +286,10 @@ HRESULT Render::createPipelineState()
 HRESULT Render::createVertexBuffer()
 {
 	const Vertex vertices[] = {
-		{{  0.0f, 100.0f, 0.0f}, {0.0f, 1.0f}},
-		{{  0.0f,   0.0f, 0.0f}, {0.0f, 0.0f}},
-		{{100.0f, 100.0f, 0.0f}, {1.0f, 1.0f}},
-		{{100.0f,   0.0f, 0.0f}, {1.0f, 0.0f}},
+		{{ -1.0f,  -1.0f, 0.0f}, {0.0f, 1.0f}}, // lower-left
+		{{ -1.0f,   1.0f, 0.0f}, {0.0f, 0.0f}}, // upper-left
+		{{  1.0f,  -1.0f, 0.0f}, {1.0f, 1.0f}}, // lower-right
+		{{  1.0f,   1.0f, 0.0f}, {1.0f, 0.0f}}, // upper-right
 	};
 
 	const uint16_t indices[] = {
@@ -614,10 +614,8 @@ HRESULT Render::createConstantBuffer()
 {
 	using namespace DirectX;
 
-	XMMATRIX matrix = DirectX::XMMatrixIdentity();
-
 	{
-		const size_t w = Util::alignmentedSize(sizeof(matrix), 256);
+		const size_t w = Util::alignmentedSize(sizeof(XMMATRIX), 256);
 
 		D3D12_HEAP_PROPERTIES heapProp = { };
 		{
@@ -663,11 +661,26 @@ HRESULT Render::createConstantBuffer()
 		ThrowIfFailed(result);
 	}
 
+	XMMATRIX matrix = DirectX::XMMatrixIdentity();
 	{
-		matrix.r[0].m128_f32[0] =  2.0f / kWindowWidth;
-		matrix.r[1].m128_f32[1] = -2.0f / kWindowHeight;
-		matrix.r[3].m128_f32[0] = -1.0f;
-		matrix.r[3].m128_f32[1] =  1.0f;
+		matrix = DirectX::XMMatrixRotationY(XM_PIDIV4);
+
+		constexpr XMFLOAT3 eye(0, 0, -5);
+		constexpr XMFLOAT3 target(0, 0, 0);
+		constexpr XMFLOAT3 up(0, 1, 0);
+
+		matrix *= XMMatrixLookAtLH(
+			DirectX::XMLoadFloat3(&eye),
+			DirectX::XMLoadFloat3(&target),
+			DirectX::XMLoadFloat3(&up)
+		);
+
+		matrix *= DirectX::XMMatrixPerspectiveFovLH(
+			XM_PIDIV2,
+			static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
+			1.0f,
+			10.0f
+		);
 	}
 
 	*mapMatrix = matrix;
