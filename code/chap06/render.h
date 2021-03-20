@@ -28,6 +28,7 @@ private:
 	HRESULT createTextureBuffer2();
 	HRESULT createConstantBuffer();
 	HRESULT createViews();
+	HRESULT updateMatrix();
 
 	ID3DBlob* m_vsBlob = nullptr;
 	ID3DBlob* m_psBlob = nullptr;
@@ -40,6 +41,7 @@ private:
 	DirectX::TexMetadata m_metadata = { };
 	DirectX::ScratchImage m_scratchImage = { };
 	ID3D12Resource* m_cbResource = nullptr;
+	DirectX::XMMATRIX* m_mapMatrix = nullptr;
 
 	ID3D12Fence* m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;

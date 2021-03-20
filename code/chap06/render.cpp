@@ -49,6 +49,9 @@ HRESULT Render::init()
 
 HRESULT Render::render()
 {
+	updateMatrix();
+
+
 	const UINT bbIdx = getInstanceOfSwapChain()->GetCurrentBackBufferIndex();
 
 	// resource barrier
@@ -651,39 +654,14 @@ HRESULT Render::createConstantBuffer()
 		ThrowIfFailed(result);
 	}
 
-	XMMATRIX* mapMatrix = nullptr;
 	{
 		auto result = m_cbResource->Map(
 			0,
 			nullptr,
-			reinterpret_cast<void**>(&mapMatrix)
+			reinterpret_cast<void**>(&m_mapMatrix)
 		);
 		ThrowIfFailed(result);
 	}
-
-	XMMATRIX matrix = DirectX::XMMatrixIdentity();
-	{
-		matrix = DirectX::XMMatrixRotationY(XM_PIDIV4);
-
-		constexpr XMFLOAT3 eye(0, 0, -5);
-		constexpr XMFLOAT3 target(0, 0, 0);
-		constexpr XMFLOAT3 up(0, 1, 0);
-
-		matrix *= XMMatrixLookAtLH(
-			DirectX::XMLoadFloat3(&eye),
-			DirectX::XMLoadFloat3(&target),
-			DirectX::XMLoadFloat3(&up)
-		);
-
-		matrix *= DirectX::XMMatrixPerspectiveFovLH(
-			XM_PIDIV2,
-			static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
-			1.0f,
-			10.0f
-		);
-	}
-
-	*mapMatrix = matrix;
 
 	return S_OK;
 }
@@ -738,6 +716,37 @@ HRESULT Render::createViews()
 			basicHeapHandle
 		);
 	}
+
+	return S_OK;
+}
+
+HRESULT Render::updateMatrix()
+{
+	using namespace DirectX;
+
+	static float angle = 0.0f;
+	const auto worldMat = DirectX::XMMatrixRotationY(angle);
+
+	constexpr XMFLOAT3 eye(0, 0, -5);
+	constexpr XMFLOAT3 target(0, 0, 0);
+	constexpr XMFLOAT3 up(0, 1, 0);
+
+	const auto viewMat = XMMatrixLookAtLH(
+		DirectX::XMLoadFloat3(&eye),
+		DirectX::XMLoadFloat3(&target),
+		DirectX::XMLoadFloat3(&up)
+	);
+
+	auto projMat = DirectX::XMMatrixPerspectiveFovLH(
+		XM_PIDIV2,
+		static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
+		1.0f,
+		10.0f
+	);
+
+	*m_mapMatrix = worldMat * viewMat * projMat;
+
+	angle += 0.02f;
 
 	return S_OK;
 }
