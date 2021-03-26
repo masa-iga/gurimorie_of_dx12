@@ -7,6 +7,7 @@
 #include "config.h"
 #include "debug.h"
 #include "init.h"
+#include "pmd_reader.h"
 #include "util.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
@@ -26,6 +27,7 @@ static void outputDebugMessage(ID3DBlob* errorBlob);
 HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
+	ThrowIfFailed(PmdReader::read());
 	ThrowIfFailed(createVertexBuffer());
 	ThrowIfFailed(loadShaders());
 	ThrowIfFailed(loadImage());
@@ -215,28 +217,6 @@ HRESULT Render::loadImage()
 
 HRESULT Render::createPipelineState()
 {
-	D3D12_INPUT_ELEMENT_DESC elementDescs[] =
-	{
-		{
-			"POSITION",
-			0,
-			DXGI_FORMAT_R32G32B32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0,
-		},
-		{
-			"TEXCOORD",
-			0,
-			DXGI_FORMAT_R32G32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0,
-		},
-	};
-
 	ThrowIfFailed(setupRootSignature(&m_rootSignature));
 	ThrowIfFalse(m_rootSignature != nullptr);
 
@@ -262,9 +242,10 @@ HRESULT Render::createPipelineState()
 			false /* MultisampleEnable */
 		};
 		// D3D12_DEPTH_STENCIL_DESC DepthStencilState;
+		auto [elementDescs, numOfElement] = PmdReader::getInputElementDesc();
 		gpipeDesc.InputLayout = {
 			elementDescs,
-			_countof(elementDescs)
+			numOfElement
 		};
 		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
