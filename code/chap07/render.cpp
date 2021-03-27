@@ -97,10 +97,10 @@ HRESULT Render::render()
 	);
 
 	setViewportScissor();
-	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	getInstanceOfCommandList()->IASetVertexBuffers(0, 1, m_pmdReader.getVbView());
-	getInstanceOfCommandList()->IASetIndexBuffer(&m_ibView);
-	getInstanceOfCommandList()->DrawInstanced(m_pmdReader.getVertNum(), 1, 0, 0);
+	getInstanceOfCommandList()->IASetIndexBuffer(m_pmdReader.getIbView());
+	getInstanceOfCommandList()->DrawIndexedInstanced(m_pmdReader.getIndexNum(), 1, 0, 0, 0);
 
 
 	// resource barrier

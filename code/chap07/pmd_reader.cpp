@@ -59,7 +59,7 @@ static constexpr char kSignature[] = "Pmd";
 static constexpr size_t kNumSignature = 3;
 static constexpr size_t kPmdVertexSize = 38;
 
-static HRESULT createResource(ID3D12Resource** ppVertResource, size_t width);
+static HRESULT createBufferResource(ID3D12Resource** ppVertResource, size_t width);
 
 std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdReader::getInputElementDesc()
 {
@@ -70,19 +70,24 @@ HRESULT PmdReader::readData()
 {
 	FILE* fp = nullptr;
 	ThrowIfFalse(fopen_s(&fp, "Model/‰‰¹ƒ~ƒN.pmd", "rb") == 0);
+	{
+		char signature[kNumSignature] = { };
+		ThrowIfFalse(fread(signature, sizeof(signature), 1, fp) == 1);
+		ThrowIfFalse(strncmp(signature, kSignature, kNumSignature) == 0);
 
-	char signature[kNumSignature] = { };
-	ThrowIfFalse(fread(signature, sizeof(signature), 1, fp) == 1);
-	ThrowIfFalse(strncmp(signature, kSignature, kNumSignature) == 0);
+		PMDHeader pmdHeader = { };
+		ThrowIfFalse(fread(&pmdHeader, sizeof(pmdHeader), 1, fp) == 1);
 
-	PMDHeader pmdHeader = { };
-	ThrowIfFalse(fread(&pmdHeader, sizeof(pmdHeader), 1, fp) == 1);
+		ThrowIfFalse(fread(&m_vertNum, sizeof(m_vertNum), 1, fp) == 1);
 
-	ThrowIfFalse(fread(&m_vertNum, sizeof(m_vertNum), 1, fp) == 1);
+		m_vertices.resize(m_vertNum * kPmdVertexSize);
+		ThrowIfFalse(fread(m_vertices.data(), m_vertices.size(), 1, fp) == 1);
 
-	m_vertices.resize(m_vertNum * kPmdVertexSize);
-	ThrowIfFalse(fread(m_vertices.data(), m_vertices.size(), 1, fp) == 1);
+		ThrowIfFalse(fread(&m_indicesNum, sizeof(m_indicesNum), 1, fp) == 1);
 
+		m_indices.resize(m_indicesNum);
+		ThrowIfFalse(fread(m_indices.data(), m_indices.size() * sizeof(m_indices[0]), 1, fp) == 1);
+	}
 	ThrowIfFalse(fclose(fp) == 0);
 
 	return S_OK;
@@ -90,24 +95,48 @@ HRESULT PmdReader::readData()
 
 HRESULT PmdReader::createResources()
 {
-	ThrowIfFailed(createResource(&m_vertResource, m_vertices.size()));
-
-	ThrowIfFalse(m_vertResource != nullptr);
 	{
-		m_vbView.BufferLocation = m_vertResource->GetGPUVirtualAddress();
-		m_vbView.SizeInBytes = static_cast<UINT>(m_vertices.size());
-		m_vbView.StrideInBytes = kPmdVertexSize;
+		ThrowIfFailed(createBufferResource(&m_vertResource, m_vertices.size()));
+		ThrowIfFalse(m_vertResource != nullptr);
+		{
+			m_vbView.BufferLocation = m_vertResource->GetGPUVirtualAddress();
+			m_vbView.SizeInBytes = static_cast<UINT>(m_vertices.size());
+			m_vbView.StrideInBytes = kPmdVertexSize;
+		}
+
+		UINT8* vertMap = nullptr;
+		auto ret = m_vertResource->Map(
+			0,
+			nullptr,
+			reinterpret_cast<void**>(&vertMap)
+		);
+		ThrowIfFailed(ret);
+
+		std::copy(std::begin(m_vertices), std::end(m_vertices), vertMap);
+
+		m_vertResource->Unmap(0, nullptr);
 	}
 
-	UINT8 *vertMap = nullptr;
-	auto ret = m_vertResource->Map(
-		0,
-		nullptr,
-		reinterpret_cast<void**>(&vertMap)
-	);
-	ThrowIfFailed(ret);
+	{
+		ThrowIfFailed(createBufferResource(&m_ibResource, m_indices.size() * sizeof(m_indices[0])));
+		ThrowIfFalse(m_ibResource != nullptr);
+		{
+			m_ibView.BufferLocation = m_ibResource->GetGPUVirtualAddress();
+			m_ibView.SizeInBytes = static_cast<UINT>(m_indices.size() * sizeof(m_indices[0]));
+			m_ibView.Format = DXGI_FORMAT_R16_UINT;
+		}
 
-	std::copy(std::begin(m_vertices), std::end(m_vertices), vertMap);
+		UINT16* ibMap = nullptr;
+		auto ret = m_ibResource->Map(
+			0,
+			nullptr,
+			reinterpret_cast<void**>(&ibMap));
+		ThrowIfFailed(ret);
+
+		std::copy(std::begin(m_indices), std::end(m_indices), ibMap);
+
+		m_ibResource->Unmap(0, nullptr);
+	}
 
 	return S_OK;
 }
@@ -122,7 +151,17 @@ UINT PmdReader::getVertNum() const
 	return m_vertNum;
 }
 
-static HRESULT createResource(ID3D12Resource** ppVertResource, size_t width)
+const D3D12_INDEX_BUFFER_VIEW* PmdReader::getIbView() const
+{
+	return &m_ibView;
+}
+
+UINT PmdReader::getIndexNum() const
+{
+	return m_indicesNum;
+}
+
+static HRESULT createBufferResource(ID3D12Resource** ppResource, size_t width)
 {
 	{
 		D3D12_HEAP_PROPERTIES heapProp = { };
@@ -153,7 +192,7 @@ static HRESULT createResource(ID3D12Resource** ppVertResource, size_t width)
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(ppVertResource)
+			IID_PPV_ARGS(ppResource)
 		);
 		ThrowIfFailed(ret);
 	}
