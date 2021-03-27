@@ -27,7 +27,8 @@ static void outputDebugMessage(ID3DBlob* errorBlob);
 HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
-	ThrowIfFailed(PmdReader::read());
+	ThrowIfFailed(m_pmdReader.readData());
+	ThrowIfFailed(m_pmdReader.createResources());
 	ThrowIfFailed(createVertexBuffer());
 	ThrowIfFailed(loadShaders());
 	ThrowIfFailed(loadImage());
@@ -77,7 +78,7 @@ HRESULT Render::render()
 
 
 	// clear render target
-	constexpr float clearColor[] = { 0.05f, 0.05f, 0.4f, 1.0f };
+	constexpr float clearColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 	getInstanceOfCommandList()->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
 
 
@@ -96,10 +97,10 @@ HRESULT Render::render()
 	);
 
 	setViewportScissor();
-	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	getInstanceOfCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
+	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+	getInstanceOfCommandList()->IASetVertexBuffers(0, 1, m_pmdReader.getVbView());
 	getInstanceOfCommandList()->IASetIndexBuffer(&m_ibView);
-	getInstanceOfCommandList()->DrawIndexedInstanced(6, 1, 0, 0, 0);
+	getInstanceOfCommandList()->DrawInstanced(m_pmdReader.getVertNum(), 1, 0, 0);
 
 
 	// resource barrier
@@ -242,7 +243,7 @@ HRESULT Render::createPipelineState()
 			false /* MultisampleEnable */
 		};
 		// D3D12_DEPTH_STENCIL_DESC DepthStencilState;
-		auto [elementDescs, numOfElement] = PmdReader::getInputElementDesc();
+		auto [elementDescs, numOfElement] = m_pmdReader.getInputElementDesc();
 		gpipeDesc.InputLayout = {
 			elementDescs,
 			numOfElement
@@ -708,8 +709,8 @@ HRESULT Render::updateMatrix()
 	static float angle = 0.0f;
 	const auto worldMat = DirectX::XMMatrixRotationY(angle);
 
-	constexpr XMFLOAT3 eye(0, 0, -5);
-	constexpr XMFLOAT3 target(0, 0, 0);
+	constexpr XMFLOAT3 eye(0, 10, -15);
+	constexpr XMFLOAT3 target(0, 10, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
 
 	const auto viewMat = XMMatrixLookAtLH(
@@ -722,7 +723,7 @@ HRESULT Render::updateMatrix()
 		XM_PIDIV2,
 		static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
 		1.0f,
-		10.0f
+		100.0f
 	);
 
 	*m_mapMatrix = worldMat * viewMat * projMat;

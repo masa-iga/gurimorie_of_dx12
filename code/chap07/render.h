@@ -3,6 +3,7 @@
 #include <DirectXTex.h>
 #include <d3d12.h>
 #include <vector>
+#include "pmd_reader.h"
 
 struct TexRgba
 {
@@ -45,4 +46,6 @@ private:
 
 	ID3D12Fence* m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
+
+	PmdReader m_pmdReader;
 };

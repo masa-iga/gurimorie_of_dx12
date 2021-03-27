@@ -2,7 +2,6 @@
 #include <cstdio>
 #include <d3dx12.h>
 #include <DirectXMath.h>
-#include <vector>
 #include "debug.h"
 #include "init.h"
 
@@ -60,18 +59,14 @@ static constexpr char kSignature[] = "Pmd";
 static constexpr size_t kNumSignature = 3;
 static constexpr size_t kPmdVertexSize = 38;
 
-std::vector<UINT8> s_vertices;
-static ID3D12Resource *s_vertResource = nullptr;
-static D3D12_VERTEX_BUFFER_VIEW s_vbView = { };
-
-static HRESULT createResource(size_t width);
+static HRESULT createResource(ID3D12Resource** ppVertResource, size_t width);
 
 std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdReader::getInputElementDesc()
 {
 	return { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
 }
 
-HRESULT PmdReader::read()
+HRESULT PmdReader::readData()
 {
 	FILE* fp = nullptr;
 	ThrowIfFalse(fopen_s(&fp, "Model/‰‰¹ƒ~ƒN.pmd", "rb") == 0);
@@ -83,39 +78,51 @@ HRESULT PmdReader::read()
 	PMDHeader pmdHeader = { };
 	ThrowIfFalse(fread(&pmdHeader, sizeof(pmdHeader), 1, fp) == 1);
 
-	UINT32 vertNum = 0;
-	ThrowIfFalse(fread(&vertNum, sizeof(vertNum), 1, fp) == 1);
+	ThrowIfFalse(fread(&m_vertNum, sizeof(m_vertNum), 1, fp) == 1);
 
-	s_vertices.resize(vertNum * kPmdVertexSize);
-	ThrowIfFalse(fread(s_vertices.data(), s_vertices.size(), 1, fp) == 1);
+	m_vertices.resize(m_vertNum * kPmdVertexSize);
+	ThrowIfFalse(fread(m_vertices.data(), m_vertices.size(), 1, fp) == 1);
 
 	ThrowIfFalse(fclose(fp) == 0);
 
+	return S_OK;
+}
 
-	ThrowIfFailed(createResource(s_vertices.size()));
+HRESULT PmdReader::createResources()
+{
+	ThrowIfFailed(createResource(&m_vertResource, m_vertices.size()));
 
-	D3D12_VERTEX_BUFFER_VIEW vbView = { };
+	ThrowIfFalse(m_vertResource != nullptr);
 	{
-		vbView.BufferLocation = s_vertResource->GetGPUVirtualAddress();
-		vbView.SizeInBytes = static_cast<UINT>(s_vertices.size());
-		vbView.StrideInBytes = kPmdVertexSize;
+		m_vbView.BufferLocation = m_vertResource->GetGPUVirtualAddress();
+		m_vbView.SizeInBytes = static_cast<UINT>(m_vertices.size());
+		m_vbView.StrideInBytes = kPmdVertexSize;
 	}
 
-
 	UINT8 *vertMap = nullptr;
-	auto ret = s_vertResource->Map(
+	auto ret = m_vertResource->Map(
 		0,
 		nullptr,
 		reinterpret_cast<void**>(&vertMap)
 	);
 	ThrowIfFailed(ret);
 
-	std::copy(std::begin(s_vertices), std::end(s_vertices), vertMap);
+	std::copy(std::begin(m_vertices), std::end(m_vertices), vertMap);
 
 	return S_OK;
 }
 
-static HRESULT createResource(size_t width)
+const D3D12_VERTEX_BUFFER_VIEW* PmdReader::getVbView() const
+{
+	return &m_vbView;
+}
+
+UINT PmdReader::getVertNum() const
+{
+	return m_vertNum;
+}
+
+static HRESULT createResource(ID3D12Resource** ppVertResource, size_t width)
 {
 	{
 		D3D12_HEAP_PROPERTIES heapProp = { };
@@ -146,10 +153,11 @@ static HRESULT createResource(size_t width)
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&s_vertResource)
+			IID_PPV_ARGS(ppVertResource)
 		);
 		ThrowIfFailed(ret);
 	}
 
 	return S_OK;
 }
+
