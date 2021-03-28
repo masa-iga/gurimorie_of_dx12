@@ -13,8 +13,11 @@ Output BasicVs(
 	min16uint weight : WEIGHT)
 {
 	Output output;
-	output.svpos = mul(mat, pos);
-	output.uv = uv;
+	{
+		output.svpos = mul(mat, pos);
+		output.normal = normal;
+		output.uv = uv;
+	}
 
 	return output;
 }
