@@ -29,7 +29,6 @@ HRESULT Render::init()
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
 	ThrowIfFailed(m_pmdReader.readData());
 	ThrowIfFailed(m_pmdReader.createResources());
-	ThrowIfFailed(createVertexBuffer());
 	ThrowIfFailed(loadShaders());
 	ThrowIfFailed(loadImage());
 
@@ -264,112 +263,6 @@ HRESULT Render::createPipelineState()
 
 	auto ret = getInstanceOfDevice()->CreateGraphicsPipelineState(&gpipeDesc, IID_PPV_ARGS(&m_pipelineState));
 	ThrowIfFailed(ret);
-
-	return S_OK;
-}
-
-HRESULT Render::createVertexBuffer()
-{
-	const Vertex vertices[] = {
-		{{ -1.0f,  -1.0f, 0.0f}, {0.0f, 1.0f}}, // lower-left
-		{{ -1.0f,   1.0f, 0.0f}, {0.0f, 0.0f}}, // upper-left
-		{{  1.0f,  -1.0f, 0.0f}, {1.0f, 1.0f}}, // lower-right
-		{{  1.0f,   1.0f, 0.0f}, {1.0f, 0.0f}}, // upper-right
-	};
-
-	const uint16_t indices[] = {
-		0, 1, 2,
-		2, 1, 3
-	};
-
-	D3D12_HEAP_PROPERTIES heapProp = { };
-	{
-		heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
-		heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		heapProp.CreationNodeMask = 0;
-		heapProp.VisibleNodeMask = 0;
-	}
-
-	D3D12_RESOURCE_DESC resourceDesc = { };
-	{
-		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resourceDesc.Alignment = 0;
-		resourceDesc.Width = sizeof(vertices);
-		resourceDesc.Height = 1;
-		resourceDesc.DepthOrArraySize = 1;
-		resourceDesc.MipLevels = 1;
-		resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resourceDesc.SampleDesc.Count = 1;
-		resourceDesc.SampleDesc.Quality = 0;
-		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-	}
-
-	ID3D12Resource* vertBuff = nullptr;
-
-	// create both a resrouce and an implicit heap
-	auto ret = getInstanceOfDevice()->CreateCommittedResource(
-		&heapProp,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&vertBuff));
-	ThrowIfFailed(ret);
-
-
-	// copy vertices to the allocated resource memory
-	Vertex* vertMap = nullptr;
-
-	ret = vertBuff->Map(
-		0,
-		nullptr,
-		(void**)&vertMap);
-	ThrowIfFailed(ret);
-
-	std::copy(std::begin(vertices), std::end(vertices), vertMap);
-
-	vertBuff->Unmap(0, nullptr);
-
-	// create vertex buffer view
-	{
-		m_vbView.BufferLocation = vertBuff->GetGPUVirtualAddress();
-		m_vbView.SizeInBytes = sizeof(vertices);
-		m_vbView.StrideInBytes = sizeof(vertices[0]);
-	}
-
-
-	// create a resource for index buffer
-	ID3D12Resource* idxBuff = nullptr;
-
-	resourceDesc.Width = sizeof(indices);
-
-	ret = getInstanceOfDevice()->CreateCommittedResource(
-		&heapProp,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&idxBuff));
-	ThrowIfFailed(ret);
-
-
-	uint16_t* mappedIdx = nullptr;
-
-	ret = idxBuff->Map(0, nullptr, (void**)&mappedIdx);
-	ThrowIfFailed(ret);
-
-	std::copy(std::begin(indices), std::end(indices), mappedIdx);
-
-	idxBuff->Unmap(0, nullptr);
-
-	// create index buffer view
-	{
-		m_ibView.BufferLocation = idxBuff->GetGPUVirtualAddress();
-		m_ibView.Format = DXGI_FORMAT_R16_UINT;
-		m_ibView.SizeInBytes = sizeof(indices);
-	}
 
 	return S_OK;
 }

@@ -24,7 +24,6 @@ private:
 	HRESULT loadShaders();
 	HRESULT loadImage();
 	HRESULT createPipelineState();
-	HRESULT createVertexBuffer();
 	HRESULT createTextureBuffer();
 	HRESULT createTextureBuffer2();
 	HRESULT createConstantBuffer();
@@ -36,8 +35,6 @@ private:
 	ID3D12RootSignature* m_rootSignature = nullptr;
 	ID3D12PipelineState* m_pipelineState = nullptr;
 	ID3D12DescriptorHeap* m_basicDescHeap = nullptr;
-	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
-	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
 	ID3D12Resource* m_texResource = nullptr;
 	DirectX::TexMetadata m_metadata = { };
 	DirectX::ScratchImage m_scratchImage = { };
