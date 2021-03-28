@@ -38,6 +38,8 @@ private:
 	ID3D12Resource* m_texResource = nullptr;
 	DirectX::TexMetadata m_metadata = { };
 	DirectX::ScratchImage m_scratchImage = { };
+	ID3D12DescriptorHeap* m_dsvHeap = nullptr;
+	ID3D12Resource* m_depthResource = nullptr;
 	ID3D12Resource* m_cbResource = nullptr;
 	DirectX::XMMATRIX* m_mapMatrix = nullptr;
 

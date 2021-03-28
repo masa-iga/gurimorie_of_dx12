@@ -13,15 +13,10 @@
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "DirectXTex.lib")
 
-struct Vertex
-{
-	DirectX::XMFLOAT3 pos = { 0.0f, 0.0f, 0.0f };
-	DirectX::XMFLOAT2 uv = { 0.0f, 0.0f };
-};
-
 static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature);
 static HRESULT setViewportScissor();
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
+static HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** ppDescHeap);
 static void outputDebugMessage(ID3DBlob* errorBlob);
 
 HRESULT Render::init()
@@ -29,6 +24,7 @@ HRESULT Render::init()
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
 	ThrowIfFailed(m_pmdReader.readData());
 	ThrowIfFailed(m_pmdReader.createResources());
+	ThrowIfFailed(createDepthBuffer(&m_depthResource, &m_dsvHeap));
 	ThrowIfFailed(loadShaders());
 	ThrowIfFailed(loadImage());
 
@@ -743,6 +739,83 @@ static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence)
 		initVal,
 		D3D12_FENCE_FLAG_NONE,
 		IID_PPV_ARGS(ppFence));
+}
+
+HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** ppDescHeap)
+{
+	{
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = kWindowWidth;
+			resourceDesc.Height = kWindowHeight;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_D32_FLOAT;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		}
+
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 1;
+			heapProp.VisibleNodeMask = 1;
+		}
+
+		D3D12_CLEAR_VALUE clearVal = { };
+		{
+			clearVal.Format = DXGI_FORMAT_D32_FLOAT;
+			clearVal.DepthStencil.Depth = 1.0f;
+			clearVal.DepthStencil.Stencil = 0;
+		}
+
+		auto ret = getInstanceOfDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			&clearVal,
+			IID_PPV_ARGS(ppResource));
+		ThrowIfFailed(ret);
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = { };
+		{
+			descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+			descHeapDesc.NumDescriptors = 1;
+			descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+			descHeapDesc.NodeMask = 0;
+		}
+
+		auto ret = getInstanceOfDevice()->CreateDescriptorHeap(
+			&descHeapDesc,
+			IID_PPV_ARGS(ppDescHeap));
+		ThrowIfFailed(ret);
+	}
+
+
+	{
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = { };
+		{
+			dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+			dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+			dsvDesc.Texture2D.MipSlice = 0;
+		}
+
+		getInstanceOfDevice()->CreateDepthStencilView(
+			*ppResource,
+			&dsvDesc,
+			(*ppDescHeap)->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	return S_OK;
 }
 
 static void outputDebugMessage(ID3DBlob* errorBlob)
