@@ -13,6 +13,8 @@
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "DirectXTex.lib")
 
+#define DISABLE_MATRIX (0)
+
 static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature);
 static HRESULT setViewportScissor();
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
@@ -65,17 +67,26 @@ HRESULT Render::render()
 	getInstanceOfCommandList()->ResourceBarrier(1, &barrier);
 
 
-	// link swap chain's memory to output merger
+	// link swap chain's and depth buffers to output merger
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
 	rtvH.ptr += bbIdx * static_cast<SIZE_T>(getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 
-	getInstanceOfCommandList()->OMSetRenderTargets(1, &rtvH, true, nullptr);
+	D3D12_CPU_DESCRIPTOR_HANDLE dsvH = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 
+	getInstanceOfCommandList()->OMSetRenderTargets(1, &rtvH, false, &dsvH);
 
 	// clear render target
 	constexpr float clearColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 	getInstanceOfCommandList()->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
 
+	// clear depth buffer
+	getInstanceOfCommandList()->ClearDepthStencilView(
+		dsvH,
+		D3D12_CLEAR_FLAG_DEPTH,
+		1.0f,
+		0,
+		0,
+        nullptr);
 
 	// draw triangle
 	ThrowIfFalse(m_pipelineState != nullptr);
@@ -237,7 +248,14 @@ HRESULT Render::createPipelineState()
 			true /* DepthClipEnable */,
 			false /* MultisampleEnable */
 		};
-		// D3D12_DEPTH_STENCIL_DESC DepthStencilState;
+		gpipeDesc.DepthStencilState.DepthEnable = true;
+		gpipeDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		gpipeDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		gpipeDesc.DepthStencilState.StencilEnable = false;
+		//gpipeDesc.DepthStencilState.StencilReadMask = 0;
+		//gpipeDesc.DepthStencilState.StencilWriteMask = 0;
+		//D3D12_DEPTH_STENCILOP_DESC FrontFace;
+		//D3D12_DEPTH_STENCILOP_DESC BackFace;
 		auto [elementDescs, numOfElement] = m_pmdReader.getInputElementDesc();
 		gpipeDesc.InputLayout = {
 			elementDescs,
@@ -247,7 +265,7 @@ HRESULT Render::createPipelineState()
 		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		gpipeDesc.NumRenderTargets = 1;
 		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		// DXGI_FORMAT DSVFormat;
+		gpipeDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 		gpipeDesc.SampleDesc = {
 			1 /* count */,
 			0 /* quality */
@@ -615,7 +633,11 @@ HRESULT Render::updateMatrix()
 		100.0f
 	);
 
+#if DISABLE_MATRIX
+	*m_mapMatrix = XMMatrixIdentity();
+#else
 	*m_mapMatrix = worldMat * viewMat * projMat;
+#endif // DISABLE_MATRIX
 
 	angle += 0.02f;
 
@@ -715,7 +737,7 @@ HRESULT setViewportScissor()
 		viewport.TopLeftX = 0;
 		viewport.TopLeftY = 0;
 		viewport.MaxDepth = 1.0f;
-		viewport.MaxDepth = 0.0f;
+		viewport.MinDepth = 0.0f;
 	}
 
 	getInstanceOfCommandList()->RSSetViewports(1, &viewport);

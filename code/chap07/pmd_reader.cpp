@@ -12,6 +12,7 @@ struct PMDHeader
 	char comment[256] = { };
 };
 
+#pragma pack(1) // size of the struct is 38 bytes, so need to prevent padding
 struct PMDVertex
 {
 	DirectX::XMFLOAT3 pos;
@@ -21,6 +22,7 @@ struct PMDVertex
 	UINT8 boneWeight = 0;
 	UINT8 edgeFlag = 0;
 };
+#pragma pack()
 
 static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
 	{
@@ -58,8 +60,71 @@ static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
 static constexpr char kSignature[] = "Pmd";
 static constexpr size_t kNumSignature = 3;
 static constexpr size_t kPmdVertexSize = 38;
+static_assert(sizeof(PMDVertex) == kPmdVertexSize);
 
+const std::vector<PMDVertex> s_debugVertices = {
+	PMDVertex{
+		DirectX::XMFLOAT3(-0.5f, -0.5f, 0.5f),
+		DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f),
+		DirectX::XMFLOAT2(0.0f, 0.0f),
+		{ 0, 0 },
+		0,
+		0
+	},
+	PMDVertex{
+		DirectX::XMFLOAT3(0.0f, 0.5f, 0.5f),
+		DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f),
+		DirectX::XMFLOAT2(0.0f, 0.0f),
+		{ 0, 0 },
+		0,
+		0
+	},
+	PMDVertex{
+		DirectX::XMFLOAT3(0.5f, -0.5f, 0.5f),
+		DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f),
+		DirectX::XMFLOAT2(0.0f, 0.0f),
+		{ 0, 0 },
+		0,
+		0
+	},
+	PMDVertex{
+		DirectX::XMFLOAT3(-0.5f, 0.5f, 0.2f),
+		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		DirectX::XMFLOAT2(0.0f, 0.0f),
+		{ 0, 0 },
+		0,
+		0
+	},
+	PMDVertex{
+		DirectX::XMFLOAT3(0.0f, -0.5f, 0.2f),
+		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		DirectX::XMFLOAT2(0.0f, 0.0f),
+		{ 0, 0 },
+		0,
+		0
+	},
+	PMDVertex{
+		DirectX::XMFLOAT3(0.5f, 0.5f, 0.2f),
+		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		DirectX::XMFLOAT2(0.0f, 0.0f),
+		{ 0, 0 },
+		0,
+		0
+	},
+};
+
+const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
+
+template<typename T>
+static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
+createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ID3D12Resource** ppVertResource, size_t width);
+
+PmdReader::PmdReader()
+{
+	auto ret = createDebugResources();
+	ThrowIfFailed(ret);
+}
 
 std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdReader::getInputElementDesc()
 {
@@ -95,50 +160,11 @@ HRESULT PmdReader::readData()
 
 HRESULT PmdReader::createResources()
 {
-	{
-		ThrowIfFailed(createBufferResource(&m_vertResource, m_vertices.size()));
-		ThrowIfFalse(m_vertResource != nullptr);
-		{
-			m_vbView.BufferLocation = m_vertResource->GetGPUVirtualAddress();
-			m_vbView.SizeInBytes = static_cast<UINT>(m_vertices.size());
-			m_vbView.StrideInBytes = kPmdVertexSize;
-		}
+	auto [ret, vbView, ibView] = createResourcesInternal(&m_vertResource, m_vertices, &m_ibResource, m_indices);
 
-		UINT8* vertMap = nullptr;
-		auto ret = m_vertResource->Map(
-			0,
-			nullptr,
-			reinterpret_cast<void**>(&vertMap)
-		);
-		ThrowIfFailed(ret);
-
-		std::copy(std::begin(m_vertices), std::end(m_vertices), vertMap);
-
-		m_vertResource->Unmap(0, nullptr);
-	}
-
-	{
-		ThrowIfFailed(createBufferResource(&m_ibResource, m_indices.size() * sizeof(m_indices[0])));
-		ThrowIfFalse(m_ibResource != nullptr);
-		{
-			m_ibView.BufferLocation = m_ibResource->GetGPUVirtualAddress();
-			m_ibView.SizeInBytes = static_cast<UINT>(m_indices.size() * sizeof(m_indices[0]));
-			m_ibView.Format = DXGI_FORMAT_R16_UINT;
-		}
-
-		UINT16* ibMap = nullptr;
-		auto ret = m_ibResource->Map(
-			0,
-			nullptr,
-			reinterpret_cast<void**>(&ibMap));
-		ThrowIfFailed(ret);
-
-		std::copy(std::begin(m_indices), std::end(m_indices), ibMap);
-
-		m_ibResource->Unmap(0, nullptr);
-	}
-
-	return S_OK;
+	m_vbView = vbView;
+	m_ibView = ibView;
+	return ret;
 }
 
 const D3D12_VERTEX_BUFFER_VIEW* PmdReader::getVbView() const
@@ -159,6 +185,93 @@ const D3D12_INDEX_BUFFER_VIEW* PmdReader::getIbView() const
 UINT PmdReader::getIndexNum() const
 {
 	return m_indicesNum;
+}
+
+const D3D12_VERTEX_BUFFER_VIEW* PmdReader::getDebugVbView() const
+{
+	return &m_debugVbView;
+}
+
+const D3D12_INDEX_BUFFER_VIEW* PmdReader::getDebugIbView() const
+{
+	return &m_debugIbView;
+}
+
+UINT PmdReader::getDebugIndexNum() const
+{
+	return static_cast<UINT>(s_debugIndices.size());
+}
+
+HRESULT PmdReader::createDebugResources()
+{
+	ID3D12Resource* vertResource = nullptr;
+	ID3D12Resource* ibResource = nullptr;
+
+	auto [ret, vbView, ibView] = createResourcesInternal(&vertResource, s_debugVertices, &ibResource, s_debugIndices);
+
+	m_debugVbView = vbView;
+	m_debugIbView = ibView;
+
+	return S_OK;
+}
+
+template<typename T>
+static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
+createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices)
+{
+	ThrowIfFalse(ppVertResource != nullptr);
+	ThrowIfFalse(ppIbResource != nullptr);
+
+	D3D12_VERTEX_BUFFER_VIEW vbView = { };
+	{
+		const size_t sizeInBytes = vertices.size() * sizeof(vertices[0]);
+
+		ThrowIfFailed(createBufferResource(ppVertResource, sizeInBytes));
+		ThrowIfFalse((*ppVertResource) != nullptr);
+		{
+			vbView.BufferLocation = (*ppVertResource)->GetGPUVirtualAddress();
+			vbView.SizeInBytes = static_cast<UINT>(sizeInBytes);
+			vbView.StrideInBytes = kPmdVertexSize;
+		}
+
+		T* vertMap = nullptr;
+		auto ret = (*ppVertResource)->Map(
+			0,
+			nullptr,
+			reinterpret_cast<void**>(&vertMap)
+		);
+		ThrowIfFailed(ret);
+
+		std::copy(std::begin(vertices), std::end(vertices), vertMap);
+
+		(*ppVertResource)->Unmap(0, nullptr);
+	}
+
+	D3D12_INDEX_BUFFER_VIEW ibView = { };
+	{
+		const size_t sizeInBytes = indices.size() * sizeof(indices[0]);
+
+		ThrowIfFailed(createBufferResource(ppIbResource, sizeInBytes));
+		ThrowIfFalse((*ppIbResource) != nullptr);
+		{
+			ibView.BufferLocation = (*ppIbResource)->GetGPUVirtualAddress();
+			ibView.SizeInBytes = static_cast<UINT>(sizeInBytes);
+			ibView.Format = DXGI_FORMAT_R16_UINT;
+		}
+
+		UINT16* ibMap = nullptr;
+		auto ret = (*ppIbResource)->Map(
+			0,
+			nullptr,
+			reinterpret_cast<void**>(&ibMap));
+		ThrowIfFailed(ret);
+
+		std::copy(std::begin(indices), std::end(indices), ibMap);
+
+		(*ppIbResource)->Unmap(0, nullptr);
+	}
+
+	return { S_OK, vbView , ibView };
 }
 
 static HRESULT createBufferResource(ID3D12Resource** ppResource, size_t width)
