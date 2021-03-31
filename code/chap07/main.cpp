@@ -21,10 +21,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 #endif // _DEBUG
 	DebugOutputFormatString("[Debug window]\n");
-	const INT c = getchar();
-#ifdef _DEBUG
-	ThrowIfFalse(c != EOF);
-#endif // _DEBUG
 
 	WNDCLASSEX w = { };
 	{
