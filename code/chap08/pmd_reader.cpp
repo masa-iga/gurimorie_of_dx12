@@ -1,7 +1,6 @@
 #include "pmd_reader.h"
 #include <cstdio>
 #include <d3dx12.h>
-#include <DirectXMath.h>
 #include "debug.h"
 #include "init.h"
 
@@ -22,6 +21,7 @@ struct PMDVertex
 	UINT8 boneWeight = 0;
 	UINT8 edgeFlag = 0;
 };
+static_assert(sizeof(PMDVertex) == 38);
 #pragma pack()
 
 static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
@@ -59,8 +59,7 @@ static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
 
 static constexpr char kSignature[] = "Pmd";
 static constexpr size_t kNumSignature = 3;
-static constexpr size_t kPmdVertexSize = 38;
-static_assert(sizeof(PMDVertex) == kPmdVertexSize);
+static constexpr size_t kPmdVertexSize = sizeof(PMDVertex);
 
 const std::vector<PMDVertex> s_debugVertices = {
 	PMDVertex{
@@ -152,6 +151,12 @@ HRESULT PmdReader::readData()
 
 		m_indices.resize(m_indicesNum);
 		ThrowIfFalse(fread(m_indices.data(), m_indices.size() * sizeof(m_indices[0]), 1, fp) == 1);
+
+		UINT materialNum = 0;
+		ThrowIfFalse(fread(&materialNum, sizeof(materialNum), 1, fp) == 1);
+
+		m_pmdMaterials.resize(materialNum);
+		ThrowIfFalse(fread(m_pmdMaterials.data(), m_pmdMaterials.size() * sizeof(PMDMaterial), 1, fp) == 1);
 	}
 	ThrowIfFalse(fclose(fp) == 0);
 

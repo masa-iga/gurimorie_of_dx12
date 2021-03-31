@@ -1,7 +1,24 @@
 #pragma once
 #include <d3d12.h>
+#include <DirectXMath.h>
 #include <utility>
 #include <vector>
+
+#pragma pack(1)
+struct PMDMaterial
+{
+	DirectX::XMFLOAT3 diffuse;
+	float alpha;
+	float specularity;
+	DirectX::XMFLOAT3 specular;
+	DirectX::XMFLOAT3 ambient;
+	unsigned char toonIdx;
+	unsigned char edgeFlg;
+	unsigned int indicesNum;
+	char texFilePath[20];
+};
+static_assert(sizeof(PMDMaterial) == 70);
+#pragma pack()
 
 class PmdReader {
 public:
@@ -23,6 +40,7 @@ private:
 
 	std::vector<UINT8> m_vertices;
 	std::vector<UINT16> m_indices;
+	std::vector<PMDMaterial> m_pmdMaterials;
 	UINT m_vertNum = 0;
 	UINT m_indicesNum = 0;
 
