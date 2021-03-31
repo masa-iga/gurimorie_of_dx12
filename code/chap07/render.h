@@ -13,6 +13,12 @@ struct TexRgba
 	uint8_t a = 0;
 };
 
+struct MatricesData
+{
+	DirectX::XMMATRIX world;
+	DirectX::XMMATRIX viewProj;
+};
+
 class Render {
 public:
 	HRESULT init();
@@ -26,7 +32,7 @@ private:
 	HRESULT createPipelineState();
 	HRESULT createTextureBuffer();
 	HRESULT createTextureBuffer2();
-	HRESULT createConstantBuffer();
+	HRESULT createMvpMatrixBuffer();
 	HRESULT createViews();
 	HRESULT updateMatrix();
 
@@ -40,8 +46,8 @@ private:
 	DirectX::ScratchImage m_scratchImage = { };
 	ID3D12DescriptorHeap* m_dsvHeap = nullptr;
 	ID3D12Resource* m_depthResource = nullptr;
-	ID3D12Resource* m_cbResource = nullptr;
-	DirectX::XMMATRIX* m_mapMatrix = nullptr;
+	ID3D12Resource* m_mvpMatrixResource = nullptr;
+	MatricesData* m_matricesData = nullptr;
 
 	ID3D12Fence* m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;

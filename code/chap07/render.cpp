@@ -40,7 +40,7 @@ HRESULT Render::init()
 		ThrowIfFailed(createTextureBuffer());
 	}
 
-	ThrowIfFailed(createConstantBuffer());
+	ThrowIfFailed(createMvpMatrixBuffer());
 	ThrowIfFailed(createViews());
 	ThrowIfFailed(createPipelineState());
 
@@ -502,12 +502,12 @@ HRESULT Render::createTextureBuffer2()
 	return S_OK;
 }
 
-HRESULT Render::createConstantBuffer()
+HRESULT Render::createMvpMatrixBuffer()
 {
 	using namespace DirectX;
 
 	{
-		const size_t w = Util::alignmentedSize(sizeof(XMMATRIX), 256);
+		const size_t w = Util::alignmentedSize(sizeof(MatricesData), 256);
 
 		D3D12_HEAP_PROPERTIES heapProp = { };
 		{
@@ -538,16 +538,16 @@ HRESULT Render::createConstantBuffer()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&m_cbResource)
+			IID_PPV_ARGS(&m_mvpMatrixResource)
 		);
 		ThrowIfFailed(result);
 	}
 
 	{
-		auto result = m_cbResource->Map(
+		auto result = m_mvpMatrixResource->Map(
 			0,
 			nullptr,
-			reinterpret_cast<void**>(&m_mapMatrix)
+			reinterpret_cast<void**>(&m_matricesData)
 		);
 		ThrowIfFailed(result);
 	}
@@ -597,8 +597,8 @@ HRESULT Render::createViews()
 	{
 		D3D12_CONSTANT_BUFFER_VIEW_DESC bvDesc = { };
 		{
-			bvDesc.BufferLocation = m_cbResource->GetGPUVirtualAddress();
-			bvDesc.SizeInBytes = static_cast<UINT>(m_cbResource->GetDesc().Width);
+			bvDesc.BufferLocation = m_mvpMatrixResource->GetGPUVirtualAddress();
+			bvDesc.SizeInBytes = static_cast<UINT>(m_mvpMatrixResource->GetDesc().Width);
 		}
 		getInstanceOfDevice()->CreateConstantBufferView(
 			&bvDesc,
@@ -634,9 +634,11 @@ HRESULT Render::updateMatrix()
 	);
 
 #if DISABLE_MATRIX
-	*m_mapMatrix = XMMatrixIdentity();
+	m_matricesData->world = XMMatrixIdentity();
+	m_matricesData->viewProj = XMMatrixIdentity();
 #else
-	*m_mapMatrix = worldMat * viewMat * projMat;
+	m_matricesData->world = worldMat;
+	m_matricesData->viewProj = viewMat * projMat;
 #endif // DISABLE_MATRIX
 
 	angle += 0.02f;
