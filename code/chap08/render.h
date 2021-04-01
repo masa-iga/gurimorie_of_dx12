@@ -5,14 +5,6 @@
 #include <vector>
 #include "pmd_reader.h"
 
-struct TexRgba
-{
-	uint8_t r = 0;
-	uint8_t g = 0;
-	uint8_t b = 0;
-	uint8_t a = 0;
-};
-
 struct MatricesData
 {
 	DirectX::XMMATRIX world;

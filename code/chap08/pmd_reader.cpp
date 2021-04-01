@@ -3,6 +3,7 @@
 #include <d3dx12.h>
 #include "debug.h"
 #include "init.h"
+#include "util.h"
 
 struct PMDHeader
 {
@@ -22,6 +23,22 @@ struct PMDVertex
 	UINT8 edgeFlag = 0;
 };
 static_assert(sizeof(PMDVertex) == 38);
+#pragma pack()
+
+#pragma pack(1)
+	struct PMDMaterial
+	{
+		DirectX::XMFLOAT3 diffuse;
+		float alpha;
+		float specularity;
+		DirectX::XMFLOAT3 specular;
+		DirectX::XMFLOAT3 ambient;
+		UINT8 toonIdx;
+		UINT8 edgeFlg;
+		UINT indicesNum;
+		char texFilePath[20];
+	};
+	static_assert(sizeof(PMDMaterial) == 70);
 #pragma pack()
 
 static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
@@ -152,11 +169,26 @@ HRESULT PmdReader::readData()
 		m_indices.resize(m_indicesNum);
 		ThrowIfFalse(fread(m_indices.data(), m_indices.size() * sizeof(m_indices[0]), 1, fp) == 1);
 
-		UINT materialNum = 0;
-		ThrowIfFalse(fread(&materialNum, sizeof(materialNum), 1, fp) == 1);
+		// load material
+		{
+			UINT materialNum = 0;
+			ThrowIfFalse(fread(&materialNum, sizeof(materialNum), 1, fp) == 1);
 
-		m_pmdMaterials.resize(materialNum);
-		ThrowIfFalse(fread(m_pmdMaterials.data(), m_pmdMaterials.size() * sizeof(PMDMaterial), 1, fp) == 1);
+			std::vector<PMDMaterial> pmdMaterials(materialNum);
+			ThrowIfFalse(fread(pmdMaterials.data(), pmdMaterials.size() * sizeof(PMDMaterial), 1, fp) == 1);
+
+			m_materials.resize(pmdMaterials.size());
+
+			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
+			{
+				m_materials[i].indicesNum = pmdMaterials[i].indicesNum;
+				m_materials[i].material.diffuse = pmdMaterials[i].diffuse;
+				m_materials[i].material.alpha = pmdMaterials[i].alpha;
+				m_materials[i].material.specular = pmdMaterials[i].specular;
+				m_materials[i].material.specularity = pmdMaterials[i].specularity;
+				m_materials[i].material.ambient = pmdMaterials[i].ambient;
+			}
+		}
 	}
 	ThrowIfFalse(fclose(fp) == 0);
 
