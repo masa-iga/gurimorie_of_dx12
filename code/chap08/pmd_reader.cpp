@@ -193,6 +193,10 @@ HRESULT PmdReader::readData()
 	}
 	ThrowIfFalse(fclose(fp) == 0);
 
+	DebugOutputFormatString("Vertex num  : %d\n", m_vertNum);
+	DebugOutputFormatString("Index num   : %d\n", m_indicesNum);
+	DebugOutputFormatString("Material num: %zd\n", m_materials.size());
+
 	return S_OK;
 }
 
