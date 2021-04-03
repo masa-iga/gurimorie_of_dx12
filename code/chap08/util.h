@@ -16,6 +16,7 @@ private:
 };
 
 size_t alignmentedSize(size_t size, size_t alignment);
+std::wstring getWideStringFromString(const std::string& str);
 
 } // namespace Util
 

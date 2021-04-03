@@ -1,4 +1,5 @@
 #include "pmd_reader.h"
+#include <algorithm>
 #include <cstdio>
 #include <d3dx12.h>
 #include "debug.h"
@@ -131,6 +132,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 
 const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
 
+std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
 template<typename T>
 static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
 createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices);
@@ -198,6 +200,19 @@ HRESULT PmdReader::readData()
 	DebugOutputFormatString("Material num: %zd\n", m_materials.size());
 
 	return S_OK;
+}
+
+std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)
+{
+#if 0
+	const auto folderPath = modelPath.substr(0, modelPath.rfind('/'));
+#else
+	const int32_t pathIndex1 = static_cast<int32_t>(modelPath.rfind('/'));
+	const int32_t pathIndex2 = static_cast<int32_t>(modelPath.rfind('\\'));
+	const int32_t pathIndex = (std::max)(pathIndex1, pathIndex2);
+	const auto folderPath = modelPath.substr(0, pathIndex);
+#endif
+	return folderPath + texPath;
 }
 
 HRESULT PmdReader::createResources()

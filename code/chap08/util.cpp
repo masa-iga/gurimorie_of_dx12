@@ -32,4 +32,29 @@ size_t alignmentedSize(size_t size, size_t alignment)
 	return size + alignment - (size % alignment);
 }
 
+std::wstring getWideStringFromString(const std::string& str)
+{
+	const auto num1 = MultiByteToWideChar(
+		CP_ACP,
+		MB_PRECOMPOSED | MB_ERR_INVALID_CHARS,
+		str.c_str(),
+		-1,
+		nullptr,
+		0);
+
+	std::wstring wstr;
+	wstr.resize(num1);
+
+	const auto num2 = MultiByteToWideChar(
+		CP_ACP,
+		MB_PRECOMPOSED | MB_ERR_INVALID_CHARS,
+		str.c_str(),
+		-1,
+		wstr.data(),
+		num1);
+	ThrowIfFalse(num1 == num2);
+
+	return wstr;
+}
+
 } // namespace Util
