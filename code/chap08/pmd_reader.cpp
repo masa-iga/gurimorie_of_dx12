@@ -233,6 +233,11 @@ UINT PmdReader::getIndexNum() const
 	return m_indicesNum;
 }
 
+const std::vector<Material> PmdReader::getMaterials() const
+{
+	return m_materials;
+}
+
 ID3D12DescriptorHeap* PmdReader::getMaterialDescHeap()
 {
 	return m_materialDescHeap;
@@ -442,8 +447,7 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials, I
 
 		for (uint32_t i = 0; i < materialNum; ++i)
 		{
-			getInstanceOfDevice()->CreateConstantBufferView(
-				&cbvDesc, (*ppDescHeap)->GetCPUDescriptorHandleForHeapStart());
+			getInstanceOfDevice()->CreateConstantBufferView(&cbvDesc, descHeapH);
 
 			descHeapH.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			cbvDesc.BufferLocation += materialBufferSize;

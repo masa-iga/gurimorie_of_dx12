@@ -95,6 +95,7 @@ HRESULT Render::render()
 	ThrowIfFalse(m_rootSignature != nullptr);
 	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature);
 
+	// bind MVP matrix
 	ThrowIfFalse(m_basicDescHeap != nullptr);
 	getInstanceOfCommandList()->SetDescriptorHeaps(1, &m_basicDescHeap);
 	getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
@@ -102,19 +103,26 @@ HRESULT Render::render()
 		m_basicDescHeap->GetGPUDescriptorHandleForHeapStart()
 	);
 
-	auto const materialDescHeap = m_pmdReader.getMaterialDescHeap();
-	getInstanceOfCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
-	getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
-		1,
-		materialDescHeap->GetGPUDescriptorHandleForHeapStart()
-	);
-
 	setViewportScissor();
 	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	getInstanceOfCommandList()->IASetVertexBuffers(0, 1, m_pmdReader.getVbView());
 	getInstanceOfCommandList()->IASetIndexBuffer(m_pmdReader.getIbView());
-	getInstanceOfCommandList()->DrawIndexedInstanced(m_pmdReader.getIndexNum(), 1, 0, 0, 0);
 
+	// bind material
+	auto const materialDescHeap = m_pmdReader.getMaterialDescHeap();
+	getInstanceOfCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
+
+	auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
+	UINT indexOffset = 0;
+
+	for (const auto& m : m_pmdReader.getMaterials())
+	{
+		getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(1, materialH);
+		getInstanceOfCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
+
+		materialH.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		indexOffset += m.indicesNum;
+	}
 
 	// resource barrier
 	{
