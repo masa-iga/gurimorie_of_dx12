@@ -38,6 +38,7 @@ public:
 	UINT getVertNum() const;
 	const D3D12_INDEX_BUFFER_VIEW* getIbView() const;
 	UINT getIndexNum() const;
+	ID3D12DescriptorHeap* getMaterialDescHeap();
 
 	const D3D12_VERTEX_BUFFER_VIEW* getDebugVbView() const;
 	const D3D12_INDEX_BUFFER_VIEW* getDebugIbView() const;
@@ -56,6 +57,7 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	ID3D12Resource* m_ibResource = nullptr;
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
+	ID3D12DescriptorHeap* m_materialDescHeap = nullptr;
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };

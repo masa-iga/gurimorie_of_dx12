@@ -1,11 +1,5 @@
 #include "BasicShaderHeader.hlsli"
 
-cbuffer cbuff0 : register(b0)
-{
-	matrix world;
-	matrix viewProj;
-}
-
 Output BasicVs(
 	float4 pos : POSITION,
 	float4 normal : NORMAL,

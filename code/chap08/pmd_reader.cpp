@@ -135,7 +135,7 @@ template<typename T>
 static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
 createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ID3D12Resource** ppVertResource, size_t width);
-static HRESULT createMaterialResrouces(const std::vector<Material>& materials);
+static HRESULT createMaterialResrouces(const std::vector<Material>& materials, ID3D12DescriptorHeap** ppDescHeap);
 
 PmdReader::PmdReader()
 {
@@ -203,7 +203,7 @@ HRESULT PmdReader::createResources()
 	m_vbView = vbView;
 	m_ibView = ibView;
 
-	ret = createMaterialResrouces(m_materials);
+	ret = createMaterialResrouces(m_materials, &m_materialDescHeap);
 	ThrowIfFailed(ret);
 
 	return S_OK;
@@ -227,6 +227,11 @@ const D3D12_INDEX_BUFFER_VIEW* PmdReader::getIbView() const
 UINT PmdReader::getIndexNum() const
 {
 	return m_indicesNum;
+}
+
+ID3D12DescriptorHeap* PmdReader::getMaterialDescHeap()
+{
+	return m_materialDescHeap;
 }
 
 const D3D12_VERTEX_BUFFER_VIEW* PmdReader::getDebugVbView() const
@@ -355,7 +360,7 @@ static HRESULT createBufferResource(ID3D12Resource** ppResource, size_t width)
 	return S_OK;
 }
 
-static HRESULT createMaterialResrouces(const std::vector<Material>& materials)
+static HRESULT createMaterialResrouces(const std::vector<Material>& materials, ID3D12DescriptorHeap** ppDescHeap)
 {
 	const auto materialBufferSize = Util::alignmentedSize(sizeof(MaterialForHlsl), 256);
 	const UINT64 materialNum = materials.size();
@@ -411,7 +416,6 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials)
 	}
 
 	// create material (constant buffer) view
-	ID3D12DescriptorHeap* descHeap = nullptr;
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
 		{
@@ -421,7 +425,7 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials)
 			heapDesc.NodeMask = 0;
 		}
 
-		auto ret = getInstanceOfDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&descHeap));
+		auto ret = getInstanceOfDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(ppDescHeap));
 		ThrowIfFailed(ret);
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = { };
@@ -430,12 +434,12 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials)
 			cbvDesc.SizeInBytes = static_cast<UINT>(materialBufferSize);
 		}
 
-		auto descHeapH = descHeap->GetCPUDescriptorHandleForHeapStart();
+		auto descHeapH = (*ppDescHeap)->GetCPUDescriptorHandleForHeapStart();
 
 		for (uint32_t i = 0; i < materialNum; ++i)
 		{
 			getInstanceOfDevice()->CreateConstantBufferView(
-				&cbvDesc, descHeap->GetCPUDescriptorHandleForHeapStart());
+				&cbvDesc, (*ppDescHeap)->GetCPUDescriptorHandleForHeapStart());
 
 			descHeapH.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			cbvDesc.BufferLocation += materialBufferSize;
