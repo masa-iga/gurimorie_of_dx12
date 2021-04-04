@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <d3dx12.h>
+#include <DirectXTex.h>
 #include "debug.h"
 #include "init.h"
 #include "util.h"
@@ -132,7 +133,8 @@ const std::vector<PMDVertex> s_debugVertices = {
 
 const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
 
-std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
+static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
+static ID3D12Resource* loadTextureFromFile(const std::string& texPath);
 template<typename T>
 static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
 createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices);
@@ -152,8 +154,10 @@ std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdReader::getInputElementDesc(
 
 HRESULT PmdReader::readData()
 {
+	std::string strModelPath = "Model/初音ミク.pmd";
+
 	FILE* fp = nullptr;
-	ThrowIfFalse(fopen_s(&fp, "Model/初音ミク.pmd", "rb") == 0);
+	ThrowIfFalse(fopen_s(&fp, strModelPath.c_str(), "rb") == 0);
 	{
 		char signature[kNumSignature] = { };
 		ThrowIfFalse(fread(signature, sizeof(signature), 1, fp) == 1);
@@ -172,7 +176,7 @@ HRESULT PmdReader::readData()
 		m_indices.resize(m_indicesNum);
 		ThrowIfFalse(fread(m_indices.data(), m_indices.size() * sizeof(m_indices[0]), 1, fp) == 1);
 
-		// load material
+		// load materials
 		{
 			UINT materialNum = 0;
 			ThrowIfFalse(fread(&materialNum, sizeof(materialNum), 1, fp) == 1);
@@ -191,6 +195,21 @@ HRESULT PmdReader::readData()
 				m_materials[i].material.specularity = pmdMaterials[i].specularity;
 				m_materials[i].material.ambient = pmdMaterials[i].ambient;
 			}
+
+			std::vector<ID3D12Resource*> textureResources;
+			textureResources.resize(pmdMaterials.size());
+
+			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
+			{
+				if (strlen(pmdMaterials[i].texFilePath) == 0)
+				{
+					textureResources[i] = nullptr;
+					continue;
+				}
+
+				const auto texFilePath = getTexturePathFromModelAndTexPath(strModelPath, pmdMaterials[i].texFilePath);
+				textureResources[i] = loadTextureFromFile(texFilePath);
+			}
 		}
 	}
 	ThrowIfFalse(fclose(fp) == 0);
@@ -200,19 +219,6 @@ HRESULT PmdReader::readData()
 	DebugOutputFormatString("Material num: %zd\n", m_materials.size());
 
 	return S_OK;
-}
-
-std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)
-{
-#if 0
-	const auto folderPath = modelPath.substr(0, modelPath.rfind('/'));
-#else
-	const int32_t pathIndex1 = static_cast<int32_t>(modelPath.rfind('/'));
-	const int32_t pathIndex2 = static_cast<int32_t>(modelPath.rfind('\\'));
-	const int32_t pathIndex = (std::max)(pathIndex1, pathIndex2);
-	const auto folderPath = modelPath.substr(0, pathIndex);
-#endif
-	return folderPath + texPath;
 }
 
 HRESULT PmdReader::createResources()
@@ -284,6 +290,80 @@ HRESULT PmdReader::createDebugResources()
 	m_debugIbView = ibView;
 
 	return S_OK;
+}
+
+static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)
+{
+#if 0
+	const auto folderPath = modelPath.substr(0, modelPath.rfind('/'));
+#else
+	const int32_t pathIndex1 = static_cast<int32_t>(modelPath.rfind('/'));
+	const int32_t pathIndex2 = static_cast<int32_t>(modelPath.rfind('\\'));
+	const int32_t pathIndex = (std::max)(pathIndex1, pathIndex2) + 1;
+	const auto folderPath = modelPath.substr(0, pathIndex);
+#endif
+	return folderPath + texPath;
+}
+
+static ID3D12Resource* loadTextureFromFile(const std::string& texPath)
+{
+	using namespace DirectX;
+
+	TexMetadata metadata = { };
+	ScratchImage scratchImg = { };
+
+	auto ret = LoadFromWICFile(
+		Util::getWideStringFromString(texPath).c_str(),
+		WIC_FLAGS_NONE,
+		&metadata,
+		scratchImg);
+	ThrowIfFailed(ret);
+
+	const auto img = scratchImg.GetImage(0, 0, 0);
+
+	D3D12_HEAP_PROPERTIES heapProp = { };
+	{
+		heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
+		heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+		heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+		heapProp.CreationNodeMask = 0;
+		heapProp.VisibleNodeMask = 0;
+	}
+
+	D3D12_RESOURCE_DESC resourceDesc = { };
+	{
+		resourceDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(metadata.dimension);
+		resourceDesc.Alignment = 0;
+		resourceDesc.Width = metadata.width;
+		resourceDesc.Height = static_cast<UINT>(metadata.height);
+		resourceDesc.DepthOrArraySize = static_cast<UINT16>(metadata.arraySize);
+		resourceDesc.MipLevels = static_cast<UINT16>(metadata.mipLevels);
+		resourceDesc.Format = metadata.format;
+		resourceDesc.SampleDesc = { 1, 0 };
+		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	}
+
+	ID3D12Resource* resource = nullptr;
+
+	ret = getInstanceOfDevice()->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&resource));
+	ThrowIfFailed(ret);
+
+	ret = resource->WriteToSubresource(
+		0,
+		nullptr,
+		img->pixels,
+		static_cast<UINT>(img->rowPitch),
+		static_cast<UINT>(img->slicePitch));
+	ThrowIfFailed(ret);
+
+	return resource;
 }
 
 template<typename T>
