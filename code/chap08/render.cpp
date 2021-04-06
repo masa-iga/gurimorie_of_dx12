@@ -113,6 +113,7 @@ HRESULT Render::render()
 		auto const materialDescHeap = m_pmdReader.getMaterialDescHeap();
 		getInstanceOfCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
 
+		const auto cbvSrvIncSize = getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2;
 		auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
 		UINT indexOffset = 0;
 
@@ -124,7 +125,7 @@ HRESULT Render::render()
 
 			getInstanceOfCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
 
-			materialH.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			materialH.ptr += cbvSrvIncSize;
 			indexOffset += m.indicesNum;
 		}
 	}
@@ -657,20 +658,26 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 		// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
 		D3D12_ROOT_PARAMETER rootParam[2] = { };
 		{
-			D3D12_DESCRIPTOR_RANGE descTblRange[2] = { };
+			D3D12_DESCRIPTOR_RANGE descTblRange[3] = { };
 			{
 				// MVP matrix
 				descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 				descTblRange[0].NumDescriptors = 1;
-				descTblRange[0].BaseShaderRegister = 0;
+				descTblRange[0].BaseShaderRegister = 0; // b0
 				descTblRange[0].RegisterSpace = 0;
 				descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 				// material
 				descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 				descTblRange[1].NumDescriptors = 1;
-				descTblRange[1].BaseShaderRegister = 1;
+				descTblRange[1].BaseShaderRegister = 1; // b1
 				descTblRange[1].RegisterSpace = 0;
 				descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+				// texture
+				descTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+				descTblRange[2].NumDescriptors = 1;
+				descTblRange[2].BaseShaderRegister = 0; // t0
+				descTblRange[2].RegisterSpace = 0;
+				descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 			}
 
 			// MVP matrix
@@ -678,11 +685,11 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 			rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
 			rootParam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
 			rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-			// material
+			// material & texture
 			rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			rootParam[1].DescriptorTable.NumDescriptorRanges = 1;
+			rootParam[1].DescriptorTable.NumDescriptorRanges = 2;
 			rootParam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
-			rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		}
 
 		D3D12_STATIC_SAMPLER_DESC samplerDesc = { };

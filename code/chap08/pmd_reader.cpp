@@ -139,7 +139,7 @@ template<typename T>
 static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
 createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ID3D12Resource** ppVertResource, size_t width);
-static HRESULT createMaterialResrouces(const std::vector<Material>& materials, ID3D12DescriptorHeap** ppDescHeap);
+static HRESULT createMaterialResrouces(const std::vector<Material>& materials, const std::vector<ID3D12Resource*>& texResources, ID3D12DescriptorHeap** ppDescHeap);
 
 PmdReader::PmdReader()
 {
@@ -196,19 +196,18 @@ HRESULT PmdReader::readData()
 				m_materials[i].material.ambient = pmdMaterials[i].ambient;
 			}
 
-			std::vector<ID3D12Resource*> textureResources;
-			textureResources.resize(pmdMaterials.size());
+			m_textureResources.resize(pmdMaterials.size());
 
 			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
 			{
 				if (strlen(pmdMaterials[i].texFilePath) == 0)
 				{
-					textureResources[i] = nullptr;
+					m_textureResources[i] = nullptr;
 					continue;
 				}
 
 				const auto texFilePath = getTexturePathFromModelAndTexPath(strModelPath, pmdMaterials[i].texFilePath);
-				textureResources[i] = loadTextureFromFile(texFilePath);
+				m_textureResources[i] = loadTextureFromFile(texFilePath);
 			}
 		}
 	}
@@ -228,7 +227,7 @@ HRESULT PmdReader::createResources()
 	m_vbView = vbView;
 	m_ibView = ibView;
 
-	ret = createMaterialResrouces(m_materials, &m_materialDescHeap);
+	ret = createMaterialResrouces(m_materials, m_textureResources, &m_materialDescHeap);
 	ThrowIfFailed(ret);
 
 	return S_OK;
@@ -464,12 +463,12 @@ static HRESULT createBufferResource(ID3D12Resource** ppResource, size_t width)
 	return S_OK;
 }
 
-static HRESULT createMaterialResrouces(const std::vector<Material>& materials, ID3D12DescriptorHeap** ppDescHeap)
+static HRESULT createMaterialResrouces(const std::vector<Material>& materials, const std::vector<ID3D12Resource*>& texResources, ID3D12DescriptorHeap** ppDescHeap)
 {
 	const auto materialBufferSize = Util::alignmentedSize(sizeof(MaterialForHlsl), 256);
 	const UINT64 materialNum = materials.size();
 
-	// create resource
+	// create resource (CBV)
 	ID3D12Resource* materialResource = nullptr;
 	{
 		D3D12_HEAP_PROPERTIES heapProp = { };
@@ -519,12 +518,12 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials, I
 		materialResource->Unmap(0, nullptr);
 	}
 
-	// create material (constant buffer) view
+	// create view (CBV + SRV)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
 		{
 			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = static_cast<UINT>(materialNum);
+			heapDesc.NumDescriptors = static_cast<UINT>(materialNum) * 2; // CBV + SRV
 			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			heapDesc.NodeMask = 0;
 		}
@@ -538,14 +537,35 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials, I
 			cbvDesc.SizeInBytes = static_cast<UINT>(materialBufferSize);
 		}
 
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
+		{
+			srvDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.PlaneSlice = 0;
+			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		}
+
 		auto descHeapH = (*ppDescHeap)->GetCPUDescriptorHandleForHeapStart();
+		const auto inc = getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		for (uint32_t i = 0; i < materialNum; ++i)
 		{
 			getInstanceOfDevice()->CreateConstantBufferView(&cbvDesc, descHeapH);
 
-			descHeapH.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			descHeapH.ptr += inc;
 			cbvDesc.BufferLocation += materialBufferSize;
+
+			if (texResources[i] != nullptr)
+			{
+				srvDesc.Format = texResources[i]->GetDesc().Format;
+			}
+
+			getInstanceOfDevice()->CreateShaderResourceView(texResources[i], &srvDesc, descHeapH);
+
+			descHeapH.ptr += inc;
 		}
 	}
 
