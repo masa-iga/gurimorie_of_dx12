@@ -88,40 +88,45 @@ HRESULT Render::render()
 		0,
         nullptr);
 
-	// draw triangle
 	ThrowIfFalse(m_pipelineState != nullptr);
 	getInstanceOfCommandList()->SetPipelineState(m_pipelineState);
 
 	ThrowIfFalse(m_rootSignature != nullptr);
 	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature);
 
-	// bind MVP matrix
-	ThrowIfFalse(m_basicDescHeap != nullptr);
-	getInstanceOfCommandList()->SetDescriptorHeaps(1, &m_basicDescHeap);
-	getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
-		0,
-		m_basicDescHeap->GetGPUDescriptorHandleForHeapStart()
-	);
-
 	setViewportScissor();
 	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	getInstanceOfCommandList()->IASetVertexBuffers(0, 1, m_pmdReader.getVbView());
 	getInstanceOfCommandList()->IASetIndexBuffer(m_pmdReader.getIbView());
 
-	// bind material
-	auto const materialDescHeap = m_pmdReader.getMaterialDescHeap();
-	getInstanceOfCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
-
-	auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
-	UINT indexOffset = 0;
-
-	for (const auto& m : m_pmdReader.getMaterials())
+	// bind MVP matrix
 	{
-		getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(1, materialH);
-		getInstanceOfCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
+		ThrowIfFalse(m_basicDescHeap != nullptr);
+		getInstanceOfCommandList()->SetDescriptorHeaps(1, &m_basicDescHeap);
+		getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
+			0, // bind to b0
+			m_basicDescHeap->GetGPUDescriptorHandleForHeapStart());
+	}
 
-		materialH.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		indexOffset += m.indicesNum;
+	// bind material & draw
+	{
+		auto const materialDescHeap = m_pmdReader.getMaterialDescHeap();
+		getInstanceOfCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
+
+		auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
+		UINT indexOffset = 0;
+
+		for (const auto& m : m_pmdReader.getMaterials())
+		{
+			getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
+				1, // bind to b1
+				materialH);
+
+			getInstanceOfCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
+
+			materialH.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			indexOffset += m.indicesNum;
+		}
 	}
 
 	// resource barrier
@@ -575,40 +580,21 @@ HRESULT Render::createViews()
 	// create a descriptor heap for shader resource
 	D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = { };
 	{
-		descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		descHeapDesc.NumDescriptors = 2;
-		descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		descHeapDesc.NodeMask = 0;
-	}
-	auto ret = getInstanceOfDevice()->CreateDescriptorHeap(
-		&descHeapDesc,
-		IID_PPV_ARGS(&m_basicDescHeap));
-	ThrowIfFailed(ret);
+		{
+			descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			descHeapDesc.NumDescriptors = 1;
+			descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			descHeapDesc.NodeMask = 0;
+		}
 
+		auto ret = getInstanceOfDevice()->CreateDescriptorHeap(
+			&descHeapDesc,
+			IID_PPV_ARGS(&m_basicDescHeap));
+		ThrowIfFailed(ret);
+	}
 
 	// create a shader resource view on the heap
 	auto basicHeapHandle = m_basicDescHeap->GetCPUDescriptorHandleForHeapStart();
-	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
-		{
-			srvDesc.Format = m_metadata.format;
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Texture2D.MostDetailedMip = 0;
-			srvDesc.Texture2D.MipLevels = 1;
-			srvDesc.Texture2D.PlaneSlice = 0;
-			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-		}
-		getInstanceOfDevice()->CreateShaderResourceView(
-			m_texResource,
-			&srvDesc,
-			basicHeapHandle
-		);
-	}
-
-
-	// create a constant buffer view on the heap
-	basicHeapHandle.ptr += getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	{
 		D3D12_CONSTANT_BUFFER_VIEW_DESC bvDesc = { };
 		{
@@ -671,37 +657,31 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 		// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
 		D3D12_ROOT_PARAMETER rootParam[2] = { };
 		{
-			D3D12_DESCRIPTOR_RANGE descTblRange[3] = { };
+			D3D12_DESCRIPTOR_RANGE descTblRange[2] = { };
 			{
-				// texture
-				descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+				// MVP matrix
+				descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 				descTblRange[0].NumDescriptors = 1;
 				descTblRange[0].BaseShaderRegister = 0;
 				descTblRange[0].RegisterSpace = 0;
 				descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-				// MVP matrix
+				// material
 				descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 				descTblRange[1].NumDescriptors = 1;
-				descTblRange[1].BaseShaderRegister = 0;
+				descTblRange[1].BaseShaderRegister = 1;
 				descTblRange[1].RegisterSpace = 0;
 				descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-				// material
-				descTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-				descTblRange[2].NumDescriptors = 1;
-				descTblRange[2].BaseShaderRegister = 1;
-				descTblRange[2].RegisterSpace = 0;
-				descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 			}
 
-			// texture & MVP matrix
+			// MVP matrix
 			rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			rootParam[0].DescriptorTable.NumDescriptorRanges = 2;
+			rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
 			rootParam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
 			rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 			// material
 			rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 			rootParam[1].DescriptorTable.NumDescriptorRanges = 1;
-			rootParam[1].DescriptorTable.pDescriptorRanges = &descTblRange[2];
+			rootParam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
 			rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 		}
 
