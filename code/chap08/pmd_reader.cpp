@@ -139,11 +139,14 @@ template<typename T>
 static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
 createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ID3D12Resource** ppVertResource, size_t width);
-static HRESULT createMaterialResrouces(const std::vector<Material>& materials, const std::vector<ID3D12Resource*>& texResources, ID3D12DescriptorHeap** ppDescHeap);
+static HRESULT createMaterialResrouces(const std::vector<Material>& materials, const std::vector<ID3D12Resource*>& texResources, ID3D12Resource* whiteTexResource, ID3D12DescriptorHeap** ppDescHeap);
 
 PmdReader::PmdReader()
 {
-	auto ret = createDebugResources();
+	auto ret = createWhiteTexture();
+	ThrowIfFailed(ret);
+
+	ret = createDebugResources();
 	ThrowIfFailed(ret);
 }
 
@@ -227,7 +230,7 @@ HRESULT PmdReader::createResources()
 	m_vbView = vbView;
 	m_ibView = ibView;
 
-	ret = createMaterialResrouces(m_materials, m_textureResources, &m_materialDescHeap);
+	ret = createMaterialResrouces(m_materials, m_textureResources, m_whiteTextureResource, &m_materialDescHeap);
 	ThrowIfFailed(ret);
 
 	return S_OK;
@@ -276,6 +279,61 @@ const D3D12_INDEX_BUFFER_VIEW* PmdReader::getDebugIbView() const
 UINT PmdReader::getDebugIndexNum() const
 {
 	return static_cast<UINT>(s_debugIndices.size());
+}
+
+HRESULT PmdReader::createWhiteTexture()
+{
+	constexpr uint32_t width = 4;
+	constexpr uint32_t height = 4;
+	constexpr uint32_t bpp = 4;
+
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = width;
+			resourceDesc.Height = height;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto ret = getInstanceOfDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&m_whiteTextureResource));
+		ThrowIfFailed(ret);
+	}
+
+	{
+		std::vector<uint8_t> data(width * height * bpp);
+		std::fill(std::begin(data), std::end(data), 0xff);
+
+		auto ret = m_whiteTextureResource->WriteToSubresource(
+			0,
+			nullptr,
+			data.data(),
+			width * bpp,
+			static_cast<UINT>(data.size()));
+		ThrowIfFailed(ret);
+	}
+
+	return S_OK;
 }
 
 HRESULT PmdReader::createDebugResources()
@@ -463,10 +521,11 @@ static HRESULT createBufferResource(ID3D12Resource** ppResource, size_t width)
 	return S_OK;
 }
 
-static HRESULT createMaterialResrouces(const std::vector<Material>& materials, const std::vector<ID3D12Resource*>& texResources, ID3D12DescriptorHeap** ppDescHeap)
+static HRESULT createMaterialResrouces(const std::vector<Material>& materials, const std::vector<ID3D12Resource*>& texResources, ID3D12Resource* whiteTexResource, ID3D12DescriptorHeap** ppDescHeap)
 {
 	const auto materialBufferSize = Util::alignmentedSize(sizeof(MaterialForHlsl), 256);
 	const UINT64 materialNum = materials.size();
+	ThrowIfFalse(materialNum == texResources.size());
 
 	// create resource (CBV)
 	ID3D12Resource* materialResource = nullptr;
@@ -558,12 +617,16 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials, c
 			descHeapH.ptr += inc;
 			cbvDesc.BufferLocation += materialBufferSize;
 
-			if (texResources[i] != nullptr)
+			if (texResources[i] == nullptr)
+			{
+				srvDesc.Format = whiteTexResource->GetDesc().Format;
+				getInstanceOfDevice()->CreateShaderResourceView(whiteTexResource, &srvDesc, descHeapH);
+			}
+			else
 			{
 				srvDesc.Format = texResources[i]->GetDesc().Format;
+				getInstanceOfDevice()->CreateShaderResourceView(texResources[i], &srvDesc, descHeapH);
 			}
-
-			getInstanceOfDevice()->CreateShaderResourceView(texResources[i], &srvDesc, descHeapH);
 
 			descHeapH.ptr += inc;
 		}

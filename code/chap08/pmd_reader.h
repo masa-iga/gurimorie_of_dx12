@@ -46,6 +46,7 @@ public:
 	UINT getDebugIndexNum() const;
 
 private:
+	HRESULT createWhiteTexture();
 	HRESULT createDebugResources();
 
 	std::vector<UINT8> m_vertices;
@@ -60,6 +61,7 @@ private:
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
 	std::vector<ID3D12Resource*> m_textureResources;
 	ID3D12DescriptorHeap* m_materialDescHeap = nullptr;
+	ID3D12Resource* m_whiteTextureResource = nullptr;
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };
