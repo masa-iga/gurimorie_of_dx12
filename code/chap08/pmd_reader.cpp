@@ -157,7 +157,8 @@ std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdReader::getInputElementDesc(
 
 HRESULT PmdReader::readData()
 {
-	std::string strModelPath = "Model/初音ミク.pmd";
+	//const std::string strModelPath = "Model/初音ミク.pmd";
+	const std::string strModelPath = "Model/巡音ルカ.pmd";
 
 	FILE* fp = nullptr;
 	ThrowIfFalse(fopen_s(&fp, strModelPath.c_str(), "rb") == 0);
@@ -209,7 +210,26 @@ HRESULT PmdReader::readData()
 					continue;
 				}
 
-				const auto texFilePath = getTexturePathFromModelAndTexPath(strModelPath, pmdMaterials[i].texFilePath);
+				std::string texFileName = pmdMaterials[i].texFilePath;
+
+				constexpr char splitter = '*';
+
+				if (std::count(texFileName.begin(), texFileName.end(), splitter) > 0)
+				{
+					const auto namepair = Util::splitFileName(texFileName, splitter);
+
+					if (Util::getExtension(namepair.first) == "sph" ||
+						Util::getExtension(namepair.second) == "spa")
+					{
+						texFileName = namepair.second;
+					}
+					else
+					{
+						texFileName = namepair.first;
+					}
+				}
+
+				const auto texFilePath = getTexturePathFromModelAndTexPath(strModelPath, texFileName.c_str());
 				m_textureResources[i] = loadTextureFromFile(texFilePath);
 			}
 		}

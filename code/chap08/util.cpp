@@ -57,4 +57,23 @@ std::wstring getWideStringFromString(const std::string& str)
 	return wstr;
 }
 
+std::string getExtension(const std::string& path)
+{
+	const size_t index = path.rfind('.');
+	ThrowIfFalse(index != std::string::npos);
+
+	return path.substr(index + 1, path.length() - index - 1);
+}
+
+std::pair<std::string, std::string> splitFileName(const std::string& path, const char splitter = '*')
+{
+	const size_t index = path.find(splitter);
+
+	const std::pair<std::string, std::string> ret = {
+		path.substr(0, index),
+		path.substr(index + 1, path.length() - index - 1) };
+
+	return ret;
+}
+
 } // namespace Util
