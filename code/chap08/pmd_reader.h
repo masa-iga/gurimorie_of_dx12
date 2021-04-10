@@ -60,6 +60,7 @@ private:
 	ID3D12Resource* m_ibResource = nullptr;
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
 	std::vector<ID3D12Resource*> m_textureResources;
+	std::vector<ID3D12Resource*> m_sphereResources;
 	ID3D12DescriptorHeap* m_materialDescHeap = nullptr;
 	ID3D12Resource* m_whiteTextureResource = nullptr;
 

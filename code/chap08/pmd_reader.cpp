@@ -139,7 +139,12 @@ template<typename T>
 static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
 createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ID3D12Resource** ppVertResource, size_t width);
-static HRESULT createMaterialResrouces(const std::vector<Material>& materials, const std::vector<ID3D12Resource*>& texResources, ID3D12Resource* whiteTexResource, ID3D12DescriptorHeap** ppDescHeap);
+static HRESULT createMaterialResrouces(
+	const std::vector<Material>& materials,
+	const std::vector<ID3D12Resource*>& texResources,
+	const std::vector<ID3D12Resource*>& sphResources,
+	ID3D12Resource* whiteTexResource,
+	ID3D12DescriptorHeap** ppDescHeap);
 
 PmdReader::PmdReader()
 {
@@ -201,14 +206,15 @@ HRESULT PmdReader::readData()
 			}
 
 			m_textureResources.resize(pmdMaterials.size());
+			m_sphereResources.resize(pmdMaterials.size());
 
 			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
 			{
+				m_textureResources[i] = nullptr;
+				m_sphereResources[i] = nullptr;
+
 				if (strlen(pmdMaterials[i].texFilePath) == 0)
-				{
-					m_textureResources[i] = nullptr;
 					continue;
-				}
 
 				std::string texFileName = pmdMaterials[i].texFilePath;
 
@@ -219,13 +225,26 @@ HRESULT PmdReader::readData()
 					const auto namepair = Util::splitFileName(texFileName, splitter);
 
 					if (Util::getExtension(namepair.first) == "sph" ||
-						Util::getExtension(namepair.second) == "spa")
+						Util::getExtension(namepair.first) == "spa")
 					{
 						texFileName = namepair.second;
 					}
 					else
 					{
 						texFileName = namepair.first;
+					}
+
+					if (Util::getExtension(namepair.first) == "sph")
+					{
+						const std::string sphFileName = namepair.first;
+						const auto sphFilePath = getTexturePathFromModelAndTexPath(strModelPath, sphFileName.c_str());
+						m_sphereResources[i] = loadTextureFromFile(sphFilePath);
+					}
+					else if (Util::getExtension(namepair.second) == "sph")
+					{
+						const std::string sphFileName = namepair.second;
+						const auto sphFilePath = getTexturePathFromModelAndTexPath(strModelPath, sphFileName.c_str());
+						m_sphereResources[i] = loadTextureFromFile(sphFilePath);
 					}
 				}
 
@@ -250,7 +269,7 @@ HRESULT PmdReader::createResources()
 	m_vbView = vbView;
 	m_ibView = ibView;
 
-	ret = createMaterialResrouces(m_materials, m_textureResources, m_whiteTextureResource, &m_materialDescHeap);
+	ret = createMaterialResrouces(m_materials, m_textureResources, m_sphereResources, m_whiteTextureResource, &m_materialDescHeap);
 	ThrowIfFailed(ret);
 
 	return S_OK;
@@ -541,11 +560,17 @@ static HRESULT createBufferResource(ID3D12Resource** ppResource, size_t width)
 	return S_OK;
 }
 
-static HRESULT createMaterialResrouces(const std::vector<Material>& materials, const std::vector<ID3D12Resource*>& texResources, ID3D12Resource* whiteTexResource, ID3D12DescriptorHeap** ppDescHeap)
+static HRESULT createMaterialResrouces(
+	const std::vector<Material>& materials,
+	const std::vector<ID3D12Resource*>& texResources,
+	const std::vector<ID3D12Resource*>& sphResources,
+	ID3D12Resource* whiteTexResource,
+	ID3D12DescriptorHeap** ppDescHeap)
 {
 	const auto materialBufferSize = Util::alignmentedSize(sizeof(MaterialForHlsl), 256);
 	const UINT64 materialNum = materials.size();
 	ThrowIfFalse(materialNum == texResources.size());
+	ThrowIfFalse(materialNum == sphResources.size());
 
 	// create resource (CBV)
 	ID3D12Resource* materialResource = nullptr;
@@ -602,7 +627,7 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials, c
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
 		{
 			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = static_cast<UINT>(materialNum) * 2; // CBV + SRV
+			heapDesc.NumDescriptors = static_cast<UINT>(materialNum) * 3; // CBV (material) + SRV (tex) + SRV (sph)
 			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			heapDesc.NodeMask = 0;
 		}
@@ -634,8 +659,8 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials, c
 		{
 			getInstanceOfDevice()->CreateConstantBufferView(&cbvDesc, descHeapH);
 
+			cbvDesc.BufferLocation += materialBufferSize; // pointing to GPU virtual address
 			descHeapH.ptr += inc;
-			cbvDesc.BufferLocation += materialBufferSize;
 
 			if (texResources[i] == nullptr)
 			{
@@ -646,6 +671,19 @@ static HRESULT createMaterialResrouces(const std::vector<Material>& materials, c
 			{
 				srvDesc.Format = texResources[i]->GetDesc().Format;
 				getInstanceOfDevice()->CreateShaderResourceView(texResources[i], &srvDesc, descHeapH);
+			}
+
+			descHeapH.ptr += inc;
+
+			if (sphResources[i] == nullptr)
+			{
+				srvDesc.Format = whiteTexResource->GetDesc().Format;
+				getInstanceOfDevice()->CreateShaderResourceView(whiteTexResource, &srvDesc, descHeapH);
+			}
+			else
+			{
+				srvDesc.Format = sphResources[i]->GetDesc().Format;
+				getInstanceOfDevice()->CreateShaderResourceView(sphResources[i], &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;
