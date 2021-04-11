@@ -162,8 +162,8 @@ std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdReader::getInputElementDesc(
 
 HRESULT PmdReader::readData()
 {
-	//const std::string strModelPath = "Model/初音ミク.pmd";
-	const std::string strModelPath = "Model/巡音ルカ.pmd";
+	const std::string strModelPath = "Model/初音ミク.pmd";
+	//const std::string strModelPath = "Model/巡音ルカ.pmd";
 
 	FILE* fp = nullptr;
 	ThrowIfFalse(fopen_s(&fp, strModelPath.c_str(), "rb") == 0);
