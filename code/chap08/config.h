@@ -1,11 +1,13 @@
 #pragma once
 #include <cstdint>
 
-#if 1
-static constexpr int32_t kWindowWidth = 640;
-static constexpr int32_t kWindowHeight = 480;
-#else
+#define HIGH_RESOLUTION (1)
+
+#if HIGH_RESOLUTION
 static constexpr int32_t kWindowWidth = 1920;
 static constexpr int32_t kWindowHeight = 1080;
-#endif
+#else
+static constexpr int32_t kWindowWidth = 640;
+static constexpr int32_t kWindowHeight = 480;
+#endif // HIGH_RESOLUTION
 
