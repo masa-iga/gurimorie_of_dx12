@@ -2,6 +2,7 @@
 
 Texture2D<float4> tex : register(t0);
 Texture2D<float4> sph : register(t1);
+Texture2D<float4> spa : register(t2);
 SamplerState smp : register(s0);
 
 float4 BasicPs(Output input) : SV_TARGET
@@ -13,5 +14,6 @@ float4 BasicPs(Output input) : SV_TARGET
 	return float4(brightness, brightness, brightness, 1)
 		* diffuse
 		* tex.Sample(smp, input.uv)
-		* sph.Sample(smp, normalUV);
+		* sph.Sample(smp, normalUV)
+		+ spa.Sample(smp, normalUV);
 }

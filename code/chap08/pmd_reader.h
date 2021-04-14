@@ -47,6 +47,7 @@ public:
 
 private:
 	HRESULT createWhiteTexture();
+	HRESULT createBlackTexture();
 	HRESULT createDebugResources();
 
 	std::vector<UINT8> m_vertices;
@@ -60,9 +61,11 @@ private:
 	ID3D12Resource* m_ibResource = nullptr;
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
 	std::vector<ID3D12Resource*> m_textureResources;
-	std::vector<ID3D12Resource*> m_sphereResources;
+	std::vector<ID3D12Resource*> m_sphResources;
+	std::vector<ID3D12Resource*> m_spaResources;
 	ID3D12DescriptorHeap* m_materialDescHeap = nullptr;
 	ID3D12Resource* m_whiteTextureResource = nullptr;
+	ID3D12Resource* m_blackTextureResource = nullptr;
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };

@@ -143,12 +143,17 @@ static HRESULT createMaterialResrouces(
 	const std::vector<Material>& materials,
 	const std::vector<ID3D12Resource*>& texResources,
 	const std::vector<ID3D12Resource*>& sphResources,
+	const std::vector<ID3D12Resource*>& spaResources,
 	ID3D12Resource* whiteTexResource,
+	ID3D12Resource* blackTexResource,
 	ID3D12DescriptorHeap** ppDescHeap);
 
 PmdReader::PmdReader()
 {
 	auto ret = createWhiteTexture();
+	ThrowIfFailed(ret);
+
+	ret = createBlackTexture();
 	ThrowIfFailed(ret);
 
 	ret = createDebugResources();
@@ -162,8 +167,15 @@ std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdReader::getInputElementDesc(
 
 HRESULT PmdReader::readData()
 {
-	const std::string strModelPath = "Model/初音ミク.pmd";
-	//const std::string strModelPath = "Model/巡音ルカ.pmd";
+	//const std::string strModelPath = "Model/カイト.pmd";
+	//const std::string strModelPath = "Model/鏡音リン.pmd";
+	//const std::string strModelPath = "Model/鏡音レン.pmd";
+	//const std::string strModelPath = "Model/咲音メイコ.pmd";
+	//const std::string strModelPath = "Model/弱音ハク.pmd";
+	const std::string strModelPath = "Model/巡音ルカ.pmd";
+	//const std::string strModelPath = "Model/初音ミク.pmd";
+	//const std::string strModelPath = "Model/初音ミクmetal.pmd";
+	//const std::string strModelPath = "Model/亞北ネル.pmd";
 
 	FILE* fp = nullptr;
 	ThrowIfFalse(fopen_s(&fp, strModelPath.c_str(), "rb") == 0);
@@ -206,50 +218,83 @@ HRESULT PmdReader::readData()
 			}
 
 			m_textureResources.resize(pmdMaterials.size());
-			m_sphereResources.resize(pmdMaterials.size());
+			m_sphResources.resize(pmdMaterials.size());
+			m_spaResources.resize(pmdMaterials.size());
 
 			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
 			{
 				m_textureResources[i] = nullptr;
-				m_sphereResources[i] = nullptr;
+				m_sphResources[i] = nullptr;
+				m_spaResources[i] = nullptr;
 
 				if (strlen(pmdMaterials[i].texFilePath) == 0)
 					continue;
 
 				std::string texFileName = pmdMaterials[i].texFilePath;
+				std::string sphFileName = std::string();
+				std::string spaFileName = std::string();
 
-				constexpr char splitter = '*';
-
-				if (std::count(texFileName.begin(), texFileName.end(), splitter) > 0)
+				if (char splitter = '*'; std::count(texFileName.begin(), texFileName.end(), splitter) > 0)
 				{
 					const auto namepair = Util::splitFileName(texFileName, splitter);
 
-					if (Util::getExtension(namepair.first) == "sph" ||
-						Util::getExtension(namepair.first) == "spa")
+					if (Util::getExtension(namepair.first) == "sph")
 					{
-						texFileName = namepair.second;
+						sphFileName = namepair.first;
+					}
+					else if (Util::getExtension(namepair.first) == "spa")
+					{
+						spaFileName = namepair.first;
 					}
 					else
 					{
 						texFileName = namepair.first;
 					}
 
-					if (Util::getExtension(namepair.first) == "sph")
+					if (Util::getExtension(namepair.second) == "sph")
 					{
-						const std::string sphFileName = namepair.first;
-						const auto sphFilePath = getTexturePathFromModelAndTexPath(strModelPath, sphFileName.c_str());
-						m_sphereResources[i] = loadTextureFromFile(sphFilePath);
+						sphFileName = namepair.second;
 					}
-					else if (Util::getExtension(namepair.second) == "sph")
+					else if (Util::getExtension(namepair.second) == "spa")
 					{
-						const std::string sphFileName = namepair.second;
-						const auto sphFilePath = getTexturePathFromModelAndTexPath(strModelPath, sphFileName.c_str());
-						m_sphereResources[i] = loadTextureFromFile(sphFilePath);
+						spaFileName = namepair.second;
+					}
+					else
+					{
+						texFileName = namepair.second;
+					}
+				}
+				else
+				{
+					if (Util::getExtension(texFileName) == "sph")
+					{
+						sphFileName = texFileName;
+						texFileName.clear();
+					}
+					else if (Util::getExtension(texFileName) == "spa")
+					{
+						spaFileName = texFileName;
+						texFileName.clear();
 					}
 				}
 
-				const auto texFilePath = getTexturePathFromModelAndTexPath(strModelPath, texFileName.c_str());
-				m_textureResources[i] = loadTextureFromFile(texFilePath);
+				if (!texFileName.empty())
+				{
+					const auto texFilePath = getTexturePathFromModelAndTexPath(strModelPath, texFileName.c_str());
+					m_textureResources[i] = loadTextureFromFile(texFilePath);
+				}
+
+				if (!sphFileName.empty())
+				{
+					const auto sphFilePath = getTexturePathFromModelAndTexPath(strModelPath, sphFileName.c_str());
+					m_sphResources[i] = loadTextureFromFile(sphFilePath);
+				}
+
+				if (!spaFileName.empty())
+				{
+					const auto spaFilePath = getTexturePathFromModelAndTexPath(strModelPath, spaFileName.c_str());
+					m_spaResources[i] = loadTextureFromFile(spaFilePath);
+				}
 			}
 		}
 	}
@@ -269,7 +314,14 @@ HRESULT PmdReader::createResources()
 	m_vbView = vbView;
 	m_ibView = ibView;
 
-	ret = createMaterialResrouces(m_materials, m_textureResources, m_sphereResources, m_whiteTextureResource, &m_materialDescHeap);
+	ret = createMaterialResrouces(
+		m_materials,
+		m_textureResources,
+		m_sphResources,
+		m_spaResources,
+		m_whiteTextureResource,
+		m_blackTextureResource,
+		&m_materialDescHeap);
 	ThrowIfFailed(ret);
 
 	return S_OK;
@@ -364,6 +416,61 @@ HRESULT PmdReader::createWhiteTexture()
 		std::fill(std::begin(data), std::end(data), 0xff);
 
 		auto ret = m_whiteTextureResource->WriteToSubresource(
+			0,
+			nullptr,
+			data.data(),
+			width * bpp,
+			static_cast<UINT>(data.size()));
+		ThrowIfFailed(ret);
+	}
+
+	return S_OK;
+}
+
+HRESULT PmdReader::createBlackTexture()
+{
+	constexpr uint32_t width = 4;
+	constexpr uint32_t height = 4;
+	constexpr uint32_t bpp = 4;
+
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = width;
+			resourceDesc.Height = height;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto ret = getInstanceOfDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&m_blackTextureResource));
+		ThrowIfFailed(ret);
+	}
+
+	{
+		std::vector<uint8_t> data(width * height * bpp);
+		std::fill(std::begin(data), std::end(data), 0x0);
+
+		auto ret = m_blackTextureResource->WriteToSubresource(
 			0,
 			nullptr,
 			data.data(),
@@ -564,7 +671,9 @@ static HRESULT createMaterialResrouces(
 	const std::vector<Material>& materials,
 	const std::vector<ID3D12Resource*>& texResources,
 	const std::vector<ID3D12Resource*>& sphResources,
+	const std::vector<ID3D12Resource*>& spaResources,
 	ID3D12Resource* whiteTexResource,
+	ID3D12Resource* blackTexResource,
 	ID3D12DescriptorHeap** ppDescHeap)
 {
 	const auto materialBufferSize = Util::alignmentedSize(sizeof(MaterialForHlsl), 256);
@@ -627,7 +736,7 @@ static HRESULT createMaterialResrouces(
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
 		{
 			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = static_cast<UINT>(materialNum) * 3; // CBV (material) + SRV (tex) + SRV (sph)
+			heapDesc.NumDescriptors = static_cast<UINT>(materialNum) * 4; // CBV (material) + SRV (tex) + SRV (sph) + SRV (spa)
 			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			heapDesc.NodeMask = 0;
 		}
@@ -684,6 +793,19 @@ static HRESULT createMaterialResrouces(
 			{
 				srvDesc.Format = sphResources[i]->GetDesc().Format;
 				getInstanceOfDevice()->CreateShaderResourceView(sphResources[i], &srvDesc, descHeapH);
+			}
+
+			descHeapH.ptr += inc;
+
+			if (spaResources[i] == nullptr)
+			{
+				srvDesc.Format = blackTexResource->GetDesc().Format;
+				getInstanceOfDevice()->CreateShaderResourceView(blackTexResource, &srvDesc, descHeapH);
+			}
+			else
+			{
+				srvDesc.Format = spaResources[i]->GetDesc().Format;;
+				getInstanceOfDevice()->CreateShaderResourceView(spaResources[i], &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;
