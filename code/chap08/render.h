@@ -8,7 +8,8 @@
 struct MatricesData
 {
 	DirectX::XMMATRIX world;
-	DirectX::XMMATRIX viewProj;
+	DirectX::XMMATRIX view;
+	DirectX::XMMATRIX proj;
 };
 
 class Render {

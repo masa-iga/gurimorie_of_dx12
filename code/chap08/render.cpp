@@ -637,10 +637,12 @@ HRESULT Render::updateMatrix()
 
 #if DISABLE_MATRIX
 	m_matricesData->world = XMMatrixIdentity();
-	m_matricesData->viewProj = XMMatrixIdentity();
+	m_matricesData->view = XMMatrixIdentity();
+	m_matricesData->proj = XMMatrixIdentity();
 #else
 	m_matricesData->world = worldMat;
-	m_matricesData->viewProj = viewMat * projMat;
+	m_matricesData->view = viewMat;
+	m_matricesData->proj = projMat;
 #endif // DISABLE_MATRIX
 
 	angle += 0.02f;

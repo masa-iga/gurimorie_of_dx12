@@ -9,9 +9,14 @@ Output BasicVs(
 {
 	Output output;
 	{
-		output.svpos = mul(mul(viewProj, world), pos);
+		const float4 wpos = mul(world, pos);
+		output.svpos = mul(mul(proj, view), wpos);
+		output.pos = mul(view, wpos);
+
 		normal.w = 0;
 		output.normal = mul(world, normal);
+		output.vnormal = mul(view, output.normal);
+
 		output.uv = uv;
 	}
 
