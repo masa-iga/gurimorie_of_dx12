@@ -40,7 +40,7 @@ HRESULT Render::init()
 		ThrowIfFailed(createTextureBuffer());
 	}
 
-	ThrowIfFailed(createMvpMatrixBuffer());
+	ThrowIfFailed(createSceneMatrixBuffer());
 	ThrowIfFailed(createViews());
 	ThrowIfFailed(createPipelineState());
 
@@ -523,12 +523,12 @@ HRESULT Render::createTextureBuffer2()
 	return S_OK;
 }
 
-HRESULT Render::createMvpMatrixBuffer()
+HRESULT Render::createSceneMatrixBuffer()
 {
 	using namespace DirectX;
 
 	{
-		const size_t w = Util::alignmentedSize(sizeof(MatricesData), 256);
+		const size_t w = Util::alignmentedSize(sizeof(SceneMatrix), 256);
 
 		D3D12_HEAP_PROPERTIES heapProp = { };
 		{
@@ -568,7 +568,7 @@ HRESULT Render::createMvpMatrixBuffer()
 		auto result = m_mvpMatrixResource->Map(
 			0,
 			nullptr,
-			reinterpret_cast<void**>(&m_matricesData)
+			reinterpret_cast<void**>(&m_sceneMatrix)
 		);
 		ThrowIfFailed(result);
 	}
@@ -618,8 +618,8 @@ HRESULT Render::updateMatrix()
 	static float angle = 0.0f;
 	const auto worldMat = DirectX::XMMatrixRotationY(angle);
 
-	constexpr XMFLOAT3 eye(0, 10, -15);
-	constexpr XMFLOAT3 target(0, 10, 0);
+	constexpr XMFLOAT3 eye(0, 15, -15);
+	constexpr XMFLOAT3 target(0, 15, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
 
 	const auto viewMat = XMMatrixLookAtLH(
@@ -636,13 +636,15 @@ HRESULT Render::updateMatrix()
 	);
 
 #if DISABLE_MATRIX
-	m_matricesData->world = XMMatrixIdentity();
-	m_matricesData->view = XMMatrixIdentity();
-	m_matricesData->proj = XMMatrixIdentity();
+	m_sceneMatrix->world = XMMatrixIdentity();
+	m_sceneMatrix->view = XMMatrixIdentity();
+	m_sceneMatrix->proj = XMMatrixIdentity();
+	m_sceneMatrix->eye = XMFLOAT3(0.0f, 0.0f, 0.0f);
 #else
-	m_matricesData->world = worldMat;
-	m_matricesData->view = viewMat;
-	m_matricesData->proj = projMat;
+	m_sceneMatrix->world = worldMat;
+	m_sceneMatrix->view = viewMat;
+	m_sceneMatrix->proj = projMat;
+	m_sceneMatrix->eye = eye;
 #endif // DISABLE_MATRIX
 
 	angle += 0.02f;

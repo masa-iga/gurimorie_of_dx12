@@ -5,13 +5,15 @@ struct Output
 	float4 normal : NORMAL0;
 	float4 vnormal : NORMAL1;
 	float2 uv : TEXCOORD;
+	float3 ray : VECTOR;
 };
 
-cbuffer cbuff0 : register(b0)
+cbuffer SceneBuffer : register(b0)
 {
 	matrix world;
 	matrix view;
 	matrix proj;
+	float3 eye;
 }
 
 cbuffer Material : register(b1)

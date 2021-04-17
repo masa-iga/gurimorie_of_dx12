@@ -172,9 +172,9 @@ HRESULT PmdReader::readData()
 	//const std::string strModelPath = "Model/鏡音レン.pmd";
 	//const std::string strModelPath = "Model/咲音メイコ.pmd";
 	//const std::string strModelPath = "Model/弱音ハク.pmd";
-	const std::string strModelPath = "Model/巡音ルカ.pmd";
+	//const std::string strModelPath = "Model/巡音ルカ.pmd";
 	//const std::string strModelPath = "Model/初音ミク.pmd";
-	//const std::string strModelPath = "Model/初音ミクmetal.pmd";
+	const std::string strModelPath = "Model/初音ミクmetal.pmd";
 	//const std::string strModelPath = "Model/亞北ネル.pmd";
 
 	FILE* fp = nullptr;

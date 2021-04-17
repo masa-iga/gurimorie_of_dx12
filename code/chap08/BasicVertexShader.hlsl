@@ -18,6 +18,7 @@ Output BasicVs(
 		output.vnormal = mul(view, output.normal);
 
 		output.uv = uv;
+		output.ray = normalize(pos.xyz - eye);
 	}
 
 	return output;

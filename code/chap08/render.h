@@ -5,11 +5,12 @@
 #include <vector>
 #include "pmd_reader.h"
 
-struct MatricesData
+struct SceneMatrix
 {
 	DirectX::XMMATRIX world;
 	DirectX::XMMATRIX view;
 	DirectX::XMMATRIX proj;
+	DirectX::XMFLOAT3 eye;
 };
 
 class Render {
@@ -25,7 +26,7 @@ private:
 	HRESULT createPipelineState();
 	HRESULT createTextureBuffer();
 	HRESULT createTextureBuffer2();
-	HRESULT createMvpMatrixBuffer();
+	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
 	HRESULT updateMatrix();
 
@@ -40,7 +41,7 @@ private:
 	ID3D12DescriptorHeap* m_dsvHeap = nullptr;
 	ID3D12Resource* m_depthResource = nullptr;
 	ID3D12Resource* m_mvpMatrixResource = nullptr;
-	MatricesData* m_matricesData = nullptr;
+	SceneMatrix* m_sceneMatrix = nullptr;
 
 	ID3D12Fence* m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
