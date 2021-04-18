@@ -219,6 +219,16 @@
     <None Include="Model\鏡音レン.pmd" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="Data\toon01.bmp" />
+    <Image Include="Data\toon02.bmp" />
+    <Image Include="Data\toon03.bmp" />
+    <Image Include="Data\toon04.bmp" />
+    <Image Include="Data\toon05.bmp" />
+    <Image Include="Data\toon06.bmp" />
+    <Image Include="Data\toon07.bmp" />
+    <Image Include="Data\toon08.bmp" />
+    <Image Include="Data\toon09.bmp" />
+    <Image Include="Data\toon10.bmp" />
     <Image Include="img\textest.png" />
     <Image Include="Model\ao.bmp" />
     <Image Include="Model\eye2.bmp" />
