@@ -4,6 +4,7 @@
 #include <vector>
 #include "config.h"
 #include "debug.h"
+#include "util.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -26,6 +27,8 @@ static std::vector<ID3D12Resource*> s_backBuffers(kNumOfSwapBuffer, nullptr);
 
 HRESULT initGraphics(HWND hwnd)
 {
+	Util::init();
+
 	auto ret = createDxFactory();
 	ThrowIfFailed(ret);
 

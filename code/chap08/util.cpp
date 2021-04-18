@@ -3,6 +3,39 @@
 
 namespace Util {
 
+static bool s_bInitialized = false;
+static std::unordered_map<std::string, LoadLambda_t> s_loadLambdaTable;
+
+void init()
+{
+	s_loadLambdaTable["sph"]
+		= s_loadLambdaTable["spa"]
+		= s_loadLambdaTable["bmp"]
+		= s_loadLambdaTable["png"]
+		= s_loadLambdaTable["jpg"]
+		= [](const std::wstring& path, DirectX::TexMetadata* meta, DirectX::ScratchImage& img)
+		-> HRESULT
+	{
+		return DirectX::LoadFromWICFile(path.c_str(), DirectX::WIC_FLAGS_NONE, meta, img);
+	};
+
+	s_loadLambdaTable["tga"]
+		= [](const std::wstring& path, DirectX::TexMetadata* meta, DirectX::ScratchImage& img)
+		-> HRESULT
+	{
+		return DirectX::LoadFromTGAFile(path.c_str(), meta, img);
+	};
+
+	s_loadLambdaTable["dds"]
+		= [](const std::wstring& path, DirectX::TexMetadata* meta, DirectX::ScratchImage& img)
+		-> HRESULT
+	{
+		return DirectX::LoadFromDDSFile(path.c_str(), DirectX::DDS_FLAGS_NONE, meta, img);
+	};
+
+	s_bInitialized = true;
+}
+
 TimeCounter::TimeCounter(std::string str)
 	: m_str(str)
 {
@@ -74,6 +107,12 @@ std::pair<std::string, std::string> splitFileName(const std::string& path, const
 		path.substr(index + 1, path.length() - index - 1) };
 
 	return ret;
+}
+
+std::unordered_map<std::string, LoadLambda_t> getLoadLambdaTable()
+{
+	ThrowIfFalse(s_bInitialized);
+	return s_loadLambdaTable;
 }
 
 } // namespace Util
