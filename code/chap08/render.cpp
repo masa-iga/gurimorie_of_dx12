@@ -113,7 +113,7 @@ HRESULT Render::render()
 		auto const materialDescHeap = m_pmdReader.getMaterialDescHeap();
 		getInstanceOfCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
 
-		const auto cbvSrvIncSize = getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 4;
+		const auto cbvSrvIncSize = getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
 		auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
 		UINT indexOffset = 0;
 
@@ -678,8 +678,8 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 				descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 				// texture
 				descTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-				descTblRange[2].NumDescriptors = 3;
-				descTblRange[2].BaseShaderRegister = 0; // t0, t1, t2
+				descTblRange[2].NumDescriptors = 4;
+				descTblRange[2].BaseShaderRegister = 0; // t0, t1, t2, t3
 				descTblRange[2].RegisterSpace = 0;
 				descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 			}

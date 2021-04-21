@@ -1,6 +1,7 @@
 #pragma once
 #include <d3d12.h>
 #include <DirectXMath.h>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -46,9 +47,12 @@ public:
 	UINT getDebugIndexNum() const;
 
 private:
+	ID3D12Resource* loadTextureFromFile(const std::string& texPath);
 	HRESULT createWhiteTexture();
 	HRESULT createBlackTexture();
+	HRESULT createGrayGradiationTexture();
 	HRESULT createDebugResources();
+	HRESULT createMaterialResrouces();
 
 	std::vector<UINT8> m_vertices;
 	std::vector<UINT16> m_indices;
@@ -60,12 +64,15 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	ID3D12Resource* m_ibResource = nullptr;
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
+	std::vector<ID3D12Resource*> m_toonResources;
 	std::vector<ID3D12Resource*> m_textureResources;
 	std::vector<ID3D12Resource*> m_sphResources;
 	std::vector<ID3D12Resource*> m_spaResources;
 	ID3D12DescriptorHeap* m_materialDescHeap = nullptr;
 	ID3D12Resource* m_whiteTextureResource = nullptr;
 	ID3D12Resource* m_blackTextureResource = nullptr;
+	ID3D12Resource* m_grayGradiationTextureResource = nullptr;
+	std::map<std::string, ID3D12Resource*> m_resourceTable;
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };
