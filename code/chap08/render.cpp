@@ -185,6 +185,16 @@ HRESULT Render::swap()
 	return S_OK;
 }
 
+void Render::setAnimation(bool enable)
+{
+	m_bAnimation = enable;
+}
+
+bool Render::getAnimation() const
+{
+	return m_bAnimation;
+}
+
 HRESULT Render::loadShaders()
 {
 	ID3DBlob* errorBlob = nullptr;
@@ -646,6 +656,9 @@ HRESULT Render::updateMatrix()
 	m_sceneMatrix->proj = projMat;
 	m_sceneMatrix->eye = eye;
 #endif // DISABLE_MATRIX
+
+	if (!m_bAnimation)
+		return S_OK;
 
 	angle += 0.02f;
 

@@ -11,7 +11,7 @@
 using namespace std;
 
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
-static void processKeyInput(const MSG& msg);
+static void processKeyInput(const MSG& msg, Render* pRender);
 static void trackFrameTime(UINT frame);
 
 #ifdef _DEBUG
@@ -79,7 +79,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			break;
 		}
 
-		processKeyInput(msg);
+		processKeyInput(msg, &render);
 
 		trackFrameTime(i);
 	}
@@ -100,13 +100,13 @@ LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
-static void processKeyInput(const MSG& msg)
+static void processKeyInput(const MSG& msg, Render* pRender)
 {
 	switch (msg.message) {
 	case WM_KEYDOWN:
 		switch (msg.wParam) {
 		case VK_SPACE:
-			DebugOutputFormatString("space was pushed.\n");
+			pRender->setAnimation(!pRender->getAnimation());
 			break;
 		default:
 			break;

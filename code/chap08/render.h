@@ -19,6 +19,8 @@ public:
 	HRESULT render();
 	HRESULT waitForEndOfRendering();
 	HRESULT swap();
+	void setAnimation(bool enable);
+	bool getAnimation() const;
 
 private:
 	HRESULT loadShaders();
@@ -29,6 +31,8 @@ private:
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
 	HRESULT updateMatrix();
+
+	bool m_bAnimation = true;
 
 	ID3DBlob* m_vsBlob = nullptr;
 	ID3DBlob* m_psBlob = nullptr;
