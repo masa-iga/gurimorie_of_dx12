@@ -5,6 +5,7 @@ Texture2D<float4> sph : register(t1);
 Texture2D<float4> spa : register(t2);
 Texture2D<float4> toon : register(t3);
 SamplerState smp : register(s0);
+SamplerState smpToon : register(s1);
 
 float4 BasicPs(Output input) : SV_TARGET
 {
@@ -12,7 +13,7 @@ float4 BasicPs(Output input) : SV_TARGET
 	const float3 lightColor = float3(1, 1, 1);
 
 	const float diffuseB = saturate(dot(-light, input.normal.xyz));
-	const float4 toonDif = toon.Sample(smp, float2(0, 1.0f - diffuseB));
+	const float4 toonDif = toon.Sample(smpToon, float2(0, 1.0f - diffuseB));
 
 	const float3 refLight = normalize(reflect(light, input.normal.xyz));
 	const float specularB = pow(saturate(dot(refLight, -input.ray)), specular.a);
