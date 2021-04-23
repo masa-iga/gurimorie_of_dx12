@@ -106,7 +106,10 @@ static void processKeyInput(const MSG& msg, Render* pRender)
 	case WM_KEYDOWN:
 		switch (msg.wParam) {
 		case VK_SPACE:
-			pRender->setAnimation(!pRender->getAnimation());
+			pRender->toggleAnimationEnable();
+			break;
+		case 'R':
+			pRender->toggleAnimationReverse();
 			break;
 		default:
 			break;

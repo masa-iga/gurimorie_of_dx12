@@ -19,8 +19,8 @@ public:
 	HRESULT render();
 	HRESULT waitForEndOfRendering();
 	HRESULT swap();
-	void setAnimation(bool enable);
-	bool getAnimation() const;
+	void toggleAnimationEnable();
+	void toggleAnimationReverse();
 
 private:
 	HRESULT loadShaders();
@@ -32,7 +32,8 @@ private:
 	HRESULT createViews();
 	HRESULT updateMatrix();
 
-	bool m_bAnimation = true;
+	bool m_bAnimationEnabled = true;
+	bool m_bAnimationReversed = false;
 
 	ID3DBlob* m_vsBlob = nullptr;
 	ID3DBlob* m_psBlob = nullptr;

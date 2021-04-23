@@ -185,14 +185,14 @@ HRESULT Render::swap()
 	return S_OK;
 }
 
-void Render::setAnimation(bool enable)
+void Render::toggleAnimationEnable()
 {
-	m_bAnimation = enable;
+	m_bAnimationEnabled = !m_bAnimationEnabled;
 }
 
-bool Render::getAnimation() const
+void Render::toggleAnimationReverse()
 {
-	return m_bAnimation;
+	m_bAnimationReversed = !m_bAnimationReversed;
 }
 
 HRESULT Render::loadShaders()
@@ -657,10 +657,13 @@ HRESULT Render::updateMatrix()
 	m_sceneMatrix->eye = eye;
 #endif // DISABLE_MATRIX
 
-	if (!m_bAnimation)
+	if (!m_bAnimationEnabled)
 		return S_OK;
 
-	angle += 0.02f;
+	if (!m_bAnimationReversed)
+		angle += 0.02f;
+	else
+		angle -= 0.02f;
 
 	return S_OK;
 }
