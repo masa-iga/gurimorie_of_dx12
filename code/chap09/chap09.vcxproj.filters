@@ -1,0 +1,197 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ソース ファイル">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="ヘッダー ファイル">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="リソース ファイル">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="リソース ファイル\Model">
+      <UniqueIdentifier>{52f0aa26-8ac6-4c9e-b989-ae91f1c882ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="リソース ファイル\toon">
+      <UniqueIdentifier>{c2163f6b-fd34-4179-8bb4-188764f6a7f8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="init.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="debug.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="render.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="util.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="pmd_reader.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="init.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="debug.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="render.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="pmd_reader.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="BasicVertexShader.hlsl" />
+    <FxCompile Include="BasicPixelShader.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BasicShaderHeader.hlsli">
+      <Filter>ヘッダー ファイル</Filter>
+    </None>
+    <None Include="Model\a1.sph">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\a2.spa">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\a3.spa">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\a4.sph">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\MEIKO.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\metal.sph">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\mikuhair.sph">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\カイト.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\ダミーボーン.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\亞北ネル.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\初音ミク.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\初音ミクmetal.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\初音ミクVer2.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\咲音メイコ.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\巡音ルカ.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\弱音ハク.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\鏡音リン.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\鏡音リン_act2.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Model\鏡音レン.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="img\textest.png">
+      <Filter>リソース ファイル</Filter>
+    </Image>
+    <Image Include="Model\ao.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\eye2.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\eye3.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\eye3Ne.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\eye4.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\eyeKT.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\eyelu.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\eyeM2.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\eyeMe2.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\eyeR2.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="Model\sakine1.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="toon\toon01.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="toon\toon02.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="toon\toon03.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="toon\toon04.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="toon\toon05.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="toon\toon06.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="toon\toon07.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="toon\toon08.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="toon\toon09.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="toon\toon10.bmp">
+      <Filter>リソース ファイル\toon</Filter>
+    </Image>
+  </ItemGroup>
+</Project>
