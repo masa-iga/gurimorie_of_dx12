@@ -10,8 +10,13 @@
 
 using namespace std;
 
+enum class Action {
+	kNone,
+	kQuit,
+};
+
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
-static void processKeyInput(const MSG& msg, Render* pRender);
+static Action processKeyInput(const MSG& msg, Render* pRender);
 static void trackFrameTime(UINT frame);
 
 #ifdef _DEBUG
@@ -79,7 +84,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			break;
 		}
 
-		processKeyInput(msg, &render);
+		if (processKeyInput(msg, &render) == Action::kQuit)
+		{
+			break;
+		}
 
 		trackFrameTime(i);
 	}
@@ -100,11 +108,13 @@ LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
-static void processKeyInput(const MSG& msg, Render* pRender)
+static Action processKeyInput(const MSG& msg, Render* pRender)
 {
 	switch (msg.message) {
 	case WM_KEYDOWN:
 		switch (msg.wParam) {
+		case VK_ESCAPE:
+			return Action::kQuit;
 		case VK_SPACE:
 			pRender->toggleAnimationEnable();
 			break;
@@ -118,6 +128,8 @@ static void processKeyInput(const MSG& msg, Render* pRender)
 	default:
 		break;
 	}
+
+	return Action::kNone;
 }
 
 class FrameCounter
