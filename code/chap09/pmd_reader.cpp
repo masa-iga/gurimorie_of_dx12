@@ -1,8 +1,12 @@
 #include "pmd_reader.h"
+#pragma warning(push, 0)
+#include <codeanalysis/warnings.h>
+#pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <algorithm>
 #include <cstdio>
 #include <d3dx12.h>
 #include <DirectXTex.h>
+#pragma warning(pop)
 #include "debug.h"
 #include "init.h"
 #include "util.h"

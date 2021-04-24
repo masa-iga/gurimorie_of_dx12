@@ -1,9 +1,13 @@
 #pragma once
+#pragma warning(push, 0)
+#include <codeanalysis/warnings.h>
+#pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <DirectXTex.h>
 #include <Windows.h>
 #include <functional>
 #include <string>
 #include <unordered_map>
+#pragma warning(pop)
 
 namespace Util {
 

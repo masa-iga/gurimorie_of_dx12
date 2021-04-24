@@ -1,9 +1,13 @@
 #include "render.h"
+#pragma warning(push, 0)
+#include <codeanalysis/warnings.h>
+#pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <cassert>
 #include <d3dcompiler.h>
 #include <d3dx12.h>
 #include <DirectXMath.h>
 #include <synchapi.h>
+#pragma warning(pop)
 #include "config.h"
 #include "debug.h"
 #include "init.h"
