@@ -17,7 +17,7 @@ enum class Action {
 
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 static Action processKeyInput(const MSG& msg, Render* pRender);
-static void tearDown(const WNDCLASSEX& wndClass);
+static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd);
 static void trackFrameTime(UINT frame);
 
 #ifdef _DEBUG
@@ -36,8 +36,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		w.lpszClassName = _T("DX12Sample");
 		w.hInstance = GetModuleHandle(nullptr);
 	}
-
-	RegisterClassEx(&w);
+	ThrowIfFalse(RegisterClassEx(&w) != 0);
 
 	const long window_width = kWindowWidth;
 	const long window_height = kWindowHeight;
@@ -93,7 +92,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		trackFrameTime(i);
 	}
 
-	tearDown(w);
+	tearDown(w, hwnd);
 
 	return S_OK;
 }
@@ -133,16 +132,17 @@ static Action processKeyInput(const MSG& msg, Render* pRender)
 	return Action::kNone;
 }
 
-static void tearDown(const WNDCLASSEX& wndClass)
+static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 {
+	ThrowIfFalse(DestroyWindow(hwnd) != 0);
+
 	{
 		auto ret = UnregisterClass(wndClass.lpszClassName, wndClass.hInstance);
 
 		if (ret == 0)
 		{
 			DebugOutputFormatString("failed to unregister class. (0x%zx)\n", GetLastError());
-			// TODO: failes with returing 0x584
-			//ThrowIfFalse(false);
+			ThrowIfFalse(false);
 		}
 	}
 
