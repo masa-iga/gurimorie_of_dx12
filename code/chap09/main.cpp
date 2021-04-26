@@ -148,13 +148,13 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 
 #ifdef _DEBUG
 	{
-		ID3D12DebugDevice* debugInterface = nullptr;
-		auto ret = getInstanceOfDevice()->QueryInterface(&debugInterface);
+		ID3D12DebugDevice* debugDevice = nullptr;
+		auto ret = getInstanceOfDevice()->QueryInterface(&debugDevice);
 		ThrowIfFailed(ret);
 
-		ret = debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
+		ret = debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
 		ThrowIfFailed(ret);
-		debugInterface->Release();
+		debugDevice->Release();
 	}
 #endif // _DEBUG
 }
