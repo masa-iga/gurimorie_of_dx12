@@ -17,6 +17,7 @@ enum class Action {
 
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 static Action processKeyInput(const MSG& msg, Render* pRender);
+static void tearDown(const WNDCLASSEX& wndClass);
 static void trackFrameTime(UINT frame);
 
 #ifdef _DEBUG
@@ -92,7 +93,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		trackFrameTime(i);
 	}
 
-	UnregisterClass(w.lpszClassName, w.hInstance);
+	tearDown(w);
 
 	return S_OK;
 }
@@ -130,6 +131,32 @@ static Action processKeyInput(const MSG& msg, Render* pRender)
 	}
 
 	return Action::kNone;
+}
+
+static void tearDown(const WNDCLASSEX& wndClass)
+{
+	{
+		auto ret = UnregisterClass(wndClass.lpszClassName, wndClass.hInstance);
+
+		if (ret == 0)
+		{
+			DebugOutputFormatString("failed to unregister class. (0x%zx)\n", GetLastError());
+			// TODO: failes with returing 0x584
+			//ThrowIfFalse(false);
+		}
+	}
+
+#ifdef _DEBUG
+	{
+		ID3D12DebugDevice* debugInterface = nullptr;
+		auto ret = getInstanceOfDevice()->QueryInterface(&debugInterface);
+		ThrowIfFailed(ret);
+
+		ret = debugInterface->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
+		ThrowIfFailed(ret);
+		debugInterface->Release();
+	}
+#endif // _DEBUG
 }
 
 class FrameCounter
