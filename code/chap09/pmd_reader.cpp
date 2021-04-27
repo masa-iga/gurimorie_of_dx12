@@ -359,7 +359,7 @@ const std::vector<Material> PmdReader::getMaterials() const
 
 ID3D12DescriptorHeap* PmdReader::getMaterialDescHeap()
 {
-	return m_materialDescHeap;
+	return m_materialDescHeap.Get();
 }
 
 const D3D12_VERTEX_BUFFER_VIEW* PmdReader::getDebugVbView() const
@@ -377,7 +377,7 @@ UINT PmdReader::getDebugIndexNum() const
 	return static_cast<UINT>(s_debugIndices.size());
 }
 
-ID3D12Resource* PmdReader::loadTextureFromFile(const std::string& texPath)
+Microsoft::WRL::ComPtr<ID3D12Resource> PmdReader::loadTextureFromFile(const std::string& texPath)
 {
 	const auto it = m_resourceTable.find(texPath);
 
@@ -421,7 +421,7 @@ ID3D12Resource* PmdReader::loadTextureFromFile(const std::string& texPath)
 		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	}
 
-	ID3D12Resource* resource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
 	{
 		ret = getInstanceOfDevice()->CreateCommittedResource(
 			&heapProp,
@@ -441,7 +441,7 @@ ID3D12Resource* PmdReader::loadTextureFromFile(const std::string& texPath)
 		ThrowIfFailed(ret);
 	}
 
-	m_resourceTable[texPath] = resource;
+	m_resourceTable[texPath] = resource.Get();
 
 	return resource;
 }
@@ -734,12 +734,12 @@ HRESULT PmdReader::createMaterialResrouces()
 			if (m_textureResources[i] == nullptr)
 			{
 				srvDesc.Format = m_whiteTextureResource->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_whiteTextureResource, &srvDesc, descHeapH);
+				getInstanceOfDevice()->CreateShaderResourceView(m_whiteTextureResource.Get(), &srvDesc, descHeapH);
 			}
 			else
 			{
 				srvDesc.Format = m_textureResources[i]->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_textureResources[i], &srvDesc, descHeapH);
+				getInstanceOfDevice()->CreateShaderResourceView(m_textureResources[i].Get(), &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;
@@ -747,12 +747,12 @@ HRESULT PmdReader::createMaterialResrouces()
 			if (m_sphResources[i] == nullptr)
 			{
 				srvDesc.Format = m_whiteTextureResource->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_whiteTextureResource, &srvDesc, descHeapH);
+				getInstanceOfDevice()->CreateShaderResourceView(m_whiteTextureResource.Get(), &srvDesc, descHeapH);
 			}
 			else
 			{
 				srvDesc.Format = m_sphResources[i]->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_sphResources[i], &srvDesc, descHeapH);
+				getInstanceOfDevice()->CreateShaderResourceView(m_sphResources[i].Get(), &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;
@@ -760,12 +760,12 @@ HRESULT PmdReader::createMaterialResrouces()
 			if (m_spaResources[i] == nullptr)
 			{
 				srvDesc.Format = m_blackTextureResource->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_blackTextureResource, &srvDesc, descHeapH);
+				getInstanceOfDevice()->CreateShaderResourceView(m_blackTextureResource.Get(), &srvDesc, descHeapH);
 			}
 			else
 			{
 				srvDesc.Format = m_spaResources[i]->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_spaResources[i], &srvDesc, descHeapH);
+				getInstanceOfDevice()->CreateShaderResourceView(m_spaResources[i].Get(), &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;
@@ -773,12 +773,12 @@ HRESULT PmdReader::createMaterialResrouces()
 			if (m_toonResources[i] == nullptr)
 			{
 				srvDesc.Format = m_grayGradiationTextureResource->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_grayGradiationTextureResource, &srvDesc, descHeapH);
+				getInstanceOfDevice()->CreateShaderResourceView(m_grayGradiationTextureResource.Get(), &srvDesc, descHeapH);
 			}
 			else
 			{
 				srvDesc.Format = m_toonResources[i]->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_toonResources[i], &srvDesc, descHeapH);
+				getInstanceOfDevice()->CreateShaderResourceView(m_toonResources[i].Get(), &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;

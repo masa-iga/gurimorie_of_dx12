@@ -8,6 +8,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <wrl.h>
 #pragma warning(pop)
 
 struct MaterialForHlsl
@@ -51,7 +52,7 @@ public:
 	UINT getDebugIndexNum() const;
 
 private:
-	ID3D12Resource* loadTextureFromFile(const std::string& texPath);
+	Microsoft::WRL::ComPtr<ID3D12Resource> loadTextureFromFile(const std::string& texPath);
 	HRESULT createWhiteTexture();
 	HRESULT createBlackTexture();
 	HRESULT createGrayGradiationTexture();
@@ -64,18 +65,18 @@ private:
 	UINT m_vertNum = 0;
 	UINT m_indicesNum = 0;
 
-	ID3D12Resource* m_vertResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertResource = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
-	ID3D12Resource* m_ibResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_ibResource = nullptr;
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
-	std::vector<ID3D12Resource*> m_toonResources;
-	std::vector<ID3D12Resource*> m_textureResources;
-	std::vector<ID3D12Resource*> m_sphResources;
-	std::vector<ID3D12Resource*> m_spaResources;
-	ID3D12DescriptorHeap* m_materialDescHeap = nullptr;
-	ID3D12Resource* m_whiteTextureResource = nullptr;
-	ID3D12Resource* m_blackTextureResource = nullptr;
-	ID3D12Resource* m_grayGradiationTextureResource = nullptr;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_toonResources;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_textureResources;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_sphResources;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_spaResources;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_materialDescHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_whiteTextureResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_blackTextureResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_grayGradiationTextureResource = nullptr;
 	std::map<std::string, ID3D12Resource*> m_resourceTable;
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };

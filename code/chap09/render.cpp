@@ -93,10 +93,10 @@ HRESULT Render::render()
         nullptr);
 
 	ThrowIfFalse(m_pipelineState != nullptr);
-	getInstanceOfCommandList()->SetPipelineState(m_pipelineState);
+	getInstanceOfCommandList()->SetPipelineState(m_pipelineState.Get());
 
 	ThrowIfFalse(m_rootSignature != nullptr);
-	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature);
+	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
 
 	setViewportScissor();
 	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -106,7 +106,7 @@ HRESULT Render::render()
 	// bind MVP matrix
 	{
 		ThrowIfFalse(m_basicDescHeap != nullptr);
-		getInstanceOfCommandList()->SetDescriptorHeaps(1, &m_basicDescHeap);
+		getInstanceOfCommandList()->SetDescriptorHeaps(1, m_basicDescHeap.GetAddressOf());
 		getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
 			0, // bind to b0
 			m_basicDescHeap->GetGPUDescriptorHandleForHeapStart());
@@ -150,7 +150,7 @@ HRESULT Render::render()
 	getInstanceOfCommandQueue()->ExecuteCommandLists(1, cmdLists);
 
 	// send signal
-	ThrowIfFailed(getInstanceOfCommandQueue()->Signal(m_pFence, ++m_fenceVal));
+	ThrowIfFailed(getInstanceOfCommandQueue()->Signal(m_pFence.Get(), ++m_fenceVal));
 
 	return S_OK;
 }
@@ -201,7 +201,7 @@ void Render::toggleAnimationReverse()
 
 HRESULT Render::loadShaders()
 {
-	ID3DBlob* errorBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
 
 	auto ret = D3DCompileFromFile(
 		L"BasicVertexShader.hlsl",
@@ -212,12 +212,12 @@ HRESULT Render::loadShaders()
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
 		&m_vsBlob,
-		&errorBlob
+		errorBlob.GetAddressOf()
 	);
 
 	if (FAILED(ret))
 	{
-		outputDebugMessage(errorBlob);
+		outputDebugMessage(errorBlob.Get());
 	}
 	ThrowIfFailed(ret);
 
@@ -231,12 +231,12 @@ HRESULT Render::loadShaders()
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
 		&m_psBlob,
-		&errorBlob
+		errorBlob.GetAddressOf()
 	);
 
 	if (FAILED(ret))
 	{
-		outputDebugMessage(errorBlob);
+		outputDebugMessage(errorBlob.Get());
 	}
 	ThrowIfFailed(ret);
 
@@ -259,12 +259,12 @@ HRESULT Render::loadImage()
 
 HRESULT Render::createPipelineState()
 {
-	ThrowIfFailed(setupRootSignature(&m_rootSignature));
+	ThrowIfFailed(setupRootSignature(m_rootSignature.GetAddressOf()));
 	ThrowIfFalse(m_rootSignature != nullptr);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
 	{
-		gpipeDesc.pRootSignature = m_rootSignature;
+		gpipeDesc.pRootSignature = m_rootSignature.Get();
 		gpipeDesc.VS = { m_vsBlob->GetBufferPointer(), m_vsBlob->GetBufferSize() };
 		gpipeDesc.PS = { m_psBlob->GetBufferPointer(), m_psBlob->GetBufferSize() };
 		// D3D12_SHADER_BYTECODE gpipeDesc.DS;
@@ -373,7 +373,7 @@ HRESULT Render::createTextureBuffer2()
 	const auto img = m_scratchImage.GetImage(0, 0, 0);
 	ThrowIfFalse(img != nullptr);
 
-	ID3D12Resource* texUploadBuff = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> texUploadBuff = nullptr;
 	{
 		D3D12_HEAP_PROPERTIES uploadHeapProp = { };
 		{
@@ -471,7 +471,7 @@ HRESULT Render::createTextureBuffer2()
 	// copy texture
 	D3D12_TEXTURE_COPY_LOCATION src = { };
 	{
-		src.pResource = texUploadBuff;
+		src.pResource = texUploadBuff.Get();
 		src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 		src.PlacedFootprint.Offset = 0;
 		src.PlacedFootprint.Footprint.Format = img->format;
@@ -483,7 +483,7 @@ HRESULT Render::createTextureBuffer2()
 	ThrowIfFalse(src.PlacedFootprint.Footprint.RowPitch % D3D12_TEXTURE_DATA_PITCH_ALIGNMENT == 0);
 	D3D12_TEXTURE_COPY_LOCATION dst = { };
 	{
-		dst.pResource = m_texResource;
+		dst.pResource = m_texResource.Get();
 		dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 		dst.SubresourceIndex = 0;
 	}
@@ -495,7 +495,7 @@ HRESULT Render::createTextureBuffer2()
 	{
 		barrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrierDesc.Transition.pResource = m_texResource;
+		barrierDesc.Transition.pResource = m_texResource.Get();
 		barrierDesc.Transition.Subresource = 0;
 		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
 		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
@@ -754,18 +754,18 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 	}
 
-	ID3DBlob* rootSigBlob = nullptr;
-	ID3DBlob* errorBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> rootSigBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
 
 	auto ret = D3D12SerializeRootSignature(
 		&rootSignatureDesc,
 		D3D_ROOT_SIGNATURE_VERSION_1_0,
-		&rootSigBlob,
-		&errorBlob);
+		rootSigBlob.GetAddressOf(),
+		errorBlob.GetAddressOf());
 
 	if (FAILED(ret))
 	{
-		outputDebugMessage(errorBlob);
+		outputDebugMessage(errorBlob.Get());
 	}
 	ThrowIfFailed(ret);
 

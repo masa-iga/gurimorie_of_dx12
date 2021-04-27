@@ -6,6 +6,7 @@
 #include <DirectXTex.h>
 #include <d3d12.h>
 #include <vector>
+#include <wrl.h>
 #pragma warning(pop)
 #include "pmd_reader.h"
 
@@ -39,20 +40,20 @@ private:
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
 
-	ID3DBlob* m_vsBlob = nullptr;
-	ID3DBlob* m_psBlob = nullptr;
-	ID3D12RootSignature* m_rootSignature = nullptr;
-	ID3D12PipelineState* m_pipelineState = nullptr;
-	ID3D12DescriptorHeap* m_basicDescHeap = nullptr;
-	ID3D12Resource* m_texResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_basicDescHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_texResource = nullptr;
 	DirectX::TexMetadata m_metadata = { };
 	DirectX::ScratchImage m_scratchImage = { };
-	ID3D12DescriptorHeap* m_dsvHeap = nullptr;
-	ID3D12Resource* m_depthResource = nullptr;
-	ID3D12Resource* m_mvpMatrixResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_mvpMatrixResource = nullptr;
 	SceneMatrix* m_sceneMatrix = nullptr;
 
-	ID3D12Fence* m_pFence = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
 
 	PmdReader m_pmdReader;
