@@ -60,36 +60,38 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	ShowWindow(hwnd, SW_SHOW);
 
-	Render render;
-	ThrowIfFailed(render.init());
-
-	MSG msg = {};
-
-	for (UINT i = 0; ; ++i)
 	{
-		ThrowIfFailed(render.render());
+		Render render;
+		ThrowIfFailed(render.init());
 
-		ThrowIfFailed(render.waitForEndOfRendering());
+		MSG msg = {};
 
-		ThrowIfFailed(render.swap());
-
-		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+		for (UINT i = 0; ; ++i)
 		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
+			ThrowIfFailed(render.render());
 
-		if (msg.message == WM_QUIT)
-		{
-			break;
-		}
+			ThrowIfFailed(render.waitForEndOfRendering());
 
-		if (processKeyInput(msg, &render) == Action::kQuit)
-		{
-			break;
-		}
+			ThrowIfFailed(render.swap());
 
-		trackFrameTime(i);
+			if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+
+			if (msg.message == WM_QUIT)
+			{
+				break;
+			}
+
+			if (processKeyInput(msg, &render) == Action::kQuit)
+			{
+				break;
+			}
+
+			trackFrameTime(i);
+		}
 	}
 
 	tearDown(w, hwnd);
