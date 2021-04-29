@@ -8,6 +8,9 @@ static std::unordered_map<std::string, LoadLambda_t> s_loadLambdaTable;
 
 void init()
 {
+	if (s_bInitialized)
+		return;
+
 	s_loadLambdaTable["sph"]
 		= s_loadLambdaTable["spa"]
 		= s_loadLambdaTable["bmp"]
