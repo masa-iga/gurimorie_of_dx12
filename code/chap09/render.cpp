@@ -508,9 +508,9 @@ HRESULT Render::createTextureBuffer2()
 	getInstanceOfCommandQueue()->ExecuteCommandLists(1, cmdLists);
 
 	// wait until the copy is done
-	ID3D12Fence* fence = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Fence> fence = nullptr;
 	ThrowIfFailed(createFence(0, &fence));
-	ThrowIfFailed(getInstanceOfCommandQueue()->Signal(fence, 1));
+	ThrowIfFailed(getInstanceOfCommandQueue()->Signal(fence.Get(), 1));
 
 	if (fence->GetCompletedValue() != 1)
 	{
