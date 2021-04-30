@@ -19,9 +19,12 @@ static HRESULT enableDebugLayer();
 
 static constexpr UINT kNumOfSwapBuffer = 2;
 
-static ID3D12Device* s_pDevice = nullptr;
-static IDXGISwapChain4 *s_pSwapChain = nullptr;
 static IDXGIFactory6* s_pDxgiFactory = nullptr;
+static ID3D12Device* s_pDevice = nullptr;
+static ID3D12CommandAllocator *s_pCommandAllocator = nullptr;
+static ID3D12GraphicsCommandList* s_pCommandList = nullptr;
+static ID3D12CommandQueue* s_pCommandQueue = nullptr;
+static IDXGISwapChain4 *s_pSwapChain = nullptr;
 static ID3D12DescriptorHeap* s_pRtvHeaps = nullptr;
 static std::vector<ID3D12Resource*> s_backBuffers(kNumOfSwapBuffer, nullptr);
 
@@ -57,6 +60,24 @@ HRESULT initGraphics(HWND hwnd)
 	return S_OK;
 }
 
+HRESULT close()
+{
+	s_pRtvHeaps->Release();
+	s_pSwapChain->Release();
+
+	s_pCommandAllocator->Release();
+	s_pCommandList->Release();
+	s_pCommandQueue->Release();
+
+	// TODO: unbind display buffer before release
+//	for (auto& buffer : s_backBuffers)
+//	{
+//		buffer->Release();
+//	}
+
+	return S_OK;
+}
+
 ID3D12Device* getInstanceOfDevice()
 {
 	assert(s_pDevice != nullptr);
@@ -65,43 +86,37 @@ ID3D12Device* getInstanceOfDevice()
 
 ID3D12CommandAllocator* getInstanceOfCommandAllocator()
 {
-	static ID3D12CommandAllocator *pCommandAllocator = nullptr;
-
-	if (pCommandAllocator != nullptr)
-		return pCommandAllocator;
+	if (s_pCommandAllocator != nullptr)
+		return s_pCommandAllocator;
 
 	auto result = getInstanceOfDevice()->CreateCommandAllocator(
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(&pCommandAllocator));
+		IID_PPV_ARGS(&s_pCommandAllocator));
 	ThrowIfFailed(result);
 
-	return pCommandAllocator;
+	return s_pCommandAllocator;
 }
 
 ID3D12GraphicsCommandList* getInstanceOfCommandList()
 {
-	static ID3D12GraphicsCommandList* pCommandList = nullptr;
-
-	if (pCommandList != nullptr)
-		return pCommandList;
+	if (s_pCommandList != nullptr)
+		return s_pCommandList;
 
 	auto result = getInstanceOfDevice()->CreateCommandList(
 		0,
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		getInstanceOfCommandAllocator(),
 		nullptr,
-		IID_PPV_ARGS(&pCommandList));
+		IID_PPV_ARGS(&s_pCommandList));
 	ThrowIfFailed(result);
 
-	return pCommandList;
+	return s_pCommandList;
 }
 
 ID3D12CommandQueue* getInstanceOfCommandQueue()
 {
-	static ID3D12CommandQueue* pCommandQueue = nullptr;
-
-	if (pCommandQueue != nullptr)
-		return pCommandQueue;
+	if (s_pCommandQueue != nullptr)
+		return s_pCommandQueue;
 
 	D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = { };
 	{
@@ -111,10 +126,10 @@ ID3D12CommandQueue* getInstanceOfCommandQueue()
 		cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	}
 
-	auto result = getInstanceOfDevice()->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&pCommandQueue));
+	auto result = getInstanceOfDevice()->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&s_pCommandQueue));
 	ThrowIfFailed(result);
 
-	return pCommandQueue;
+	return s_pCommandQueue;
 }
 
 IDXGISwapChain4* getInstanceOfSwapChain()

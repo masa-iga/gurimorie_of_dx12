@@ -5,6 +5,7 @@
 #include <winerror.h>
 
 HRESULT initGraphics(HWND hwnd);
+HRESULT close();
 ID3D12Device* getInstanceOfDevice();
 ID3D12CommandAllocator* getInstanceOfCommandAllocator();
 ID3D12GraphicsCommandList* getInstanceOfCommandList();

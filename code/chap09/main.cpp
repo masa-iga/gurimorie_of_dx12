@@ -148,6 +148,8 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 		}
 	}
 
+	ThrowIfFailed(close());
+
 #ifdef _DEBUG
 	{
 		ID3D12DebugDevice* debugDevice = nullptr;
