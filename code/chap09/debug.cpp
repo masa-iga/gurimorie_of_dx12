@@ -3,6 +3,7 @@
 #ifdef _DEBUG
 #include <iostream>
 #include <cstdarg>
+#define ENABLE_DEBUG_MESSAGE (1)
 #endif // _DEBUG
 
 #define OUTPUT_DEBUG_MESSAGE_TO_VS_WINDOW (1)
@@ -31,7 +32,7 @@ private:
 
 void DebugOutputFormatString(const char* format, ...)
 {
-#ifdef _DEBUG
+#if ENABLE_DEBUG_MESSAGE
 #if OUTPUT_DEBUG_MESSAGE_TO_VS_WINDOW
 	va_list valist;
 	va_start(valist, format);
@@ -46,7 +47,7 @@ void DebugOutputFormatString(const char* format, ...)
 	vprintf(format, valist);
 	va_end(valist);
 #endif // OUTPUT_DEBUG_MESSAGE_TO_VS_WINDOW
-#endif // _DEBUG
+#endif // ENABLE_DEBUG_MESSAGE
 }
 
 void ThrowIfFailed(HRESULT hr)
