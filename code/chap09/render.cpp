@@ -56,35 +56,35 @@ HRESULT Render::render()
 	updateMatrix();
 
 
-	const UINT bbIdx = getInstanceOfSwapChain()->GetCurrentBackBufferIndex();
+	const UINT bbIdx = Resource::instance()->getSwapChain()->GetCurrentBackBufferIndex();
 
 	// resource barrier
 	D3D12_RESOURCE_BARRIER barrier = { };
 	{
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = getBackBuffer(bbIdx);
+		barrier.Transition.pResource = Resource::instance()->getBackBuffer(bbIdx);
 		barrier.Transition.Subresource = 0;
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	}
-	getInstanceOfCommandList()->ResourceBarrier(1, &barrier);
+	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
 
 
 	// link swap chain's and depth buffers to output merger
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
-	rtvH.ptr += bbIdx * static_cast<SIZE_T>(getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = Resource::instance()->getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
+	rtvH.ptr += bbIdx * static_cast<SIZE_T>(Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE dsvH = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 
-	getInstanceOfCommandList()->OMSetRenderTargets(1, &rtvH, false, &dsvH);
+	Resource::instance()->getCommandList()->OMSetRenderTargets(1, &rtvH, false, &dsvH);
 
 	// clear render target
 	constexpr float clearColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	getInstanceOfCommandList()->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
+	Resource::instance()->getCommandList()->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
 
 	// clear depth buffer
-	getInstanceOfCommandList()->ClearDepthStencilView(
+	Resource::instance()->getCommandList()->ClearDepthStencilView(
 		dsvH,
 		D3D12_CLEAR_FLAG_DEPTH,
 		1.0f,
@@ -93,21 +93,21 @@ HRESULT Render::render()
         nullptr);
 
 	ThrowIfFalse(m_pipelineState != nullptr);
-	getInstanceOfCommandList()->SetPipelineState(m_pipelineState.Get());
+	Resource::instance()->getCommandList()->SetPipelineState(m_pipelineState.Get());
 
 	ThrowIfFalse(m_rootSignature != nullptr);
-	getInstanceOfCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
+	Resource::instance()->getCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
 
 	setViewportScissor();
-	getInstanceOfCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	getInstanceOfCommandList()->IASetVertexBuffers(0, 1, m_pmdReader.getVbView());
-	getInstanceOfCommandList()->IASetIndexBuffer(m_pmdReader.getIbView());
+	Resource::instance()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, m_pmdReader.getVbView());
+	Resource::instance()->getCommandList()->IASetIndexBuffer(m_pmdReader.getIbView());
 
 	// bind MVP matrix
 	{
 		ThrowIfFalse(m_basicDescHeap != nullptr);
-		getInstanceOfCommandList()->SetDescriptorHeaps(1, m_basicDescHeap.GetAddressOf());
-		getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_basicDescHeap.GetAddressOf());
+		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
 			0, // bind to b0
 			m_basicDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
@@ -115,19 +115,19 @@ HRESULT Render::render()
 	// bind material & draw
 	{
 		auto const materialDescHeap = m_pmdReader.getMaterialDescHeap();
-		getInstanceOfCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
 
-		const auto cbvSrvIncSize = getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
+		const auto cbvSrvIncSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
 		auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
 		UINT indexOffset = 0;
 
 		for (const auto& m : m_pmdReader.getMaterials())
 		{
-			getInstanceOfCommandList()->SetGraphicsRootDescriptorTable(
+			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
 				1, // bind to b1
 				materialH);
 
-			getInstanceOfCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
+			Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
 
 			materialH.ptr += cbvSrvIncSize;
 			indexOffset += m.indicesNum;
@@ -139,18 +139,18 @@ HRESULT Render::render()
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	}
-	getInstanceOfCommandList()->ResourceBarrier(1, &barrier);
+	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
 
 
 	// execute command lists
-	ThrowIfFailed(getInstanceOfCommandList()->Close());
+	ThrowIfFailed(Resource::instance()->getCommandList()->Close());
 
-	ID3D12CommandList* cmdLists[] = { getInstanceOfCommandList() };
+	ID3D12CommandList* cmdLists[] = { Resource::instance()->getCommandList() };
 
-	getInstanceOfCommandQueue()->ExecuteCommandLists(1, cmdLists);
+	Resource::instance()->getCommandQueue()->ExecuteCommandLists(1, cmdLists);
 
 	// send signal
-	ThrowIfFailed(getInstanceOfCommandQueue()->Signal(m_pFence.Get(), ++m_fenceVal));
+	ThrowIfFailed(Resource::instance()->getCommandQueue()->Signal(m_pFence.Get(), ++m_fenceVal));
 
 	return S_OK;
 }
@@ -176,15 +176,15 @@ HRESULT Render::waitForEndOfRendering()
 	}
 
 	// reset command allocator & list
-	ThrowIfFailed(getInstanceOfCommandAllocator()->Reset());
-	ThrowIfFailed(getInstanceOfCommandList()->Reset(getInstanceOfCommandAllocator(), nullptr));
+	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
+	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), nullptr));
 
 	return S_OK;
 }
 
 HRESULT Render::swap()
 {
-	ThrowIfFailed(getInstanceOfSwapChain()->Present(1, 0));
+	ThrowIfFailed(Resource::instance()->getSwapChain()->Present(1, 0));
 
 	return S_OK;
 }
@@ -310,7 +310,7 @@ HRESULT Render::createPipelineState()
 		// D3D12_PIPELINE_STATE_FLAGS Flags;
 	}
 
-	auto ret = getInstanceOfDevice()->CreateGraphicsPipelineState(&gpipeDesc, IID_PPV_ARGS(&m_pipelineState));
+	auto ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(&gpipeDesc, IID_PPV_ARGS(&m_pipelineState));
 	ThrowIfFailed(ret);
 
 	return S_OK;
@@ -342,7 +342,7 @@ HRESULT Render::createTextureBuffer()
 		resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	}
 
-	auto ret = getInstanceOfDevice()->CreateCommittedResource(
+	auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&resDesc,
@@ -399,7 +399,7 @@ HRESULT Render::createTextureBuffer2()
 			resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		}
 
-		auto result = getInstanceOfDevice()->CreateCommittedResource(
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&uploadHeapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resDesc,
@@ -456,7 +456,7 @@ HRESULT Render::createTextureBuffer2()
 			resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		}
 
-		auto result = getInstanceOfDevice()->CreateCommittedResource(
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&texHeapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resDesc,
@@ -487,7 +487,7 @@ HRESULT Render::createTextureBuffer2()
 		dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
 		dst.SubresourceIndex = 0;
 	}
-	getInstanceOfCommandList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+	Resource::instance()->getCommandList()->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
 
 	// barrier
@@ -500,17 +500,17 @@ HRESULT Render::createTextureBuffer2()
 		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
 		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	}
-	getInstanceOfCommandList()->ResourceBarrier(1, &barrierDesc);
-	ThrowIfFailed(getInstanceOfCommandList()->Close());
+	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrierDesc);
+	ThrowIfFailed(Resource::instance()->getCommandList()->Close());
 
 
-	ID3D12CommandList* cmdLists[] = { getInstanceOfCommandList() };
-	getInstanceOfCommandQueue()->ExecuteCommandLists(1, cmdLists);
+	ID3D12CommandList* cmdLists[] = { Resource::instance()->getCommandList() };
+	Resource::instance()->getCommandQueue()->ExecuteCommandLists(1, cmdLists);
 
 	// wait until the copy is done
 	Microsoft::WRL::ComPtr<ID3D12Fence> fence = nullptr;
 	ThrowIfFailed(createFence(0, &fence));
-	ThrowIfFailed(getInstanceOfCommandQueue()->Signal(fence.Get(), 1));
+	ThrowIfFailed(Resource::instance()->getCommandQueue()->Signal(fence.Get(), 1));
 
 	if (fence->GetCompletedValue() != 1)
 	{
@@ -531,8 +531,8 @@ HRESULT Render::createTextureBuffer2()
 	}
 
 	// reset command allocator & list
-	ThrowIfFailed(getInstanceOfCommandAllocator()->Reset());
-	ThrowIfFailed(getInstanceOfCommandList()->Reset(getInstanceOfCommandAllocator(), nullptr));
+	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
+	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), nullptr));
 
 	return S_OK;
 }
@@ -567,7 +567,7 @@ HRESULT Render::createSceneMatrixBuffer()
 			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		}
 
-		auto result = getInstanceOfDevice()->CreateCommittedResource(
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
@@ -602,7 +602,7 @@ HRESULT Render::createViews()
 			descHeapDesc.NodeMask = 0;
 		}
 
-		auto ret = getInstanceOfDevice()->CreateDescriptorHeap(
+		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&descHeapDesc,
 			IID_PPV_ARGS(&m_basicDescHeap));
 		ThrowIfFailed(ret);
@@ -616,7 +616,7 @@ HRESULT Render::createViews()
 			bvDesc.BufferLocation = m_mvpMatrixResource->GetGPUVirtualAddress();
 			bvDesc.SizeInBytes = static_cast<UINT>(m_mvpMatrixResource->GetDesc().Width);
 		}
-		getInstanceOfDevice()->CreateConstantBufferView(
+		Resource::instance()->getDevice()->CreateConstantBufferView(
 			&bvDesc,
 			basicHeapHandle
 		);
@@ -770,7 +770,7 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 	}
 	ThrowIfFailed(ret);
 
-	ret = getInstanceOfDevice()->CreateRootSignature(
+	ret = Resource::instance()->getDevice()->CreateRootSignature(
 		0,
 		rootSigBlob->GetBufferPointer(),
 		rootSigBlob->GetBufferSize(),
@@ -793,7 +793,7 @@ HRESULT setViewportScissor()
 		viewport.MinDepth = 0.0f;
 	}
 
-	getInstanceOfCommandList()->RSSetViewports(1, &viewport);
+	Resource::instance()->getCommandList()->RSSetViewports(1, &viewport);
 
 	D3D12_RECT scissorRect = { };
 	{
@@ -803,14 +803,14 @@ HRESULT setViewportScissor()
 		scissorRect.bottom = scissorRect.top + kWindowHeight;
 	}
 
-	getInstanceOfCommandList()->RSSetScissorRects(1, &scissorRect);
+	Resource::instance()->getCommandList()->RSSetScissorRects(1, &scissorRect);
 
 	return S_OK;
 }
 
 static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence)
 {
-	return getInstanceOfDevice()->CreateFence(
+	return Resource::instance()->getDevice()->CreateFence(
 		initVal,
 		D3D12_FENCE_FLAG_NONE,
 		IID_PPV_ARGS(ppFence));
@@ -849,7 +849,7 @@ HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** pp
 			clearVal.DepthStencil.Stencil = 0;
 		}
 
-		auto ret = getInstanceOfDevice()->CreateCommittedResource(
+		auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
@@ -868,7 +868,7 @@ HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** pp
 			descHeapDesc.NodeMask = 0;
 		}
 
-		auto ret = getInstanceOfDevice()->CreateDescriptorHeap(
+		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&descHeapDesc,
 			IID_PPV_ARGS(ppDescHeap));
 		ThrowIfFailed(ret);
@@ -884,7 +884,7 @@ HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** pp
 			dsvDesc.Texture2D.MipSlice = 0;
 		}
 
-		getInstanceOfDevice()->CreateDepthStencilView(
+		Resource::instance()->getDevice()->CreateDepthStencilView(
 			*ppResource,
 			&dsvDesc,
 			(*ppDescHeap)->GetCPUDescriptorHandleForHeapStart());

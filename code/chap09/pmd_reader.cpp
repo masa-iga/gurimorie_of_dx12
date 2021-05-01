@@ -423,7 +423,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> PmdReader::loadTextureFromFile(const std:
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
 	{
-		ret = getInstanceOfDevice()->CreateCommittedResource(
+		ret = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
@@ -476,7 +476,7 @@ HRESULT PmdReader::createWhiteTexture()
 			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		}
 
-		auto ret = getInstanceOfDevice()->CreateCommittedResource(
+		auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
@@ -531,7 +531,7 @@ HRESULT PmdReader::createBlackTexture()
 			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		}
 
-		auto ret = getInstanceOfDevice()->CreateCommittedResource(
+		auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
@@ -585,7 +585,7 @@ HRESULT PmdReader::createGrayGradiationTexture()
 		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	}
 
-	auto ret = getInstanceOfDevice()->CreateCommittedResource(
+	auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&resourceDesc,
@@ -666,7 +666,7 @@ HRESULT PmdReader::createMaterialResrouces()
 			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		}
 
-		auto ret = getInstanceOfDevice()->CreateCommittedResource(
+		auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
@@ -701,7 +701,7 @@ HRESULT PmdReader::createMaterialResrouces()
 			heapDesc.NodeMask = 0;
 		}
 
-		auto ret = getInstanceOfDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_materialDescHeap));
+		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_materialDescHeap));
 		ThrowIfFailed(ret);
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = { };
@@ -722,11 +722,11 @@ HRESULT PmdReader::createMaterialResrouces()
 		}
 
 		auto descHeapH = m_materialDescHeap->GetCPUDescriptorHandleForHeapStart();
-		const auto inc = getInstanceOfDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		const auto inc = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		for (uint32_t i = 0; i < materialNum; ++i)
 		{
-			getInstanceOfDevice()->CreateConstantBufferView(&cbvDesc, descHeapH);
+			Resource::instance()->getDevice()->CreateConstantBufferView(&cbvDesc, descHeapH);
 
 			cbvDesc.BufferLocation += materialBufferSize; // pointing to GPU virtual address
 			descHeapH.ptr += inc;
@@ -734,12 +734,12 @@ HRESULT PmdReader::createMaterialResrouces()
 			if (m_textureResources[i] == nullptr)
 			{
 				srvDesc.Format = m_whiteTextureResource->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_whiteTextureResource.Get(), &srvDesc, descHeapH);
+				Resource::instance()->getDevice()->CreateShaderResourceView(m_whiteTextureResource.Get(), &srvDesc, descHeapH);
 			}
 			else
 			{
 				srvDesc.Format = m_textureResources[i]->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_textureResources[i].Get(), &srvDesc, descHeapH);
+				Resource::instance()->getDevice()->CreateShaderResourceView(m_textureResources[i].Get(), &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;
@@ -747,12 +747,12 @@ HRESULT PmdReader::createMaterialResrouces()
 			if (m_sphResources[i] == nullptr)
 			{
 				srvDesc.Format = m_whiteTextureResource->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_whiteTextureResource.Get(), &srvDesc, descHeapH);
+				Resource::instance()->getDevice()->CreateShaderResourceView(m_whiteTextureResource.Get(), &srvDesc, descHeapH);
 			}
 			else
 			{
 				srvDesc.Format = m_sphResources[i]->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_sphResources[i].Get(), &srvDesc, descHeapH);
+				Resource::instance()->getDevice()->CreateShaderResourceView(m_sphResources[i].Get(), &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;
@@ -760,12 +760,12 @@ HRESULT PmdReader::createMaterialResrouces()
 			if (m_spaResources[i] == nullptr)
 			{
 				srvDesc.Format = m_blackTextureResource->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_blackTextureResource.Get(), &srvDesc, descHeapH);
+				Resource::instance()->getDevice()->CreateShaderResourceView(m_blackTextureResource.Get(), &srvDesc, descHeapH);
 			}
 			else
 			{
 				srvDesc.Format = m_spaResources[i]->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_spaResources[i].Get(), &srvDesc, descHeapH);
+				Resource::instance()->getDevice()->CreateShaderResourceView(m_spaResources[i].Get(), &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;
@@ -773,12 +773,12 @@ HRESULT PmdReader::createMaterialResrouces()
 			if (m_toonResources[i] == nullptr)
 			{
 				srvDesc.Format = m_grayGradiationTextureResource->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_grayGradiationTextureResource.Get(), &srvDesc, descHeapH);
+				Resource::instance()->getDevice()->CreateShaderResourceView(m_grayGradiationTextureResource.Get(), &srvDesc, descHeapH);
 			}
 			else
 			{
 				srvDesc.Format = m_toonResources[i]->GetDesc().Format;
-				getInstanceOfDevice()->CreateShaderResourceView(m_toonResources[i].Get(), &srvDesc, descHeapH);
+				Resource::instance()->getDevice()->CreateShaderResourceView(m_toonResources[i].Get(), &srvDesc, descHeapH);
 			}
 
 			descHeapH.ptr += inc;
@@ -885,7 +885,7 @@ static HRESULT createBufferResource(ID3D12Resource** ppResource, size_t width)
 			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		}
 
-		auto ret = getInstanceOfDevice()->CreateCommittedResource(
+		auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,

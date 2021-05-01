@@ -56,7 +56,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		w.hInstance,
 		nullptr);
 
-	ThrowIfFailed(initGraphics(hwnd));
+	Resource::create();
+	ThrowIfFailed(Resource::instance()->allocate(hwnd));
 
 	ShowWindow(hwnd, SW_SHOW);
 
@@ -148,12 +149,12 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 		}
 	}
 
-	ThrowIfFailed(close());
+	ThrowIfFailed(Resource::instance()->release());
 
 #ifdef _DEBUG
 	{
 		ID3D12DebugDevice* debugDevice = nullptr;
-		auto ret = getInstanceOfDevice()->QueryInterface(&debugDevice);
+		auto ret = Resource::instance()->getDevice()->QueryInterface(&debugDevice);
 		ThrowIfFailed(ret);
 
 		ret = debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
@@ -161,6 +162,8 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 		debugDevice->Release();
 	}
 #endif // _DEBUG
+
+	Resource::instance()->destroy();
 }
 
 class FrameCounter
