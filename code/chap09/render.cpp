@@ -677,76 +677,77 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 	ThrowIfFalse(ppRootSignature != nullptr);
 
 	// need to input vertex
+	D3D12_DESCRIPTOR_RANGE descTblRange[3] = { };
+	{
+		// MVP matrix
+		descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		descTblRange[0].NumDescriptors = 1;
+		descTblRange[0].BaseShaderRegister = 0; // b0
+		descTblRange[0].RegisterSpace = 0;
+		descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		// material
+		descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		descTblRange[1].NumDescriptors = 1;
+		descTblRange[1].BaseShaderRegister = 1; // b1
+		descTblRange[1].RegisterSpace = 0;
+		descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		// texture
+		descTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		descTblRange[2].NumDescriptors = 4;
+		descTblRange[2].BaseShaderRegister = 0; // t0, t1, t2, t3
+		descTblRange[2].RegisterSpace = 0;
+		descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	}
+
+	// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
+	D3D12_ROOT_PARAMETER rootParam[2] = { };
+	{
+
+		// MVP matrix
+		rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
+		rootParam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
+		rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		// material & texture
+		rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParam[1].DescriptorTable.NumDescriptorRanges = 2;
+		rootParam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
+		rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	}
+
+	D3D12_STATIC_SAMPLER_DESC samplerDesc[2] = { };
+	{
+		samplerDesc[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+		samplerDesc[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		samplerDesc[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		samplerDesc[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		samplerDesc[0].MipLODBias = 0.0f;
+		samplerDesc[0].MaxAnisotropy = 0;
+		samplerDesc[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+		samplerDesc[0].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+		samplerDesc[0].MinLOD = 0.0f;
+		samplerDesc[0].MaxLOD = D3D12_FLOAT32_MAX;
+		samplerDesc[0].ShaderRegister = 0;
+		samplerDesc[0].RegisterSpace = 0;
+		samplerDesc[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		samplerDesc[1].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+		samplerDesc[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		samplerDesc[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		samplerDesc[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		samplerDesc[1].MipLODBias = 0.0f;
+		samplerDesc[1].MaxAnisotropy = 0;
+		samplerDesc[1].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+		samplerDesc[1].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+		samplerDesc[1].MinLOD = 0.0f;
+		samplerDesc[1].MaxLOD = D3D12_FLOAT32_MAX;
+		samplerDesc[1].ShaderRegister = 1;
+		samplerDesc[1].RegisterSpace = 0;
+		samplerDesc[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	}
+
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
-		// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
-		D3D12_ROOT_PARAMETER rootParam[2] = { };
-		{
-			D3D12_DESCRIPTOR_RANGE descTblRange[3] = { };
-			{
-				// MVP matrix
-				descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-				descTblRange[0].NumDescriptors = 1;
-				descTblRange[0].BaseShaderRegister = 0; // b0
-				descTblRange[0].RegisterSpace = 0;
-				descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-				// material
-				descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-				descTblRange[1].NumDescriptors = 1;
-				descTblRange[1].BaseShaderRegister = 1; // b1
-				descTblRange[1].RegisterSpace = 0;
-				descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-				// texture
-				descTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-				descTblRange[2].NumDescriptors = 4;
-				descTblRange[2].BaseShaderRegister = 0; // t0, t1, t2, t3
-				descTblRange[2].RegisterSpace = 0;
-				descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-			}
-
-			// MVP matrix
-			rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
-			rootParam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
-			rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-			// material & texture
-			rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			rootParam[1].DescriptorTable.NumDescriptorRanges = 2;
-			rootParam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
-			rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		}
-
-		D3D12_STATIC_SAMPLER_DESC samplerDesc[2] = { };
-		{
-			samplerDesc[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-			samplerDesc[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			samplerDesc[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			samplerDesc[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-			samplerDesc[0].MipLODBias = 0.0f;
-			samplerDesc[0].MaxAnisotropy = 0;
-			samplerDesc[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-			samplerDesc[0].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-			samplerDesc[0].MinLOD = 0.0f;
-			samplerDesc[0].MaxLOD = D3D12_FLOAT32_MAX;
-			samplerDesc[0].ShaderRegister = 0;
-			samplerDesc[0].RegisterSpace = 0;
-			samplerDesc[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-			samplerDesc[1].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-			samplerDesc[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-			samplerDesc[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-			samplerDesc[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-			samplerDesc[1].MipLODBias = 0.0f;
-			samplerDesc[1].MaxAnisotropy = 0;
-			samplerDesc[1].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-			samplerDesc[1].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-			samplerDesc[1].MinLOD = 0.0f;
-			samplerDesc[1].MaxLOD = D3D12_FLOAT32_MAX;
-			samplerDesc[1].ShaderRegister = 1;
-			samplerDesc[1].RegisterSpace = 0;
-			samplerDesc[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		}
-
 		rootSignatureDesc.NumParameters = 2;
 		rootSignatureDesc.pParameters = &rootParam[0];
 		rootSignatureDesc.NumStaticSamplers = 2;
