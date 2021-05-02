@@ -146,20 +146,24 @@ HRESULT Render::render()
 	ThrowIfFailed(Resource::instance()->getCommandList()->Close());
 
 	ID3D12CommandList* cmdLists[] = { Resource::instance()->getCommandList() };
-
 	Resource::instance()->getCommandQueue()->ExecuteCommandLists(1, cmdLists);
-
-	// send signal
-	ThrowIfFailed(Resource::instance()->getCommandQueue()->Signal(m_pFence.Get(), ++m_fenceVal));
 
 	return S_OK;
 }
 
 HRESULT Render::waitForEndOfRendering()
 {
-	while (m_pFence->GetCompletedValue() != m_fenceVal)
+	m_fenceVal++;
+	ThrowIfFailed(Resource::instance()->getCommandQueue()->Signal(m_pFence.Get(), m_fenceVal));
+
+	while (m_pFence->GetCompletedValue() < m_fenceVal)
 	{
 		HANDLE event = CreateEvent(nullptr, false, false, nullptr);
+
+		if (event == nullptr)
+		{
+			ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
+		}
 
 		ThrowIfFailed(m_pFence->SetEventOnCompletion(m_fenceVal, event));
 
@@ -177,7 +181,7 @@ HRESULT Render::waitForEndOfRendering()
 
 	// reset command allocator & list
 	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
-	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), nullptr));
+	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), m_pipelineState.Get()));
 
 	return S_OK;
 }
@@ -532,7 +536,7 @@ HRESULT Render::createTextureBuffer2()
 
 	// reset command allocator & list
 	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
-	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), nullptr));
+	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), m_pipelineState.Get()));
 
 	return S_OK;
 }
