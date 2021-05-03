@@ -19,10 +19,12 @@
 
 #define DISABLE_MATRIX (0)
 
-static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature);
+using namespace Microsoft::WRL;
+
+static HRESULT setupRootSignature(ComPtr<ID3D12RootSignature>* rootSignature);
 static HRESULT setViewportScissor();
-static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence);
-static HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** ppDescHeap);
+static HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
+static HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap);
 static void outputDebugMessage(ID3DBlob* errorBlob);
 
 HRESULT Render::init()
@@ -204,7 +206,7 @@ void Render::toggleAnimationReverse()
 
 HRESULT Render::loadShaders()
 {
-	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
 
 	auto ret = D3DCompileFromFile(
 		L"BasicVertexShader.hlsl",
@@ -262,7 +264,7 @@ HRESULT Render::loadImage()
 
 HRESULT Render::createPipelineState()
 {
-	ThrowIfFailed(setupRootSignature(m_rootSignature.GetAddressOf()));
+	ThrowIfFailed(setupRootSignature(&m_rootSignature));
 	ThrowIfFalse(m_rootSignature != nullptr);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
@@ -313,7 +315,7 @@ HRESULT Render::createPipelineState()
 		// D3D12_PIPELINE_STATE_FLAGS Flags;
 	}
 
-	auto ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(&gpipeDesc, IID_PPV_ARGS(&m_pipelineState));
+	auto ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(&gpipeDesc, IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(ret);
 
 	return S_OK;
@@ -351,7 +353,7 @@ HRESULT Render::createTextureBuffer()
 		&resDesc,
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 		nullptr,
-		IID_PPV_ARGS(&m_texResource));
+		IID_PPV_ARGS(m_texResource.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(ret);
 
 	const auto img = m_scratchImage.GetImage(0, 0, 0);
@@ -376,7 +378,7 @@ HRESULT Render::createTextureBuffer2()
 	const auto img = m_scratchImage.GetImage(0, 0, 0);
 	ThrowIfFalse(img != nullptr);
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> texUploadBuff = nullptr;
+	ComPtr<ID3D12Resource> texUploadBuff = nullptr;
 	{
 		D3D12_HEAP_PROPERTIES uploadHeapProp = { };
 		{
@@ -408,7 +410,7 @@ HRESULT Render::createTextureBuffer2()
 			&resDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ, // CPU writable and GPU redable
 			nullptr,
-			IID_PPV_ARGS(&texUploadBuff)
+			IID_PPV_ARGS(texUploadBuff.ReleaseAndGetAddressOf())
 		);
 		ThrowIfFailed(result);
 	}
@@ -465,7 +467,7 @@ HRESULT Render::createTextureBuffer2()
 			&resDesc,
 			D3D12_RESOURCE_STATE_COPY_DEST,
 			nullptr,
-			IID_PPV_ARGS(&m_texResource)
+			IID_PPV_ARGS(m_texResource.ReleaseAndGetAddressOf())
 		);
 		ThrowIfFailed(result);
 	}
@@ -511,7 +513,7 @@ HRESULT Render::createTextureBuffer2()
 	Resource::instance()->getCommandQueue()->ExecuteCommandLists(1, cmdLists);
 
 	// wait until the copy is done
-	Microsoft::WRL::ComPtr<ID3D12Fence> fence = nullptr;
+	ComPtr<ID3D12Fence> fence = nullptr;
 	ThrowIfFailed(createFence(0, &fence));
 	ThrowIfFailed(Resource::instance()->getCommandQueue()->Signal(fence.Get(), 1));
 
@@ -579,7 +581,7 @@ HRESULT Render::createSceneMatrixBuffer()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&m_mvpMatrixResource)
+			IID_PPV_ARGS(m_mvpMatrixResource.ReleaseAndGetAddressOf())
 		);
 		ThrowIfFailed(result);
 	}
@@ -610,7 +612,7 @@ HRESULT Render::createViews()
 
 		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&descHeapDesc,
-			IID_PPV_ARGS(&m_basicDescHeap));
+			IID_PPV_ARGS(m_basicDescHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 	}
 
@@ -678,9 +680,9 @@ HRESULT Render::updateMatrix()
 	return S_OK;
 }
 
-static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
+static HRESULT setupRootSignature(ComPtr<ID3D12RootSignature>* rootSignature)
 {
-	ThrowIfFalse(ppRootSignature != nullptr);
+	ThrowIfFalse(rootSignature != nullptr);
 
 	// need to input vertex
 	D3D12_DESCRIPTOR_RANGE descTblRange[3] = { };
@@ -761,8 +763,8 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 	}
 
-	Microsoft::WRL::ComPtr<ID3DBlob> rootSigBlob = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> errorBlob = nullptr;
+	ComPtr<ID3DBlob> rootSigBlob = nullptr;
+	ComPtr<ID3DBlob> errorBlob = nullptr;
 
 	auto ret = D3D12SerializeRootSignature(
 		&rootSignatureDesc,
@@ -780,7 +782,7 @@ static HRESULT setupRootSignature(ID3D12RootSignature** ppRootSignature)
 		0,
 		rootSigBlob->GetBufferPointer(),
 		rootSigBlob->GetBufferSize(),
-		IID_PPV_ARGS(ppRootSignature)
+		IID_PPV_ARGS(rootSignature->ReleaseAndGetAddressOf())
 	);
 	ThrowIfFailed(ret);
 
@@ -814,15 +816,15 @@ HRESULT setViewportScissor()
 	return S_OK;
 }
 
-static HRESULT createFence(UINT64 initVal, ID3D12Fence** ppFence)
+static HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence)
 {
 	return Resource::instance()->getDevice()->CreateFence(
 		initVal,
 		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(ppFence));
+		IID_PPV_ARGS(fence->ReleaseAndGetAddressOf()));
 }
 
-HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** ppDescHeap)
+HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap)
 {
 	{
 		D3D12_RESOURCE_DESC resourceDesc = { };
@@ -861,7 +863,7 @@ HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** pp
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_DEPTH_WRITE,
 			&clearVal,
-			IID_PPV_ARGS(ppResource));
+			IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 	}
 
@@ -876,7 +878,7 @@ HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** pp
 
 		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&descHeapDesc,
-			IID_PPV_ARGS(ppDescHeap));
+			IID_PPV_ARGS(descHeap->ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 	}
 
@@ -891,9 +893,9 @@ HRESULT createDepthBuffer(ID3D12Resource** ppResource, ID3D12DescriptorHeap** pp
 		}
 
 		Resource::instance()->getDevice()->CreateDepthStencilView(
-			*ppResource,
+			resource->Get(),
 			&dsvDesc,
-			(*ppDescHeap)->GetCPUDescriptorHandleForHeapStart());
+			descHeap->Get()->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	return S_OK;

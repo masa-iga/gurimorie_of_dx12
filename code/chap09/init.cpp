@@ -8,6 +8,8 @@
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
+using namespace Microsoft::WRL;
+
 static constexpr UINT kNumOfSwapBuffer = 2;
 
 Resource* Resource::m_instance = nullptr;
@@ -24,7 +26,7 @@ HRESULT Resource::allocate(HWND hwnd)
 	ThrowIfFailed(ret);
 #endif // _DEBUG
 
-	Microsoft::WRL::ComPtr<IUnknown> adapter = nullptr;
+	ComPtr<IUnknown> adapter = nullptr;
 
 	ret = listUpAdaptors(m_pDxgiFactory.Get());
 	ThrowIfFailed(ret);
@@ -76,7 +78,7 @@ ID3D12CommandAllocator* Resource::getCommandAllocator()
 
 	auto result = getDevice()->CreateCommandAllocator(
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(&m_pCommandAllocator));
+		IID_PPV_ARGS(m_pCommandAllocator.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(result);
 
 	return m_pCommandAllocator.Get();
@@ -92,7 +94,7 @@ ID3D12GraphicsCommandList* Resource::getCommandList()
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		getCommandAllocator(),
 		nullptr,
-		IID_PPV_ARGS(&m_pCommandList));
+		IID_PPV_ARGS(m_pCommandList.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(result);
 
 	return m_pCommandList.Get();
@@ -111,7 +113,7 @@ ID3D12CommandQueue* Resource::getCommandQueue()
 		cmdQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	}
 
-	auto result = getDevice()->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&m_pCommandQueue));
+	auto result = getDevice()->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(m_pCommandQueue.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(result);
 
 	return m_pCommandQueue.Get();
@@ -136,12 +138,12 @@ ID3D12Resource* Resource::getBackBuffer(UINT index)
 	return buffer.Get();
 }
 
-HRESULT Resource::createDxFactory(IDXGIFactory6** ppDxgiFactory)
+HRESULT Resource::createDxFactory(ComPtr<IDXGIFactory6>* dxgiFactory)
 {
 #ifdef _DEBUG
-	return CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(ppDxgiFactory));
+	return CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(dxgiFactory->ReleaseAndGetAddressOf()));
 #else
-	return CreateDXGIFactory1(IID_PPV_ARGS(ppDxgiFactory));
+	return CreateDXGIFactory1(IID_PPV_ARGS(dxgiFactory->ReleaseAndGetAddressOf()));
 #endif // _DEBUG
 }
 
@@ -149,9 +151,9 @@ HRESULT Resource::listUpAdaptors(IDXGIFactory6* pDxgiFactory)
 {
 	assert(pDxgiFactory != nullptr);
 
-	std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter>> adapters;
+	std::vector<ComPtr<IDXGIAdapter>> adapters;
 
-	Microsoft::WRL::ComPtr<IDXGIAdapter> tmpAdapter = nullptr;
+	ComPtr<IDXGIAdapter> tmpAdapter = nullptr;
 
 	for (int32_t i = 0; pDxgiFactory->EnumAdapters(i, &tmpAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
 	{
@@ -174,7 +176,7 @@ HRESULT Resource::listUpAdaptors(IDXGIFactory6* pDxgiFactory)
 	return S_OK;
 }
 
-HRESULT Resource::createDevice(ID3D12Device** ppDevice, IUnknown* pAdapter)
+HRESULT Resource::createDevice(ComPtr<ID3D12Device>* device, IUnknown* pAdapter)
 {
 	constexpr D3D_FEATURE_LEVEL levels[] = {
 		D3D_FEATURE_LEVEL_12_1,
@@ -187,7 +189,7 @@ HRESULT Resource::createDevice(ID3D12Device** ppDevice, IUnknown* pAdapter)
 
 	for (const auto &lv : levels)
 	{
-		auto ret = D3D12CreateDevice(pAdapter, lv, IID_PPV_ARGS(ppDevice));
+		auto ret = D3D12CreateDevice(pAdapter, lv, IID_PPV_ARGS(device->ReleaseAndGetAddressOf()));
 
 		if (SUCCEEDED(ret))
 		{
@@ -244,7 +246,7 @@ HRESULT Resource::createSwapChain(IDXGISwapChain4** ppSwapChain, IDXGIFactory6* 
 	return result;
 }
 
-HRESULT Resource::createDescriptorHeap(ID3D12DescriptorHeap** ppRtvHeaps, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& backBuffers)
+HRESULT Resource::createDescriptorHeap(ComPtr<ID3D12DescriptorHeap>* rtvHeaps, std::vector<ComPtr<ID3D12Resource>>& backBuffers)
 {
 	backBuffers.resize(kNumOfSwapBuffer, nullptr);
 
@@ -258,7 +260,7 @@ HRESULT Resource::createDescriptorHeap(ID3D12DescriptorHeap** ppRtvHeaps, std::v
 
 	auto result = getDevice()->CreateDescriptorHeap(
 		&heapDesc,
-		IID_PPV_ARGS(ppRtvHeaps));
+		IID_PPV_ARGS(rtvHeaps->ReleaseAndGetAddressOf()));
 	ThrowIfFailed(result);
 
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = { };
@@ -275,7 +277,7 @@ HRESULT Resource::createDescriptorHeap(ID3D12DescriptorHeap** ppRtvHeaps, std::v
 	{
 		result = getSwapChain()->GetBuffer(
 			i,
-			IID_PPV_ARGS(&backBuffers[i]));
+			IID_PPV_ARGS(backBuffers[i].ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
@@ -294,8 +296,8 @@ HRESULT Resource::createDescriptorHeap(ID3D12DescriptorHeap** ppRtvHeaps, std::v
 
 HRESULT Resource::enableDebugLayer()
 {
-	Microsoft::WRL::ComPtr<ID3D12Debug> debugLayer = nullptr;
-	auto result = D3D12GetDebugInterface(IID_PPV_ARGS(&debugLayer));
+	ComPtr<ID3D12Debug> debugLayer = nullptr;
+	auto result = D3D12GetDebugInterface(IID_PPV_ARGS(debugLayer.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(result);
 
 	debugLayer->EnableDebugLayer();

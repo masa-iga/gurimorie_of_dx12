@@ -44,12 +44,12 @@ public:
 private:
 	Resource() = default;
 
-	HRESULT createDxFactory(IDXGIFactory6** ppDxgiFactory);
+	HRESULT createDxFactory(Microsoft::WRL::ComPtr<IDXGIFactory6>* dxgiFactory);
 	HRESULT listUpAdaptors(IDXGIFactory6* pDxgiFactory);
-	HRESULT createDevice(ID3D12Device** ppDevice, IUnknown* pAdapter);
+	HRESULT createDevice(Microsoft::WRL::ComPtr<ID3D12Device>* device, IUnknown* pAdapter);
 	HRESULT createCommandBuffers();
 	HRESULT createSwapChain(IDXGISwapChain4** ppSwapChain, IDXGIFactory6* pDxgiFactory, HWND hwnd);
-	HRESULT createDescriptorHeap(ID3D12DescriptorHeap** ppRtvHeaps, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& backBuffers);
+	HRESULT createDescriptorHeap(Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>* rtvHeaps, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& backBuffers);
 	HRESULT enableDebugLayer();
 
 	static Resource* m_instance;

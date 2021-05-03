@@ -11,6 +11,8 @@
 #include "init.h"
 #include "util.h"
 
+using namespace Microsoft::WRL;
+
 struct PMDHeader
 {
 	float version = 0.0f;
@@ -377,7 +379,7 @@ UINT PmdReader::getDebugIndexNum() const
 	return static_cast<UINT>(s_debugIndices.size());
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> PmdReader::loadTextureFromFile(const std::string& texPath)
+ComPtr<ID3D12Resource> PmdReader::loadTextureFromFile(const std::string& texPath)
 {
 	const auto it = m_resourceTable.find(texPath);
 
@@ -421,7 +423,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> PmdReader::loadTextureFromFile(const std:
 		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	}
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> resource = nullptr;
+	ComPtr<ID3D12Resource> resource = nullptr;
 	{
 		ret = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
@@ -619,8 +621,8 @@ HRESULT PmdReader::createGrayGradiationTexture()
 
 HRESULT PmdReader::createDebugResources()
 {
-	Microsoft::WRL::ComPtr<ID3D12Resource> vertResource = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> ibResource = nullptr;
+	ComPtr<ID3D12Resource> vertResource = nullptr;
+	ComPtr<ID3D12Resource> ibResource = nullptr;
 
 	auto [ret, vbView, ibView] = createResourcesInternal(&vertResource, s_debugVertices, &ibResource, s_debugIndices);
 

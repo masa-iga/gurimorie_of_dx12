@@ -12,6 +12,7 @@
 #pragma comment(lib, "dxguid.lib")
 
 using namespace std;
+using namespace Microsoft::WRL;
 
 enum class Action {
 	kNone,
@@ -159,7 +160,7 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 #ifdef _DEBUG
 	{
 		DebugOutputFormatString("---------------- Live objects report ----------------------\n");
-		Microsoft::WRL::ComPtr<IDXGIDebug1> dxgiDebug = nullptr;
+		ComPtr<IDXGIDebug1> dxgiDebug = nullptr;
 		auto ret = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug));
 		ThrowIfFailed(ret);
 
