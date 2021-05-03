@@ -88,6 +88,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (processKeyInput(msg, &render) == Action::kQuit)
 			{
+				render.waitForEndOfRendering();
 				break;
 			}
 
