@@ -43,6 +43,8 @@ public:
 
 private:
 	Resource() = default;
+	Resource(const Resource&) = delete;
+	void operator=(const Resource&) = delete;
 
 	HRESULT createDxFactory(Microsoft::WRL::ComPtr<IDXGIFactory6>* dxgiFactory);
 	HRESULT listUpAdaptors(IDXGIFactory6* pDxgiFactory);
