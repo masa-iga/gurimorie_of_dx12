@@ -619,8 +619,8 @@ HRESULT PmdReader::createGrayGradiationTexture()
 
 HRESULT PmdReader::createDebugResources()
 {
-	ID3D12Resource* vertResource = nullptr;
-	ID3D12Resource* ibResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> vertResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> ibResource = nullptr;
 
 	auto [ret, vbView, ibView] = createResourcesInternal(&vertResource, s_debugVertices, &ibResource, s_debugIndices);
 
@@ -642,7 +642,7 @@ HRESULT PmdReader::createMaterialResrouces()
 	ThrowIfFalse(m_blackTextureResource != nullptr);
 
 	// create resource (CBV)
-	ID3D12Resource* materialResource = nullptr;
+	//ID3D12Resource* materialResource = nullptr;
 	{
 		D3D12_HEAP_PROPERTIES heapProp = { };
 		{
@@ -672,14 +672,14 @@ HRESULT PmdReader::createMaterialResrouces()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&materialResource));
+			IID_PPV_ARGS(&m_materialResource));
 		ThrowIfFailed(ret);
 	}
 
 	// copy
 	{
 		UINT8* pMapMaterial = nullptr;
-		auto ret = materialResource->Map(0, nullptr, reinterpret_cast<void**>(&pMapMaterial));
+		auto ret = m_materialResource->Map(0, nullptr, reinterpret_cast<void**>(&pMapMaterial));
 		ThrowIfFailed(ret);
 
 		for (const auto& m : m_materials)
@@ -688,7 +688,7 @@ HRESULT PmdReader::createMaterialResrouces()
 			pMapMaterial += materialBufferSize;
 		}
 
-		materialResource->Unmap(0, nullptr);
+		m_materialResource->Unmap(0, nullptr);
 	}
 
 	// create view (CBV + SRV)
@@ -706,7 +706,7 @@ HRESULT PmdReader::createMaterialResrouces()
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = { };
 		{
-			cbvDesc.BufferLocation = materialResource->GetGPUVirtualAddress();
+			cbvDesc.BufferLocation = m_materialResource->GetGPUVirtualAddress();
 			cbvDesc.SizeInBytes = static_cast<UINT>(materialBufferSize);
 		}
 

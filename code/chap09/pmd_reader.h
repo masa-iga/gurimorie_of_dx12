@@ -69,6 +69,7 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_ibResource = nullptr;
 	D3D12_INDEX_BUFFER_VIEW m_ibView = { };
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_materialResource = nullptr;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_toonResources;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_textureResources;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_sphResources;

@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <winerror.h>
 #include <vector>
+#include <wrl.h>
 #include "debug.h"
 
 class Resource
@@ -11,23 +12,23 @@ class Resource
 public:
 	static Resource* instance()
 	{
-		ThrowIfFalse(s_instance != nullptr);
-		return s_instance;
+		ThrowIfFalse(m_instance != nullptr);
+		return m_instance;
 	}
 	static void create()
 	{
-		if (s_instance)
+		if (m_instance)
 			return;
 
-		s_instance = new Resource;
+		m_instance = new Resource;
 	}
 	static void destroy()
 	{
-		if (!s_instance)
+		if (!m_instance)
 			return;
 
-		delete s_instance;
-		s_instance = nullptr;
+		delete m_instance;
+		m_instance = nullptr;
 	}
 
 	HRESULT allocate(HWND hwnd);
@@ -48,8 +49,16 @@ private:
 	HRESULT createDevice(ID3D12Device** ppDevice, IUnknown* pAdapter);
 	HRESULT createCommandBuffers();
 	HRESULT createSwapChain(IDXGISwapChain4** ppSwapChain, IDXGIFactory6* pDxgiFactory, HWND hwnd);
-	HRESULT createDescriptorHeap(ID3D12DescriptorHeap** ppRtvHeaps, std::vector<ID3D12Resource*>& backBuffers);
+	HRESULT createDescriptorHeap(ID3D12DescriptorHeap** ppRtvHeaps, std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& backBuffers);
 	HRESULT enableDebugLayer();
 
-	static Resource* s_instance;
+	static Resource* m_instance;
+	Microsoft::WRL::ComPtr<IDXGIFactory6> m_pDxgiFactory = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Device> m_pDevice = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_pCommandAllocator = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_pCommandList = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_pCommandQueue = nullptr;
+	Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pRtvHeaps = nullptr;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_backBuffers;
 };
