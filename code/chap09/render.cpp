@@ -55,6 +55,9 @@ HRESULT Render::render()
 {
 	updateMatrix();
 
+	// reset command allocator & list
+	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
+	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), m_pipelineState.Get()));
 
 	const UINT bbIdx = Resource::instance()->getSwapChain()->GetCurrentBackBufferIndex();
 
@@ -178,10 +181,6 @@ HRESULT Render::waitForEndOfRendering()
 			ThrowIfFalse(FALSE);
 		}
 	}
-
-	// reset command allocator & list
-	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
-	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), m_pipelineState.Get()));
 
 	return S_OK;
 }
@@ -537,6 +536,9 @@ HRESULT Render::createTextureBuffer2()
 	// reset command allocator & list
 	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
 	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), m_pipelineState.Get()));
+
+	// close it before going into main loop
+	ThrowIfFailed(Resource::instance()->getCommandList()->Close());
 
 	return S_OK;
 }
