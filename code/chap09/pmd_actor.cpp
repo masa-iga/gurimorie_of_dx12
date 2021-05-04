@@ -143,8 +143,8 @@ static std::string getModelPath(PmdActor::Model model);
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
 template<typename T>
 static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
-createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices);
-static HRESULT createBufferResource(ID3D12Resource** ppVertResource, size_t width);
+createResourcesInternal(ComPtr<ID3D12Resource>* vertResource, const std::vector<T>& vertices, ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices);
+static HRESULT createBufferResource(ComPtr<ID3D12Resource>* vertResource, size_t width);
 
 PmdActor::PmdActor()
 {
@@ -152,6 +152,9 @@ PmdActor::PmdActor()
 	ThrowIfFailed(ret);
 
 	ret = createBlackTexture();
+	ThrowIfFailed(ret);
+
+	ret = createGrayGradiationTexture();
 	ThrowIfFailed(ret);
 
 	ret = createDebugResources();
@@ -389,7 +392,9 @@ ComPtr<ID3D12Resource> PmdActor::loadTextureFromFile(const std::string& texPath)
 		WIC_FLAGS_NONE,
 		&metadata,
 		scratchImg);
-	ThrowIfFailed(ret);
+
+	if (FAILED(ret))
+		return nullptr;
 
 	const auto img = scratchImg.GetImage(0, 0, 0);
 
@@ -424,7 +429,7 @@ ComPtr<ID3D12Resource> PmdActor::loadTextureFromFile(const std::string& texPath)
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&resource));
+			IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 
 		ret = resource->WriteToSubresource(
@@ -477,7 +482,7 @@ HRESULT PmdActor::createWhiteTexture()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&m_whiteTextureResource));
+			IID_PPV_ARGS(m_whiteTextureResource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 	}
 
@@ -532,7 +537,7 @@ HRESULT PmdActor::createBlackTexture()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&m_blackTextureResource));
+			IID_PPV_ARGS(m_blackTextureResource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 	}
 
@@ -586,7 +591,7 @@ HRESULT PmdActor::createGrayGradiationTexture()
 		&resourceDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(&m_grayGradiationTextureResource));
+		IID_PPV_ARGS(m_grayGradiationTextureResource.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(ret);
 
 	std::vector<uint32_t> data(width * height);
@@ -667,7 +672,7 @@ HRESULT PmdActor::createMaterialResrouces()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&m_materialResource));
+			IID_PPV_ARGS(m_materialResource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 	}
 
@@ -696,7 +701,7 @@ HRESULT PmdActor::createMaterialResrouces()
 			heapDesc.NodeMask = 0;
 		}
 
-		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_materialDescHeap));
+		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_materialDescHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = { };
@@ -816,25 +821,25 @@ static std::string getTexturePathFromModelAndTexPath(const std::string& modelPat
 
 template<typename T>
 static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
-createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices)
+createResourcesInternal(ComPtr<ID3D12Resource>* vertResource, const std::vector<T>& vertices, ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices)
 {
-	ThrowIfFalse(ppVertResource != nullptr);
-	ThrowIfFalse(ppIbResource != nullptr);
+	ThrowIfFalse(vertResource != nullptr);
+	ThrowIfFalse(ibResource != nullptr);
 
 	D3D12_VERTEX_BUFFER_VIEW vbView = { };
 	{
 		const size_t sizeInBytes = vertices.size() * sizeof(vertices[0]);
 
-		ThrowIfFailed(createBufferResource(ppVertResource, sizeInBytes));
-		ThrowIfFalse((*ppVertResource) != nullptr);
+		ThrowIfFailed(createBufferResource(vertResource, sizeInBytes));
+		ThrowIfFalse((*vertResource) != nullptr);
 		{
-			vbView.BufferLocation = (*ppVertResource)->GetGPUVirtualAddress();
+			vbView.BufferLocation = (*vertResource)->GetGPUVirtualAddress();
 			vbView.SizeInBytes = static_cast<UINT>(sizeInBytes);
 			vbView.StrideInBytes = kPmdVertexSize;
 		}
 
 		T* vertMap = nullptr;
-		auto ret = (*ppVertResource)->Map(
+		auto ret = (*vertResource)->Map(
 			0,
 			nullptr,
 			reinterpret_cast<void**>(&vertMap)
@@ -843,23 +848,23 @@ createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& v
 
 		std::copy(std::begin(vertices), std::end(vertices), vertMap);
 
-		(*ppVertResource)->Unmap(0, nullptr);
+		(*vertResource)->Unmap(0, nullptr);
 	}
 
 	D3D12_INDEX_BUFFER_VIEW ibView = { };
 	{
 		const size_t sizeInBytes = indices.size() * sizeof(indices[0]);
 
-		ThrowIfFailed(createBufferResource(ppIbResource, sizeInBytes));
-		ThrowIfFalse((*ppIbResource) != nullptr);
+		ThrowIfFailed(createBufferResource(ibResource, sizeInBytes));
+		ThrowIfFalse((*ibResource) != nullptr);
 		{
-			ibView.BufferLocation = (*ppIbResource)->GetGPUVirtualAddress();
+			ibView.BufferLocation = (*ibResource)->GetGPUVirtualAddress();
 			ibView.SizeInBytes = static_cast<UINT>(sizeInBytes);
 			ibView.Format = DXGI_FORMAT_R16_UINT;
 		}
 
 		UINT16* ibMap = nullptr;
-		auto ret = (*ppIbResource)->Map(
+		auto ret = (*ibResource)->Map(
 			0,
 			nullptr,
 			reinterpret_cast<void**>(&ibMap));
@@ -867,13 +872,13 @@ createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& v
 
 		std::copy(std::begin(indices), std::end(indices), ibMap);
 
-		(*ppIbResource)->Unmap(0, nullptr);
+		(*ibResource)->Unmap(0, nullptr);
 	}
 
 	return { S_OK, vbView , ibView };
 }
 
-static HRESULT createBufferResource(ID3D12Resource** ppResource, size_t width)
+static HRESULT createBufferResource(ComPtr<ID3D12Resource>* resource, size_t width)
 {
 	{
 		D3D12_HEAP_PROPERTIES heapProp = { };
@@ -904,7 +909,7 @@ static HRESULT createBufferResource(ID3D12Resource** ppResource, size_t width)
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(ppResource)
+			IID_PPV_ARGS(resource->ReleaseAndGetAddressOf())
 		);
 		ThrowIfFailed(ret);
 	}
