@@ -139,6 +139,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 
 const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
 
+static std::string getModelPath(PmdActor::Model model);
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
 template<typename T>
 static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
@@ -157,25 +158,12 @@ PmdActor::PmdActor()
 	ThrowIfFailed(ret);
 }
 
-std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdActor::getInputElementDesc()
+HRESULT PmdActor::loadAsset(Model model)
 {
-	return { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
-}
-
-HRESULT PmdActor::readData()
-{
-	//const std::string strModelPath = "Model/カイト.pmd";
-	//const std::string strModelPath = "Model/鏡音リン.pmd";
-	//const std::string strModelPath = "Model/鏡音レン.pmd";
-	//const std::string strModelPath = "Model/咲音メイコ.pmd";
-	//const std::string strModelPath = "Model/弱音ハク.pmd";
-	//const std::string strModelPath = "Model/巡音ルカ.pmd";
-	const std::string strModelPath = "Model/初音ミク.pmd";
-	//const std::string strModelPath = "Model/初音ミクmetal.pmd";
-	//const std::string strModelPath = "Model/亞北ネル.pmd";
+	const std::string modelPath = getModelPath(model);
 
 	FILE* fp = nullptr;
-	ThrowIfFalse(fopen_s(&fp, strModelPath.c_str(), "rb") == 0);
+	ThrowIfFalse(fopen_s(&fp, modelPath.c_str(), "rb") == 0);
 	{
 		char signature[kNumSignature] = { };
 		ThrowIfFalse(fread(signature, sizeof(signature), 1, fp) == 1);
@@ -294,19 +282,19 @@ HRESULT PmdActor::readData()
 
 				if (!texFileName.empty())
 				{
-					const auto texFilePath = getTexturePathFromModelAndTexPath(strModelPath, texFileName.c_str());
+					const auto texFilePath = getTexturePathFromModelAndTexPath(modelPath, texFileName.c_str());
 					m_textureResources[i] = loadTextureFromFile(texFilePath);
 				}
 
 				if (!sphFileName.empty())
 				{
-					const auto sphFilePath = getTexturePathFromModelAndTexPath(strModelPath, sphFileName.c_str());
+					const auto sphFilePath = getTexturePathFromModelAndTexPath(modelPath, sphFileName.c_str());
 					m_sphResources[i] = loadTextureFromFile(sphFilePath);
 				}
 
 				if (!spaFileName.empty())
 				{
-					const auto spaFilePath = getTexturePathFromModelAndTexPath(strModelPath, spaFileName.c_str());
+					const auto spaFilePath = getTexturePathFromModelAndTexPath(modelPath, spaFileName.c_str());
 					m_spaResources[i] = loadTextureFromFile(spaFilePath);
 				}
 			}
@@ -332,6 +320,11 @@ HRESULT PmdActor::createResources()
 	ThrowIfFailed(ret);
 
 	return S_OK;
+}
+
+std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdActor::getInputElementDesc() const
+{
+	return { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
 }
 
 const D3D12_VERTEX_BUFFER_VIEW* PmdActor::getVbView() const
@@ -788,6 +781,24 @@ HRESULT PmdActor::createMaterialResrouces()
 	}
 
 	return S_OK;
+}
+
+static std::string getModelPath(PmdActor::Model model)
+{
+	switch (model) {
+	case PmdActor::Model::kMiku: return "Model/初音ミク.pmd";
+	case PmdActor::Model::kMikuMetal: return "Model/初音ミクmetal.pmd";
+	case PmdActor::Model::kLuka: return "Model/巡音ルカ.pmd";
+	case PmdActor::Model::kLen: return "Model/鏡音レン.pmd";
+	case PmdActor::Model::kKaito: return "Model/カイト.pmd";
+	case PmdActor::Model::kHaku: return "Model/弱音ハク.pmd";
+	case PmdActor::Model::kRin: return "Model/鏡音リン.pmd";
+	case PmdActor::Model::kMeiko: return "Model/咲音メイコ.pmd";
+	case PmdActor::Model::kNeru: return "Model/亞北ネル.pmd";
+	default: ThrowIfFalse(false); break;
+	}
+
+	return "";
 }
 
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)

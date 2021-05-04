@@ -30,7 +30,7 @@ static void outputDebugMessage(ID3DBlob* errorBlob);
 HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
-	ThrowIfFailed(m_pmdActor.readData());
+	ThrowIfFailed(m_pmdActor.loadAsset(PmdActor::Model::kMiku));
 	ThrowIfFailed(m_pmdActor.createResources());
 	ThrowIfFailed(createDepthBuffer(&m_depthResource, &m_dsvHeap));
 	ThrowIfFailed(loadShaders());

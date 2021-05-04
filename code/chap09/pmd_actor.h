@@ -37,9 +37,11 @@ struct Material
 class PmdActor {
 public:
 	PmdActor();
-	std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> getInputElementDesc();
-	HRESULT readData();
+	enum class Model;
+
+	HRESULT loadAsset(Model model);
 	HRESULT createResources();
+	std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> getInputElementDesc() const;
 	const D3D12_VERTEX_BUFFER_VIEW* getVbView() const;
 	UINT getVertNum() const;
 	const D3D12_INDEX_BUFFER_VIEW* getIbView() const;
@@ -83,3 +85,18 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };
 };
+
+
+enum class PmdActor::Model
+{
+	kMiku,
+	kMikuMetal,
+	kLuka,
+	kLen,
+	kKaito,
+	kHaku,
+	kRin,
+	kMeiko,
+	kNeru,
+};
+
