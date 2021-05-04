@@ -8,7 +8,7 @@
 #include <vector>
 #include <wrl.h>
 #pragma warning(pop)
-#include "pmd_reader.h"
+#include "pmd_actor.h"
 
 struct SceneMatrix
 {
@@ -56,5 +56,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
 
-	PmdReader m_pmdReader;
+	PmdActor m_pmdActor;
 };

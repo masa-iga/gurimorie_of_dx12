@@ -11,7 +11,7 @@
 #include "config.h"
 #include "debug.h"
 #include "init.h"
-#include "pmd_reader.h"
+#include "pmd_actor.h"
 #include "util.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
@@ -30,8 +30,8 @@ static void outputDebugMessage(ID3DBlob* errorBlob);
 HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
-	ThrowIfFailed(m_pmdReader.readData());
-	ThrowIfFailed(m_pmdReader.createResources());
+	ThrowIfFailed(m_pmdActor.readData());
+	ThrowIfFailed(m_pmdActor.createResources());
 	ThrowIfFailed(createDepthBuffer(&m_depthResource, &m_dsvHeap));
 	ThrowIfFailed(loadShaders());
 	ThrowIfFailed(loadImage());
@@ -105,8 +105,8 @@ HRESULT Render::render()
 
 	setViewportScissor();
 	Resource::instance()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, m_pmdReader.getVbView());
-	Resource::instance()->getCommandList()->IASetIndexBuffer(m_pmdReader.getIbView());
+	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, m_pmdActor.getVbView());
+	Resource::instance()->getCommandList()->IASetIndexBuffer(m_pmdActor.getIbView());
 
 	// bind MVP matrix
 	{
@@ -119,14 +119,14 @@ HRESULT Render::render()
 
 	// bind material & draw
 	{
-		auto const materialDescHeap = m_pmdReader.getMaterialDescHeap();
+		auto const materialDescHeap = m_pmdActor.getMaterialDescHeap();
 		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
 
 		const auto cbvSrvIncSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
 		auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
 		UINT indexOffset = 0;
 
-		for (const auto& m : m_pmdReader.getMaterials())
+		for (const auto& m : m_pmdActor.getMaterials())
 		{
 			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
 				1, // bind to b1
@@ -296,7 +296,7 @@ HRESULT Render::createPipelineState()
 		//gpipeDesc.DepthStencilState.StencilWriteMask = 0;
 		//D3D12_DEPTH_STENCILOP_DESC FrontFace;
 		//D3D12_DEPTH_STENCILOP_DESC BackFace;
-		auto [elementDescs, numOfElement] = m_pmdReader.getInputElementDesc();
+		auto [elementDescs, numOfElement] = m_pmdActor.getInputElementDesc();
 		gpipeDesc.InputLayout = {
 			elementDescs,
 			numOfElement

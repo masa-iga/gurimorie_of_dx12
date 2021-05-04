@@ -34,9 +34,9 @@ struct Material
 	AdditionalMaterial additional;
 };
 
-class PmdReader {
+class PmdActor {
 public:
-	PmdReader();
+	PmdActor();
 	std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> getInputElementDesc();
 	HRESULT readData();
 	HRESULT createResources();

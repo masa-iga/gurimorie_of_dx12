@@ -1,4 +1,4 @@
-#include "pmd_reader.h"
+#include "pmd_actor.h"
 #pragma warning(push, 0)
 #include <codeanalysis/warnings.h>
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
@@ -145,7 +145,7 @@ static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
 createResourcesInternal(ID3D12Resource** ppVertResource, const std::vector<T>& vertices, ID3D12Resource** ppIbResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ID3D12Resource** ppVertResource, size_t width);
 
-PmdReader::PmdReader()
+PmdActor::PmdActor()
 {
 	auto ret = createWhiteTexture();
 	ThrowIfFailed(ret);
@@ -157,12 +157,12 @@ PmdReader::PmdReader()
 	ThrowIfFailed(ret);
 }
 
-std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdReader::getInputElementDesc()
+std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdActor::getInputElementDesc()
 {
 	return { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
 }
 
-HRESULT PmdReader::readData()
+HRESULT PmdActor::readData()
 {
 	//const std::string strModelPath = "Model/ƒJƒCƒg.pmd";
 	//const std::string strModelPath = "Model/‹¾‰¹ƒŠƒ“.pmd";
@@ -321,7 +321,7 @@ HRESULT PmdReader::readData()
 	return S_OK;
 }
 
-HRESULT PmdReader::createResources()
+HRESULT PmdActor::createResources()
 {
 	auto [ret, vbView, ibView] = createResourcesInternal(&m_vertResource, m_vertices, &m_ibResource, m_indices);
 	ThrowIfFailed(ret);
@@ -334,52 +334,52 @@ HRESULT PmdReader::createResources()
 	return S_OK;
 }
 
-const D3D12_VERTEX_BUFFER_VIEW* PmdReader::getVbView() const
+const D3D12_VERTEX_BUFFER_VIEW* PmdActor::getVbView() const
 {
 	return &m_vbView;
 }
 
-UINT PmdReader::getVertNum() const
+UINT PmdActor::getVertNum() const
 {
 	return m_vertNum;
 }
 
-const D3D12_INDEX_BUFFER_VIEW* PmdReader::getIbView() const
+const D3D12_INDEX_BUFFER_VIEW* PmdActor::getIbView() const
 {
 	return &m_ibView;
 }
 
-UINT PmdReader::getIndexNum() const
+UINT PmdActor::getIndexNum() const
 {
 	return m_indicesNum;
 }
 
-const std::vector<Material> PmdReader::getMaterials() const
+const std::vector<Material> PmdActor::getMaterials() const
 {
 	return m_materials;
 }
 
-ID3D12DescriptorHeap* PmdReader::getMaterialDescHeap()
+ID3D12DescriptorHeap* PmdActor::getMaterialDescHeap()
 {
 	return m_materialDescHeap.Get();
 }
 
-const D3D12_VERTEX_BUFFER_VIEW* PmdReader::getDebugVbView() const
+const D3D12_VERTEX_BUFFER_VIEW* PmdActor::getDebugVbView() const
 {
 	return &m_debugVbView;
 }
 
-const D3D12_INDEX_BUFFER_VIEW* PmdReader::getDebugIbView() const
+const D3D12_INDEX_BUFFER_VIEW* PmdActor::getDebugIbView() const
 {
 	return &m_debugIbView;
 }
 
-UINT PmdReader::getDebugIndexNum() const
+UINT PmdActor::getDebugIndexNum() const
 {
 	return static_cast<UINT>(s_debugIndices.size());
 }
 
-ComPtr<ID3D12Resource> PmdReader::loadTextureFromFile(const std::string& texPath)
+ComPtr<ID3D12Resource> PmdActor::loadTextureFromFile(const std::string& texPath)
 {
 	const auto it = m_resourceTable.find(texPath);
 
@@ -449,7 +449,7 @@ ComPtr<ID3D12Resource> PmdReader::loadTextureFromFile(const std::string& texPath
 }
 
 
-HRESULT PmdReader::createWhiteTexture()
+HRESULT PmdActor::createWhiteTexture()
 {
 	constexpr uint32_t width = 4;
 	constexpr uint32_t height = 4;
@@ -504,7 +504,7 @@ HRESULT PmdReader::createWhiteTexture()
 	return S_OK;
 }
 
-HRESULT PmdReader::createBlackTexture()
+HRESULT PmdActor::createBlackTexture()
 {
 	constexpr uint32_t width = 4;
 	constexpr uint32_t height = 4;
@@ -559,7 +559,7 @@ HRESULT PmdReader::createBlackTexture()
 	return S_OK;
 }
 
-HRESULT PmdReader::createGrayGradiationTexture()
+HRESULT PmdActor::createGrayGradiationTexture()
 {
 	constexpr UINT64 width = 4;
 	constexpr UINT64 height = 256;
@@ -619,7 +619,7 @@ HRESULT PmdReader::createGrayGradiationTexture()
 	return S_OK;
 }
 
-HRESULT PmdReader::createDebugResources()
+HRESULT PmdActor::createDebugResources()
 {
 	ComPtr<ID3D12Resource> vertResource = nullptr;
 	ComPtr<ID3D12Resource> ibResource = nullptr;
@@ -632,7 +632,7 @@ HRESULT PmdReader::createDebugResources()
 	return S_OK;
 }
 
-HRESULT PmdReader::createMaterialResrouces()
+HRESULT PmdActor::createMaterialResrouces()
 {
 	const auto materialBufferSize = Util::alignmentedSize(sizeof(MaterialForHlsl), 256);
 	const UINT64 materialNum = m_materials.size();
