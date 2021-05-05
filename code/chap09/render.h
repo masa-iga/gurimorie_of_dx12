@@ -21,7 +21,8 @@ struct SceneMatrix
 class Render {
 public:
 	HRESULT init();
-	HRESULT render();
+	HRESULT update();
+	HRESULT draw();
 	HRESULT waitForEndOfRendering();
 	HRESULT swap();
 	void toggleAnimationEnable();

@@ -73,10 +73,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		for (UINT i = 0; ; ++i)
 		{
-			ThrowIfFailed(render.render());
-
+			ThrowIfFailed(render.update());
+			ThrowIfFailed(render.draw());
 			ThrowIfFailed(render.waitForEndOfRendering());
-
 			ThrowIfFailed(render.swap());
 
 			if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))

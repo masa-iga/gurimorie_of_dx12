@@ -52,10 +52,14 @@ HRESULT Render::init()
 	return S_OK;
 }
 
-HRESULT Render::render()
+HRESULT Render::update()
 {
 	updateMatrix();
+	return S_OK;
+}
 
+HRESULT Render::draw()
+{
 	// reset command allocator & list
 	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
 	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), m_pipelineState.Get()));
