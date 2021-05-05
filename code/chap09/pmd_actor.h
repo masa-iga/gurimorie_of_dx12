@@ -36,12 +36,12 @@ struct Material
 
 class PmdActor {
 public:
-	PmdActor();
 	enum class Model;
+	static std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> getInputElementDesc();
+
+	PmdActor();
 
 	HRESULT loadAsset(Model model);
-	HRESULT createResources();
-	std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> getInputElementDesc() const;
 	const D3D12_VERTEX_BUFFER_VIEW* getVbView() const;
 	UINT getVertNum() const;
 	const D3D12_INDEX_BUFFER_VIEW* getIbView() const;
@@ -55,6 +55,7 @@ public:
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> loadTextureFromFile(const std::string& texPath);
+	HRESULT createResources();
 	HRESULT createWhiteTexture();
 	HRESULT createBlackTexture();
 	HRESULT createGrayGradiationTexture();
@@ -85,7 +86,6 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };
 };
-
 
 enum class PmdActor::Model
 {

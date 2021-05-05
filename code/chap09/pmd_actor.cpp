@@ -146,6 +146,11 @@ static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
 createResourcesInternal(ComPtr<ID3D12Resource>* vertResource, const std::vector<T>& vertices, ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ComPtr<ID3D12Resource>* vertResource, size_t width);
 
+std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdActor::getInputElementDesc()
+{
+	return { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
+}
+
 PmdActor::PmdActor()
 {
 	auto ret = createWhiteTexture();
@@ -305,29 +310,13 @@ HRESULT PmdActor::loadAsset(Model model)
 	}
 	ThrowIfFalse(fclose(fp) == 0);
 
+	ThrowIfFailed(createResources());
+
 	DebugOutputFormatString("Vertex num  : %d\n", m_vertNum);
 	DebugOutputFormatString("Index num   : %d\n", m_indicesNum);
 	DebugOutputFormatString("Material num: %zd\n", m_materials.size());
 
 	return S_OK;
-}
-
-HRESULT PmdActor::createResources()
-{
-	auto [ret, vbView, ibView] = createResourcesInternal(&m_vertResource, m_vertices, &m_ibResource, m_indices);
-	ThrowIfFailed(ret);
-	m_vbView = vbView;
-	m_ibView = ibView;
-
-	ret = createMaterialResrouces();
-	ThrowIfFailed(ret);
-
-	return S_OK;
-}
-
-std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdActor::getInputElementDesc() const
-{
-	return { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
 }
 
 const D3D12_VERTEX_BUFFER_VIEW* PmdActor::getVbView() const
@@ -373,6 +362,74 @@ const D3D12_INDEX_BUFFER_VIEW* PmdActor::getDebugIbView() const
 UINT PmdActor::getDebugIndexNum() const
 {
 	return static_cast<UINT>(s_debugIndices.size());
+}
+
+HRESULT PmdActor::createResources()
+{
+	auto [ret, vbView, ibView] = createResourcesInternal(&m_vertResource, m_vertices, &m_ibResource, m_indices);
+	ThrowIfFailed(ret);
+	m_vbView = vbView;
+	m_ibView = ibView;
+
+	ret = createMaterialResrouces();
+	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
+HRESULT PmdActor::createWhiteTexture()
+{
+	constexpr uint32_t width = 4;
+	constexpr uint32_t height = 4;
+	constexpr uint32_t bpp = 4;
+
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = width;
+			resourceDesc.Height = height;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_whiteTextureResource.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(ret);
+	}
+
+	{
+		std::vector<uint8_t> data(width * height * bpp);
+		std::fill(std::begin(data), std::end(data), 0xff);
+
+		auto ret = m_whiteTextureResource->WriteToSubresource(
+			0,
+			nullptr,
+			data.data(),
+			width * bpp,
+			static_cast<UINT>(data.size()));
+		ThrowIfFailed(ret);
+	}
+
+	return S_OK;
 }
 
 ComPtr<ID3D12Resource> PmdActor::loadTextureFromFile(const std::string& texPath)
@@ -444,62 +501,6 @@ ComPtr<ID3D12Resource> PmdActor::loadTextureFromFile(const std::string& texPath)
 	m_resourceTable[texPath] = resource.Get();
 
 	return resource;
-}
-
-
-HRESULT PmdActor::createWhiteTexture()
-{
-	constexpr uint32_t width = 4;
-	constexpr uint32_t height = 4;
-	constexpr uint32_t bpp = 4;
-
-	{
-		D3D12_HEAP_PROPERTIES heapProp = { };
-		{
-			heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
-			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
-			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
-			heapProp.CreationNodeMask = 0;
-			heapProp.VisibleNodeMask = 0;
-		}
-		D3D12_RESOURCE_DESC resourceDesc = { };
-		{
-			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-			resourceDesc.Alignment = 0;
-			resourceDesc.Width = width;
-			resourceDesc.Height = height;
-			resourceDesc.DepthOrArraySize = 1;
-			resourceDesc.MipLevels = 1;
-			resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			resourceDesc.SampleDesc = { 1, 0 };
-			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		}
-
-		auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_whiteTextureResource.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(ret);
-	}
-
-	{
-		std::vector<uint8_t> data(width * height * bpp);
-		std::fill(std::begin(data), std::end(data), 0xff);
-
-		auto ret = m_whiteTextureResource->WriteToSubresource(
-			0,
-			nullptr,
-			data.data(),
-			width * bpp,
-			static_cast<UINT>(data.size()));
-		ThrowIfFailed(ret);
-	}
-
-	return S_OK;
 }
 
 HRESULT PmdActor::createBlackTexture()

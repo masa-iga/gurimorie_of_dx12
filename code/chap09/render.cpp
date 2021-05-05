@@ -31,7 +31,6 @@ HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
 	ThrowIfFailed(m_pmdActor.loadAsset(PmdActor::Model::kMiku));
-	ThrowIfFailed(m_pmdActor.createResources());
 	ThrowIfFailed(createDepthBuffer(&m_depthResource, &m_dsvHeap));
 	ThrowIfFailed(loadShaders());
 	ThrowIfFailed(loadImage());
@@ -296,7 +295,7 @@ HRESULT Render::createPipelineState()
 		//gpipeDesc.DepthStencilState.StencilWriteMask = 0;
 		//D3D12_DEPTH_STENCILOP_DESC FrontFace;
 		//D3D12_DEPTH_STENCILOP_DESC BackFace;
-		auto [elementDescs, numOfElement] = m_pmdActor.getInputElementDesc();
+		auto [elementDescs, numOfElement] = PmdActor::getInputElementDesc();
 		gpipeDesc.InputLayout = {
 			elementDescs,
 			numOfElement
