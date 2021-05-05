@@ -344,7 +344,7 @@ const std::vector<Material> PmdActor::getMaterials() const
 	return m_materials;
 }
 
-ID3D12DescriptorHeap* PmdActor::getMaterialDescHeap()
+ID3D12DescriptorHeap* PmdActor::getMaterialDescHeap() const
 {
 	return m_materialDescHeap.Get();
 }

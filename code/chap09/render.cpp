@@ -30,7 +30,8 @@ static void outputDebugMessage(ID3DBlob* errorBlob);
 HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
-	ThrowIfFailed(m_pmdActor.loadAsset(PmdActor::Model::kMiku));
+	m_pmdActors.resize(1);
+	ThrowIfFailed(m_pmdActors[0].loadAsset(PmdActor::Model::kMiku));
 	ThrowIfFailed(createDepthBuffer(&m_depthResource, &m_dsvHeap));
 	ThrowIfFailed(loadShaders());
 	ThrowIfFailed(loadImage());
@@ -100,47 +101,52 @@ HRESULT Render::draw()
 		0,
         nullptr);
 
-	ThrowIfFalse(m_pipelineState != nullptr);
-	Resource::instance()->getCommandList()->SetPipelineState(m_pipelineState.Get());
 
-	ThrowIfFalse(m_rootSignature != nullptr);
-	Resource::instance()->getCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
-
-	setViewportScissor();
-	Resource::instance()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, m_pmdActor.getVbView());
-	Resource::instance()->getCommandList()->IASetIndexBuffer(m_pmdActor.getIbView());
-
-	// bind MVP matrix
+	for (const auto& actor: m_pmdActors)
 	{
-		ThrowIfFalse(m_basicDescHeap != nullptr);
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_basicDescHeap.GetAddressOf());
-		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
-			0, // bind to b0
-			m_basicDescHeap->GetGPUDescriptorHandleForHeapStart());
-	}
+		ThrowIfFalse(m_pipelineState != nullptr);
+		Resource::instance()->getCommandList()->SetPipelineState(m_pipelineState.Get());
 
-	// bind material & draw
-	{
-		auto const materialDescHeap = m_pmdActor.getMaterialDescHeap();
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
+		ThrowIfFalse(m_rootSignature != nullptr);
+		Resource::instance()->getCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
 
-		const auto cbvSrvIncSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
-		auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
-		UINT indexOffset = 0;
+		setViewportScissor();
+		Resource::instance()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, actor.getVbView());
+		Resource::instance()->getCommandList()->IASetIndexBuffer(actor.getIbView());
 
-		for (const auto& m : m_pmdActor.getMaterials())
+		// bind MVP matrix
 		{
+			ThrowIfFalse(m_basicDescHeap != nullptr);
+			Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_basicDescHeap.GetAddressOf());
 			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
-				1, // bind to b1
-				materialH);
+				0, // bind to b0
+				m_basicDescHeap->GetGPUDescriptorHandleForHeapStart());
+		}
 
-			Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
+		// bind material & draw
+		{
+			auto const materialDescHeap = actor.getMaterialDescHeap();
+			Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
 
-			materialH.ptr += cbvSrvIncSize;
-			indexOffset += m.indicesNum;
+			const auto cbvSrvIncSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
+			auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
+			UINT indexOffset = 0;
+
+			for (const auto& m : actor.getMaterials())
+			{
+				Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+					1, // bind to b1
+					materialH);
+
+				Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
+
+				materialH.ptr += cbvSrvIncSize;
+				indexOffset += m.indicesNum;
+			}
 		}
 	}
+
 
 	// resource barrier
 	{

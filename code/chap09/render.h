@@ -57,5 +57,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
 
-	PmdActor m_pmdActor;
+	std::vector<PmdActor> m_pmdActors;
 };
