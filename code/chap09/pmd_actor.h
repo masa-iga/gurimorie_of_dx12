@@ -37,7 +37,11 @@ struct Material
 class PmdActor {
 public:
 	enum class Model;
+	static void release();
 	static std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> getInputElementDesc();
+	static ID3D12PipelineState* getPipelineState();
+	static ID3D12RootSignature* getRootSignature();
+	static D3D12_PRIMITIVE_TOPOLOGY getPrimitiveTopology();
 
 	PmdActor();
 
@@ -54,6 +58,9 @@ public:
 	UINT getDebugIndexNum() const;
 
 private:
+	static HRESULT loadShaders();
+	static HRESULT createRootSignature(Microsoft::WRL::ComPtr<ID3D12RootSignature>* rootSignature);
+	static HRESULT createPipelineState();
 	Microsoft::WRL::ComPtr<ID3D12Resource> loadTextureFromFile(const std::string& texPath);
 	HRESULT createResources();
 	HRESULT createWhiteTexture();
@@ -68,6 +75,10 @@ private:
 	UINT m_vertNum = 0;
 	UINT m_indicesNum = 0;
 
+	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
+	static Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+	static Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob;
+	static Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertResource = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_ibResource = nullptr;

@@ -29,9 +29,7 @@ public:
 	void toggleAnimationReverse();
 
 private:
-	HRESULT loadShaders();
 	HRESULT loadImage();
-	HRESULT createPipelineState();
 	HRESULT createTextureBuffer();
 	HRESULT createTextureBuffer2();
 	HRESULT createSceneMatrixBuffer();
@@ -41,10 +39,6 @@ private:
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
 
-	Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_basicDescHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_texResource = nullptr;
 	DirectX::TexMetadata m_metadata = { };

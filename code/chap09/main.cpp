@@ -7,6 +7,7 @@
 #include "init.h"
 #include "debug.h"
 #include "config.h"
+#include "pmd_actor.h"
 #include "render.h"
 
 #pragma comment(lib, "dxguid.lib")
@@ -153,8 +154,12 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 		}
 	}
 
-	ThrowIfFailed(Resource::instance()->release());
-	Resource::instance()->destroy();
+	// release resource
+	{
+		PmdActor::release();
+		ThrowIfFailed(Resource::instance()->release());
+		Resource::instance()->destroy();
+	}
 
 #ifdef _DEBUG
 	{
