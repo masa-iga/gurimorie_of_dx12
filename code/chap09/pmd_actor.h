@@ -47,15 +47,12 @@ public:
 
 	HRESULT loadAsset(Model model);
 	const D3D12_VERTEX_BUFFER_VIEW* getVbView() const;
-	UINT getVertNum() const;
 	const D3D12_INDEX_BUFFER_VIEW* getIbView() const;
-	UINT getIndexNum() const;
 	const std::vector<Material> getMaterials() const;
 	ID3D12DescriptorHeap* getMaterialDescHeap() const;
 
 	const D3D12_VERTEX_BUFFER_VIEW* getDebugVbView() const;
 	const D3D12_INDEX_BUFFER_VIEW* getDebugIbView() const;
-	UINT getDebugIndexNum() const;
 
 private:
 	static HRESULT loadShaders();

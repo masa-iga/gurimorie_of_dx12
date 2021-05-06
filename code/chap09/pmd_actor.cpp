@@ -364,19 +364,9 @@ const D3D12_VERTEX_BUFFER_VIEW* PmdActor::getVbView() const
 	return &m_vbView;
 }
 
-UINT PmdActor::getVertNum() const
-{
-	return m_vertNum;
-}
-
 const D3D12_INDEX_BUFFER_VIEW* PmdActor::getIbView() const
 {
 	return &m_ibView;
-}
-
-UINT PmdActor::getIndexNum() const
-{
-	return m_indicesNum;
 }
 
 const std::vector<Material> PmdActor::getMaterials() const
@@ -397,11 +387,6 @@ const D3D12_VERTEX_BUFFER_VIEW* PmdActor::getDebugVbView() const
 const D3D12_INDEX_BUFFER_VIEW* PmdActor::getDebugIbView() const
 {
 	return &m_debugIbView;
-}
-
-UINT PmdActor::getDebugIndexNum() const
-{
-	return static_cast<UINT>(s_debugIndices.size());
 }
 
 HRESULT PmdActor::createResources()
