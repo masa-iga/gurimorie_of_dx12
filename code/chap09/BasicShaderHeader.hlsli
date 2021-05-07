@@ -10,13 +10,17 @@ struct Output
 
 cbuffer SceneBuffer : register(b0)
 {
-	matrix world;
 	matrix view;
 	matrix proj;
 	float3 eye;
 }
 
-cbuffer Material : register(b1)
+cbuffer WorldMatrix: register(b1)
+{
+	matrix world;
+}
+
+cbuffer Material : register(b2)
 {
 	float4 diffuse;
 	float4 specular;

@@ -12,7 +12,6 @@
 
 struct SceneMatrix
 {
-	DirectX::XMMATRIX world;
 	DirectX::XMMATRIX view;
 	DirectX::XMMATRIX proj;
 	DirectX::XMFLOAT3 eye;
@@ -47,6 +46,10 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_mvpMatrixResource = nullptr;
 	SceneMatrix* m_sceneMatrix = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_worldMatrixDescHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_worldMatrixResource = nullptr;
+	DirectX::XMMATRIX* m_world = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;

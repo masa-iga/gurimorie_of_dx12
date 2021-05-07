@@ -509,43 +509,52 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 	ThrowIfFalse(rootSignature != nullptr);
 	ThrowIfFalse(rootSignature->Get() == nullptr);
 
-	// need to input vertex
-	D3D12_DESCRIPTOR_RANGE descTblRange[3] = { };
+	D3D12_DESCRIPTOR_RANGE descTblRange[4] = { };
 	{
-		// MVP matrix
+		// MVP matrix (except for world)
 		descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 		descTblRange[0].NumDescriptors = 1;
 		descTblRange[0].BaseShaderRegister = 0; // b0
 		descTblRange[0].RegisterSpace = 0;
 		descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		// material
+		// world matrix
 		descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 		descTblRange[1].NumDescriptors = 1;
 		descTblRange[1].BaseShaderRegister = 1; // b1
 		descTblRange[1].RegisterSpace = 0;
 		descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		// texture
-		descTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		descTblRange[2].NumDescriptors = 4;
-		descTblRange[2].BaseShaderRegister = 0; // t0, t1, t2, t3
+		// material
+		descTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		descTblRange[2].NumDescriptors = 1;
+		descTblRange[2].BaseShaderRegister = 2; // b2
 		descTblRange[2].RegisterSpace = 0;
 		descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		// texture
+		descTblRange[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		descTblRange[3].NumDescriptors = 4;
+		descTblRange[3].BaseShaderRegister = 0; // t0, t1, t2, t3
+		descTblRange[3].RegisterSpace = 0;
+		descTblRange[3].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 	}
 
 	// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
-	D3D12_ROOT_PARAMETER rootParam[2] = { };
+	D3D12_ROOT_PARAMETER rootParam[3] = { };
 	{
-
-		// MVP matrix
+		// MVP matrix (except for world)
 		rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
 		rootParam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
 		rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		// material & texture
+		// world matrix
 		rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParam[1].DescriptorTable.NumDescriptorRanges = 2;
+		rootParam[1].DescriptorTable.NumDescriptorRanges = 1;
 		rootParam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
-		rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		// material & texture
+		rootParam[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParam[2].DescriptorTable.NumDescriptorRanges = 2;
+		rootParam[2].DescriptorTable.pDescriptorRanges = &descTblRange[2];
+		rootParam[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	}
 
 	D3D12_STATIC_SAMPLER_DESC samplerDesc[2] = { };
@@ -581,7 +590,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
-		rootSignatureDesc.NumParameters = 2;
+		rootSignatureDesc.NumParameters = 3;
 		rootSignatureDesc.pParameters = &rootParam[0];
 		rootSignatureDesc.NumStaticSamplers = 2;
 		rootSignatureDesc.pStaticSamplers = &samplerDesc[0];
@@ -954,7 +963,9 @@ HRESULT PmdActor::createMaterialResrouces()
 			heapDesc.NodeMask = 0;
 		}
 
-		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_materialDescHeap.ReleaseAndGetAddressOf()));
+		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_materialDescHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = { };

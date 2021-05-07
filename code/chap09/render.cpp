@@ -109,13 +109,21 @@ HRESULT Render::draw()
 		Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, actor.getVbView());
 		Resource::instance()->getCommandList()->IASetIndexBuffer(actor.getIbView());
 
-		// bind MVP matrix
+		// bind MVP matrix (except for world)
 		{
 			ThrowIfFalse(m_basicDescHeap != nullptr);
 			Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_basicDescHeap.GetAddressOf());
 			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
 				0, // bind to b0
 				m_basicDescHeap->GetGPUDescriptorHandleForHeapStart());
+		}
+
+		// bind world matrix
+		{
+			Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_worldMatrixDescHeap.GetAddressOf());
+			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+				1, // bind to b1
+				m_worldMatrixDescHeap->GetGPUDescriptorHandleForHeapStart());
 		}
 
 		// bind material & draw
@@ -130,7 +138,7 @@ HRESULT Render::draw()
 			for (const auto& m : actor.getMaterials())
 			{
 				Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
-					1, // bind to b1
+					2, // bind to b2
 					materialH);
 
 				Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
@@ -495,6 +503,49 @@ HRESULT Render::createSceneMatrixBuffer()
 		ThrowIfFailed(result);
 	}
 
+	{
+		const size_t w = Util::alignmentedSize(sizeof(DirectX::XMMATRIX), 256);
+
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = w;
+			resourceDesc.Height = 1;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+			resourceDesc.SampleDesc = { 1 , 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_worldMatrixResource.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	{
+		auto result = m_worldMatrixResource.Get()->Map(
+			0,
+			nullptr,
+			reinterpret_cast<void**>(&m_world));
+		ThrowIfFailed(result);
+	}
+
 	return S_OK;
 }
 
@@ -517,8 +568,8 @@ HRESULT Render::createViews()
 	}
 
 	// create a shader resource view on the heap
-	auto basicHeapHandle = m_basicDescHeap->GetCPUDescriptorHandleForHeapStart();
 	{
+		auto basicHeapHandle = m_basicDescHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_CONSTANT_BUFFER_VIEW_DESC bvDesc = { };
 		{
 			bvDesc.BufferLocation = m_mvpMatrixResource->GetGPUVirtualAddress();
@@ -528,6 +579,34 @@ HRESULT Render::createViews()
 			&bvDesc,
 			basicHeapHandle
 		);
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_worldMatrixDescHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(ret);
+	}
+
+	{
+		D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = { };
+		{
+			viewDesc.BufferLocation = m_worldMatrixResource->GetGPUVirtualAddress();
+			viewDesc.SizeInBytes = static_cast<UINT>(m_worldMatrixResource->GetDesc().Width);
+		}
+		auto handle = m_worldMatrixDescHeap->GetCPUDescriptorHandleForHeapStart();
+
+		Resource::instance()->getDevice()->CreateConstantBufferView(
+			&viewDesc,
+			handle);
 	}
 
 	return S_OK;
@@ -558,16 +637,16 @@ HRESULT Render::updateMatrix()
 	);
 
 #if DISABLE_MATRIX
-	m_sceneMatrix->world = XMMatrixIdentity();
 	m_sceneMatrix->view = XMMatrixIdentity();
 	m_sceneMatrix->proj = XMMatrixIdentity();
 	m_sceneMatrix->eye = XMFLOAT3(0.0f, 0.0f, 0.0f);
 #else
-	m_sceneMatrix->world = worldMat;
 	m_sceneMatrix->view = viewMat;
 	m_sceneMatrix->proj = projMat;
 	m_sceneMatrix->eye = eye;
 #endif // DISABLE_MATRIX
+
+	*m_world = worldMat;
 
 	if (!m_bAnimationEnabled)
 		return S_OK;
