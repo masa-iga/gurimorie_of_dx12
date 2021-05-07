@@ -359,6 +359,22 @@ HRESULT PmdActor::loadAsset(Model model)
 	return S_OK;
 }
 
+void PmdActor::update(bool animationEnabled, bool animationReversed)
+{
+	static float angle = 0.0f;
+	const auto worldMat = DirectX::XMMatrixRotationY(angle);
+
+	*m_worldMatrix = worldMat;
+
+	if (!animationEnabled)
+		return;
+
+	if (!animationReversed)
+		angle += 0.02f;
+	else
+		angle -= 0.02f;
+}
+
 const D3D12_VERTEX_BUFFER_VIEW* PmdActor::getVbView() const
 {
 	return &m_vbView;
@@ -372,6 +388,11 @@ const D3D12_INDEX_BUFFER_VIEW* PmdActor::getIbView() const
 const std::vector<Material> PmdActor::getMaterials() const
 {
 	return m_materials;
+}
+
+ID3D12DescriptorHeap* PmdActor::getWorldMatrixDescHeap() const
+{
+	return m_worldMatrixDescHeap.Get();
 }
 
 ID3D12DescriptorHeap* PmdActor::getMaterialDescHeap() const
@@ -395,6 +416,9 @@ HRESULT PmdActor::createResources()
 	ThrowIfFailed(ret);
 	m_vbView = vbView;
 	m_ibView = ibView;
+
+	ret = createWorldMatrixResource();
+	ThrowIfFailed(ret);
 
 	ret = createMaterialResrouces();
 	ThrowIfFailed(ret);
@@ -888,6 +912,82 @@ HRESULT PmdActor::createDebugResources()
 
 	m_debugVbView = vbView;
 	m_debugIbView = ibView;
+
+	return S_OK;
+}
+
+HRESULT PmdActor::createWorldMatrixResource()
+{
+	{
+		const size_t w = Util::alignmentedSize(sizeof(DirectX::XMMATRIX), 256);
+
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = w;
+			resourceDesc.Height = 1;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+			resourceDesc.SampleDesc = { 1 , 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_worldMatrixResource.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	{
+		auto result = m_worldMatrixResource.Get()->Map(
+			0,
+			nullptr,
+			reinterpret_cast<void**>(&m_worldMatrix));
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_worldMatrixDescHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(ret);
+	}
+
+	{
+		D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = { };
+		{
+			viewDesc.BufferLocation = m_worldMatrixResource->GetGPUVirtualAddress();
+			viewDesc.SizeInBytes = static_cast<UINT>(m_worldMatrixResource->GetDesc().Width);
+		}
+		auto handle = m_worldMatrixDescHeap->GetCPUDescriptorHandleForHeapStart();
+
+		Resource::instance()->getDevice()->CreateConstantBufferView(
+			&viewDesc,
+			handle);
+	}
 
 	return S_OK;
 }

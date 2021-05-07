@@ -44,11 +44,12 @@ public:
 	static D3D12_PRIMITIVE_TOPOLOGY getPrimitiveTopology();
 
 	PmdActor();
-
 	HRESULT loadAsset(Model model);
+	void update(bool animationEnabled, bool animationReversed);
 	const D3D12_VERTEX_BUFFER_VIEW* getVbView() const;
 	const D3D12_INDEX_BUFFER_VIEW* getIbView() const;
 	const std::vector<Material> getMaterials() const;
+	ID3D12DescriptorHeap* getWorldMatrixDescHeap() const;
 	ID3D12DescriptorHeap* getMaterialDescHeap() const;
 
 	const D3D12_VERTEX_BUFFER_VIEW* getDebugVbView() const;
@@ -58,24 +59,26 @@ private:
 	static HRESULT loadShaders();
 	static HRESULT createRootSignature(Microsoft::WRL::ComPtr<ID3D12RootSignature>* rootSignature);
 	static HRESULT createPipelineState();
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> loadTextureFromFile(const std::string& texPath);
 	HRESULT createResources();
 	HRESULT createWhiteTexture();
 	HRESULT createBlackTexture();
 	HRESULT createGrayGradiationTexture();
 	HRESULT createDebugResources();
+	HRESULT createWorldMatrixResource();
 	HRESULT createMaterialResrouces();
+
+	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
+	static Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+	static Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob;
+	static Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob;
 
 	std::vector<UINT8> m_vertices;
 	std::vector<UINT16> m_indices;
 	std::vector<Material> m_materials;
 	UINT m_vertNum = 0;
 	UINT m_indicesNum = 0;
-
-	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
-	static Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
-	static Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob;
-	static Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertResource = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_ibResource = nullptr;
@@ -90,6 +93,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_blackTextureResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_grayGradiationTextureResource = nullptr;
 	std::map<std::string, ID3D12Resource*> m_resourceTable;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_worldMatrixDescHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_worldMatrixResource = nullptr;
+	DirectX::XMMATRIX *m_worldMatrix = nullptr; // needs to be aligned 16 bytes
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };

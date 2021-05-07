@@ -49,7 +49,11 @@ HRESULT Render::init()
 
 HRESULT Render::update()
 {
-	updateMatrix();
+	updateMvpMatrix();
+
+	for (auto& actor : m_pmdActors)
+		actor.update(m_bAnimationEnabled, m_bAnimationReversed);
+
 	return S_OK;
 }
 
@@ -120,10 +124,11 @@ HRESULT Render::draw()
 
 		// bind world matrix
 		{
-			Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_worldMatrixDescHeap.GetAddressOf());
+			auto const descHeap = actor.getWorldMatrixDescHeap();
+			Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &descHeap);
 			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
 				1, // bind to b1
-				m_worldMatrixDescHeap->GetGPUDescriptorHandleForHeapStart());
+				descHeap->GetGPUDescriptorHandleForHeapStart());
 		}
 
 		// bind material & draw
@@ -503,49 +508,6 @@ HRESULT Render::createSceneMatrixBuffer()
 		ThrowIfFailed(result);
 	}
 
-	{
-		const size_t w = Util::alignmentedSize(sizeof(DirectX::XMMATRIX), 256);
-
-		D3D12_HEAP_PROPERTIES heapProp = { };
-		{
-			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
-			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			heapProp.CreationNodeMask = 0;
-			heapProp.VisibleNodeMask = 0;
-		}
-		D3D12_RESOURCE_DESC resourceDesc = { };
-		{
-			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-			resourceDesc.Alignment = 0;
-			resourceDesc.Width = w;
-			resourceDesc.Height = 1;
-			resourceDesc.DepthOrArraySize = 1;
-			resourceDesc.MipLevels = 1;
-			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-			resourceDesc.SampleDesc = { 1 , 0 };
-			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		}
-
-		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_worldMatrixResource.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
-	}
-
-	{
-		auto result = m_worldMatrixResource.Get()->Map(
-			0,
-			nullptr,
-			reinterpret_cast<void**>(&m_world));
-		ThrowIfFailed(result);
-	}
-
 	return S_OK;
 }
 
@@ -581,55 +543,24 @@ HRESULT Render::createViews()
 		);
 	}
 
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
-		{
-			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = 1;
-			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-			heapDesc.NodeMask = 0;
-		}
-
-		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
-			&heapDesc,
-			IID_PPV_ARGS(m_worldMatrixDescHeap.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(ret);
-	}
-
-	{
-		D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = { };
-		{
-			viewDesc.BufferLocation = m_worldMatrixResource->GetGPUVirtualAddress();
-			viewDesc.SizeInBytes = static_cast<UINT>(m_worldMatrixResource->GetDesc().Width);
-		}
-		auto handle = m_worldMatrixDescHeap->GetCPUDescriptorHandleForHeapStart();
-
-		Resource::instance()->getDevice()->CreateConstantBufferView(
-			&viewDesc,
-			handle);
-	}
-
 	return S_OK;
 }
 
-HRESULT Render::updateMatrix()
+HRESULT Render::updateMvpMatrix()
 {
 	using namespace DirectX;
-
-	static float angle = 0.0f;
-	const auto worldMat = DirectX::XMMatrixRotationY(angle);
 
 	constexpr XMFLOAT3 eye(0, 15, -15);
 	constexpr XMFLOAT3 target(0, 15, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
 
 	const auto viewMat = XMMatrixLookAtLH(
-		DirectX::XMLoadFloat3(&eye),
-		DirectX::XMLoadFloat3(&target),
-		DirectX::XMLoadFloat3(&up)
+		XMLoadFloat3(&eye),
+		XMLoadFloat3(&target),
+		XMLoadFloat3(&up)
 	);
 
-	auto projMat = DirectX::XMMatrixPerspectiveFovLH(
+	auto projMat = XMMatrixPerspectiveFovLH(
 		XM_PIDIV2,
 		static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
 		1.0f,
@@ -645,16 +576,6 @@ HRESULT Render::updateMatrix()
 	m_sceneMatrix->proj = projMat;
 	m_sceneMatrix->eye = eye;
 #endif // DISABLE_MATRIX
-
-	*m_world = worldMat;
-
-	if (!m_bAnimationEnabled)
-		return S_OK;
-
-	if (!m_bAnimationReversed)
-		angle += 0.02f;
-	else
-		angle -= 0.02f;
 
 	return S_OK;
 }
