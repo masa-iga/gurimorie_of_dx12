@@ -46,7 +46,7 @@ public:
 	PmdActor();
 	HRESULT loadAsset(Model model);
 	void update(bool animationEnabled, bool animationReversed);
-	HRESULT render(ID3D12DescriptorHeap* matrixDescHeap) const;
+	HRESULT render(ID3D12DescriptorHeap* sceneDescHeap) const;
 
 private:
 	static HRESULT loadShaders();

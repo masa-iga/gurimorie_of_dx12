@@ -101,7 +101,7 @@ HRESULT Render::render()
 	// render
 	for (const auto& actor : m_pmdActors)
 	{
-		actor.render(m_basicDescHeap.Get());
+		actor.render(m_sceneDescHeap.Get());
 	}
 
 	// resource barrier
@@ -443,13 +443,13 @@ HRESULT Render::createSceneMatrixBuffer()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(m_mvpMatrixResource.ReleaseAndGetAddressOf())
+			IID_PPV_ARGS(m_sceneMatrixResource.ReleaseAndGetAddressOf())
 		);
 		ThrowIfFailed(result);
 	}
 
 	{
-		auto result = m_mvpMatrixResource->Map(
+		auto result = m_sceneMatrixResource->Map(
 			0,
 			nullptr,
 			reinterpret_cast<void**>(&m_sceneMatrix)
@@ -474,17 +474,17 @@ HRESULT Render::createViews()
 
 		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&descHeapDesc,
-			IID_PPV_ARGS(m_basicDescHeap.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_sceneDescHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 	}
 
 	// create a shader resource view on the heap
 	{
-		auto basicHeapHandle = m_basicDescHeap->GetCPUDescriptorHandleForHeapStart();
+		auto basicHeapHandle = m_sceneDescHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_CONSTANT_BUFFER_VIEW_DESC bvDesc = { };
 		{
-			bvDesc.BufferLocation = m_mvpMatrixResource->GetGPUVirtualAddress();
-			bvDesc.SizeInBytes = static_cast<UINT>(m_mvpMatrixResource->GetDesc().Width);
+			bvDesc.BufferLocation = m_sceneMatrixResource->GetGPUVirtualAddress();
+			bvDesc.SizeInBytes = static_cast<UINT>(m_sceneMatrixResource->GetDesc().Width);
 		}
 		Resource::instance()->getDevice()->CreateConstantBufferView(
 			&bvDesc,

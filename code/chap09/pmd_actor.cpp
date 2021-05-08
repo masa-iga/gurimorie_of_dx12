@@ -377,7 +377,7 @@ void PmdActor::update(bool animationEnabled, bool animationReversed)
 		angle -= 0.02f;
 }
 
-HRESULT PmdActor::render(ID3D12DescriptorHeap* matrixDescHeap) const
+HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
 {
 	ThrowIfFalse(getPipelineState() != nullptr);
 	Resource::instance()->getCommandList()->SetPipelineState(getPipelineState());
@@ -390,13 +390,13 @@ HRESULT PmdActor::render(ID3D12DescriptorHeap* matrixDescHeap) const
 	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
 	Resource::instance()->getCommandList()->IASetIndexBuffer(&m_ibView);
 
-	// bind to b0: MVP matrix (except for world)
+	// bind to b0: view & proj matrix
 	{
-		ThrowIfFalse(matrixDescHeap != nullptr);
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &matrixDescHeap);
+		ThrowIfFalse(sceneDescHeap != nullptr);
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &sceneDescHeap);
 		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
 			0, // b0
-			matrixDescHeap->GetGPUDescriptorHandleForHeapStart());
+			sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	// bind to b1: world matrix
@@ -557,7 +557,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 
 	D3D12_DESCRIPTOR_RANGE descTblRange[4] = { };
 	{
-		// MVP matrix (except for world)
+		// view & proj matrix
 		descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 		descTblRange[0].NumDescriptors = 1;
 		descTblRange[0].BaseShaderRegister = 0; // b0
@@ -586,7 +586,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 	// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
 	D3D12_ROOT_PARAMETER rootParam[3] = { };
 	{
-		// MVP matrix (except for world)
+		// view & proj matrix
 		rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
 		rootParam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];

@@ -43,8 +43,8 @@ private:
 	DirectX::ScratchImage m_scratchImage = { };
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthResource = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_basicDescHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_mvpMatrixResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_sceneDescHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneMatrixResource = nullptr;
 	SceneMatrix* m_sceneMatrix = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
