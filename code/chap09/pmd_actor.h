@@ -46,14 +46,7 @@ public:
 	PmdActor();
 	HRESULT loadAsset(Model model);
 	void update(bool animationEnabled, bool animationReversed);
-	const D3D12_VERTEX_BUFFER_VIEW* getVbView() const;
-	const D3D12_INDEX_BUFFER_VIEW* getIbView() const;
-	const std::vector<Material> getMaterials() const;
-	ID3D12DescriptorHeap* getWorldMatrixDescHeap() const;
-	ID3D12DescriptorHeap* getMaterialDescHeap() const;
-
-	const D3D12_VERTEX_BUFFER_VIEW* getDebugVbView() const;
-	const D3D12_INDEX_BUFFER_VIEW* getDebugIbView() const;
+	HRESULT render(ID3D12DescriptorHeap* matrixDescHeap) const;
 
 private:
 	static HRESULT loadShaders();

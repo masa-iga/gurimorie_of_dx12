@@ -21,7 +21,7 @@ class Render {
 public:
 	HRESULT init();
 	HRESULT update();
-	HRESULT draw();
+	HRESULT render();
 	HRESULT waitForEndOfRendering();
 	HRESULT swap();
 	void toggleAnimationEnable();

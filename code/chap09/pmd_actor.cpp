@@ -8,6 +8,7 @@
 #include <d3dx12.h>
 #include <DirectXTex.h>
 #pragma warning(pop)
+#include "config.h"
 #include "debug.h"
 #include "init.h"
 #include "util.h"
@@ -147,6 +148,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 
 const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
 
+static HRESULT setViewportScissor();
 static std::string getModelPath(PmdActor::Model model);
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
 template<typename T>
@@ -375,39 +377,59 @@ void PmdActor::update(bool animationEnabled, bool animationReversed)
 		angle -= 0.02f;
 }
 
-const D3D12_VERTEX_BUFFER_VIEW* PmdActor::getVbView() const
+HRESULT PmdActor::render(ID3D12DescriptorHeap* matrixDescHeap) const
 {
-	return &m_vbView;
-}
+	ThrowIfFalse(getPipelineState() != nullptr);
+	Resource::instance()->getCommandList()->SetPipelineState(getPipelineState());
 
-const D3D12_INDEX_BUFFER_VIEW* PmdActor::getIbView() const
-{
-	return &m_ibView;
-}
+	ThrowIfFalse(getRootSignature() != nullptr);
+	Resource::instance()->getCommandList()->SetGraphicsRootSignature(getRootSignature());
 
-const std::vector<Material> PmdActor::getMaterials() const
-{
-	return m_materials;
-}
+	setViewportScissor();
+	Resource::instance()->getCommandList()->IASetPrimitiveTopology(getPrimitiveTopology());
+	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
+	Resource::instance()->getCommandList()->IASetIndexBuffer(&m_ibView);
 
-ID3D12DescriptorHeap* PmdActor::getWorldMatrixDescHeap() const
-{
-	return m_worldMatrixDescHeap.Get();
-}
+	// bind to b0: MVP matrix (except for world)
+	{
+		ThrowIfFalse(matrixDescHeap != nullptr);
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &matrixDescHeap);
+		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+			0, // b0
+			matrixDescHeap->GetGPUDescriptorHandleForHeapStart());
+	}
 
-ID3D12DescriptorHeap* PmdActor::getMaterialDescHeap() const
-{
-	return m_materialDescHeap.Get();
-}
+	// bind to b1: world matrix
+	{
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_worldMatrixDescHeap.GetAddressOf());
+		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+			1, // b1
+			m_worldMatrixDescHeap->GetGPUDescriptorHandleForHeapStart());
+	}
 
-const D3D12_VERTEX_BUFFER_VIEW* PmdActor::getDebugVbView() const
-{
-	return &m_debugVbView;
-}
+	// bind to b2: material
+	// draw call
+	{
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
 
-const D3D12_INDEX_BUFFER_VIEW* PmdActor::getDebugIbView() const
-{
-	return &m_debugIbView;
+		const auto cbvSrvIncSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
+		auto materialH = m_materialDescHeap->GetGPUDescriptorHandleForHeapStart();
+		UINT indexOffset = 0;
+
+		for (const auto& m : m_materials)
+		{
+			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+				2, // b2
+				materialH);
+
+			Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
+
+			materialH.ptr += cbvSrvIncSize;
+			indexOffset += m.indicesNum;
+		}
+	}
+
+	return S_OK;
 }
 
 HRESULT PmdActor::createResources()
@@ -1148,6 +1170,33 @@ HRESULT PmdActor::createMaterialResrouces()
 			descHeapH.ptr += inc;
 		}
 	}
+
+	return S_OK;
+}
+
+static HRESULT setViewportScissor()
+{
+	D3D12_VIEWPORT viewport = { };
+	{
+		viewport.Width = kWindowWidth;
+		viewport.Height = kWindowHeight;
+		viewport.TopLeftX = 0;
+		viewport.TopLeftY = 0;
+		viewport.MaxDepth = 1.0f;
+		viewport.MinDepth = 0.0f;
+	}
+
+	Resource::instance()->getCommandList()->RSSetViewports(1, &viewport);
+
+	D3D12_RECT scissorRect = { };
+	{
+		scissorRect.top = 0;
+		scissorRect.left = 0;
+		scissorRect.right = scissorRect.left + kWindowWidth;
+		scissorRect.bottom = scissorRect.top + kWindowHeight;
+	}
+
+	Resource::instance()->getCommandList()->RSSetScissorRects(1, &scissorRect);
 
 	return S_OK;
 }

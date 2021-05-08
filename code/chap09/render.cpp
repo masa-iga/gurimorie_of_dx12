@@ -19,7 +19,6 @@
 
 using namespace Microsoft::WRL;
 
-static HRESULT setViewportScissor();
 static HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
 static HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap);
 
@@ -57,7 +56,7 @@ HRESULT Render::update()
 	return S_OK;
 }
 
-HRESULT Render::draw()
+HRESULT Render::render()
 {
 	// reset command allocator & list
 	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
@@ -99,61 +98,11 @@ HRESULT Render::draw()
 		0,
         nullptr);
 
-
-	for (const auto& actor: m_pmdActors)
+	// render
+	for (const auto& actor : m_pmdActors)
 	{
-		ThrowIfFalse(PmdActor::getPipelineState() != nullptr);
-		Resource::instance()->getCommandList()->SetPipelineState(PmdActor::getPipelineState());
-
-		ThrowIfFalse(PmdActor::getRootSignature() != nullptr);
-		Resource::instance()->getCommandList()->SetGraphicsRootSignature(PmdActor::getRootSignature());
-
-		setViewportScissor();
-		Resource::instance()->getCommandList()->IASetPrimitiveTopology(PmdActor::getPrimitiveTopology());
-		Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, actor.getVbView());
-		Resource::instance()->getCommandList()->IASetIndexBuffer(actor.getIbView());
-
-		// bind MVP matrix (except for world)
-		{
-			ThrowIfFalse(m_basicDescHeap != nullptr);
-			Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_basicDescHeap.GetAddressOf());
-			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
-				0, // bind to b0
-				m_basicDescHeap->GetGPUDescriptorHandleForHeapStart());
-		}
-
-		// bind world matrix
-		{
-			auto const descHeap = actor.getWorldMatrixDescHeap();
-			Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &descHeap);
-			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
-				1, // bind to b1
-				descHeap->GetGPUDescriptorHandleForHeapStart());
-		}
-
-		// bind material & draw
-		{
-			auto const materialDescHeap = actor.getMaterialDescHeap();
-			Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &materialDescHeap);
-
-			const auto cbvSrvIncSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
-			auto materialH = materialDescHeap->GetGPUDescriptorHandleForHeapStart();
-			UINT indexOffset = 0;
-
-			for (const auto& m : actor.getMaterials())
-			{
-				Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
-					2, // bind to b2
-					materialH);
-
-				Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
-
-				materialH.ptr += cbvSrvIncSize;
-				indexOffset += m.indicesNum;
-			}
-		}
+		actor.render(m_basicDescHeap.Get());
 	}
-
 
 	// resource barrier
 	{
@@ -576,33 +525,6 @@ HRESULT Render::updateMvpMatrix()
 	m_sceneMatrix->proj = projMat;
 	m_sceneMatrix->eye = eye;
 #endif // DISABLE_MATRIX
-
-	return S_OK;
-}
-
-HRESULT setViewportScissor()
-{
-	D3D12_VIEWPORT viewport = { };
-	{
-		viewport.Width = kWindowWidth;
-		viewport.Height = kWindowHeight;
-		viewport.TopLeftX = 0;
-		viewport.TopLeftY = 0;
-		viewport.MaxDepth = 1.0f;
-		viewport.MinDepth = 0.0f;
-	}
-
-	Resource::instance()->getCommandList()->RSSetViewports(1, &viewport);
-
-	D3D12_RECT scissorRect = { };
-	{
-		scissorRect.top = 0;
-		scissorRect.left = 0;
-		scissorRect.right = scissorRect.left + kWindowWidth;
-		scissorRect.bottom = scissorRect.top + kWindowHeight;
-	}
-
-	Resource::instance()->getCommandList()->RSSetScissorRects(1, &scissorRect);
 
 	return S_OK;
 }

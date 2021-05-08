@@ -75,7 +75,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		for (UINT i = 0; ; ++i)
 		{
 			ThrowIfFailed(render.update());
-			ThrowIfFailed(render.draw());
+			ThrowIfFailed(render.render());
 			ThrowIfFailed(render.waitForEndOfRendering());
 			ThrowIfFailed(render.swap());
 
