@@ -24,9 +24,9 @@ ComPtr<ID3DBlob> PmdActor::m_psBlob = nullptr;
 
 struct PMDHeader
 {
-	float version = 0.0f;
-	char model_name[20] = { };
-	char comment[256] = { };
+	FLOAT version = 0.0f;
+	CHAR model_name[20] = { };
+	CHAR comment[256] = { };
 };
 
 #pragma pack(1) // size of the struct is 38 bytes, so need to prevent padding
@@ -40,23 +40,35 @@ struct PMDVertex
 	UINT8 edgeFlag = 0;
 };
 static_assert(sizeof(PMDVertex) == 38);
-#pragma pack()
 
 #pragma pack(1)
-	struct PMDMaterial
-	{
-		DirectX::XMFLOAT3 diffuse;
-		float alpha;
-		float specularity;
-		DirectX::XMFLOAT3 specular;
-		DirectX::XMFLOAT3 ambient;
-		UINT8 toonIdx;
-		UINT8 edgeFlg;
-		UINT indicesNum;
-		char texFilePath[20];
-	};
-	static_assert(sizeof(PMDMaterial) == 70);
+struct PMDMaterial
+{
+	DirectX::XMFLOAT3 diffuse;
+	FLOAT alpha = 0.0f;
+	FLOAT specularity = 0.0f;
+	DirectX::XMFLOAT3 specular;
+	DirectX::XMFLOAT3 ambient;
+	UINT8 toonIdx = 0;
+	UINT8 edgeFlg = 0;
+	UINT indicesNum = 0;
+	CHAR texFilePath[20] = "";
+};
 #pragma pack()
+static_assert(sizeof(PMDMaterial) == 70);
+
+#pragma pack(1)
+struct PMDBone
+{
+	CHAR boneName[20] = "";
+	UINT16 parentNo = 0;
+	UINT16 nextNo = 0;
+	UCHAR type = '0';
+	UINT16 ikBoneNo = 0;
+	DirectX::XMFLOAT3 pos;
+};
+#pragma pack()
+static_assert(sizeof(PMDBone) == 39);
 
 static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
 	{
@@ -90,10 +102,6 @@ static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
 		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 	},
 };
-
-static constexpr char kSignature[] = "Pmd";
-static constexpr size_t kNumSignature = 3;
-static constexpr size_t kPmdVertexSize = sizeof(PMDVertex);
 
 const std::vector<PMDVertex> s_debugVertices = {
 	PMDVertex{
@@ -146,6 +154,9 @@ const std::vector<PMDVertex> s_debugVertices = {
 	},
 };
 
+static constexpr char kSignature[] = "Pmd";
+static constexpr size_t kNumSignature = 3;
+static constexpr size_t kPmdVertexSize = sizeof(PMDVertex);
 const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
 
 static HRESULT setViewportScissor();
@@ -232,14 +243,20 @@ HRESULT PmdActor::loadAsset(Model model)
 		m_indices.resize(m_indicesNum);
 		ThrowIfFalse(fread(m_indices.data(), m_indices.size() * sizeof(m_indices[0]), 1, fp) == 1);
 
+		UINT materialNum = 0;
+		ThrowIfFalse(fread(&materialNum, sizeof(materialNum), 1, fp) == 1);
+
+		std::vector<PMDMaterial> pmdMaterials(materialNum);
+		ThrowIfFalse(fread(pmdMaterials.data(), pmdMaterials.size() * sizeof(PMDMaterial), 1, fp) == 1);
+
+		UINT16 boneNum = 0;
+		ThrowIfFalse(fread(&boneNum, sizeof(boneNum), 1, fp) == 1);
+
+		std::vector<PMDBone> pmdBones(boneNum);
+		ThrowIfFalse(fread(pmdBones.data(), sizeof(PMDBone), boneNum, fp) == boneNum);
+
 		// load materials
 		{
-			UINT materialNum = 0;
-			ThrowIfFalse(fread(&materialNum, sizeof(materialNum), 1, fp) == 1);
-
-			std::vector<PMDMaterial> pmdMaterials(materialNum);
-			ThrowIfFalse(fread(pmdMaterials.data(), pmdMaterials.size() * sizeof(PMDMaterial), 1, fp) == 1);
-
 			m_materials.resize(pmdMaterials.size());
 
 			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
@@ -349,6 +366,34 @@ HRESULT PmdActor::loadAsset(Model model)
 				}
 			}
 		}
+
+		// load bones
+		{
+			std::vector<std::string> boneNames(pmdBones.size());
+
+			// create bone node map
+			for (uint32_t i = 0; i < pmdBones.size(); ++i)
+			{
+				boneNames.at(i) = pmdBones.at(i).boneName;
+				m_boneNodeTable[pmdBones.at(i).boneName].boneIdx = i;
+				m_boneNodeTable[pmdBones.at(i).boneName].startPos = pmdBones.at(i).pos;
+			}
+
+			// construct parent-child map
+			for (const PMDBone& bone : pmdBones)
+			{
+				if (bone.parentNo >= pmdBones.size())
+					continue;
+
+				const std::string& parentName = boneNames.at(bone.parentNo);
+				m_boneNodeTable[parentName].children.emplace_back(&m_boneNodeTable[bone.boneName]);
+			}
+		}
+
+		{
+			m_boneMatrices.resize(pmdBones.size());
+			std::fill(m_boneMatrices.begin(), m_boneMatrices.end(), DirectX::XMMatrixIdentity());
+		}
 	}
 	ThrowIfFalse(fclose(fp) == 0);
 
@@ -357,6 +402,7 @@ HRESULT PmdActor::loadAsset(Model model)
 	DebugOutputFormatString("Vertex num  : %d\n", m_vertNum);
 	DebugOutputFormatString("Index num   : %d\n", m_indicesNum);
 	DebugOutputFormatString("Material num: %zd\n", m_materials.size());
+	DebugOutputFormatString("Bone num    : %zd\n", m_boneMatrices.size());
 
 	return S_OK;
 }

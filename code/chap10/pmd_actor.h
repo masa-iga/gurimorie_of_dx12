@@ -34,6 +34,14 @@ struct Material
 	AdditionalMaterial additional;
 };
 
+struct BoneNode
+{
+	int32_t boneIdx = 0;
+	DirectX::XMFLOAT3 startPos;
+	DirectX::XMFLOAT3 endPos;
+	std::vector<BoneNode*> children;
+};
+
 class PmdActor {
 public:
 	enum class Model;
@@ -89,6 +97,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_worldMatrixDescHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_worldMatrixResource = nullptr;
 	DirectX::XMMATRIX *m_worldMatrix = nullptr; // needs to be aligned 16 bytes
+	std::map<std::string, BoneNode> m_boneNodeTable;
+	std::vector<DirectX::XMMATRIX> m_boneMatrices;
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };
