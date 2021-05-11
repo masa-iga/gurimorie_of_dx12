@@ -176,11 +176,6 @@ void PmdActor::release()
 	m_psBlob.Reset();
 }
 
-std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> PmdActor::getInputElementDesc()
-{
-	return { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
-}
-
 ID3D12PipelineState* PmdActor::getPipelineState()
 {
 	if (m_pipelineState)
@@ -758,11 +753,7 @@ HRESULT PmdActor::createPipelineState()
 		//gpipeDesc.DepthStencilState.StencilWriteMask = 0;
 		//D3D12_DEPTH_STENCILOP_DESC FrontFace;
 		//D3D12_DEPTH_STENCILOP_DESC BackFace;
-		auto [elementDescs, numOfElement] = PmdActor::getInputElementDesc();
-		gpipeDesc.InputLayout = {
-			elementDescs,
-			numOfElement
-		};
+		gpipeDesc.InputLayout = { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
 		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		gpipeDesc.NumRenderTargets = 1;
