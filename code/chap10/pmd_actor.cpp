@@ -163,8 +163,9 @@ static HRESULT setViewportScissor();
 static std::string getModelPath(PmdActor::Model model);
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
 template<typename T>
-static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
-createResourcesInternal(ComPtr<ID3D12Resource>* vertResource, const std::vector<T>& vertices, ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices);
+static std::pair<HRESULT, D3D12_VERTEX_BUFFER_VIEW>
+createVertexBufferResource(ComPtr<ID3D12Resource>* vertResource, const std::vector<T>& vertices);
+static std::pair<HRESULT, D3D12_INDEX_BUFFER_VIEW> createIndexBufferResource(ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ComPtr<ID3D12Resource>* vertResource, size_t width);
 static void outputDebugMessage(ID3DBlob* errorBlob);
 
@@ -475,12 +476,19 @@ HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
 
 HRESULT PmdActor::createResources()
 {
-	auto [ret, vbView, ibView] = createResourcesInternal(&m_vertResource, m_vertices, &m_ibResource, m_indices);
-	ThrowIfFailed(ret);
-	m_vbView = vbView;
-	m_ibView = ibView;
+	{
+		auto [ret, vbView] = createVertexBufferResource(&m_vertResource, m_vertices);
+		ThrowIfFailed(ret);
+		m_vbView = vbView;
+	}
 
-	ret = createTransformResource();
+	{
+		auto [ret, ibView] = createIndexBufferResource(&m_ibResource, m_indices);
+		ThrowIfFailed(ret);
+		m_ibView = ibView;
+	}
+
+	auto ret = createTransformResource();
 	ThrowIfFailed(ret);
 
 	ret = createMaterialResrouces();
@@ -967,10 +975,14 @@ HRESULT PmdActor::createDebugResources()
 	ComPtr<ID3D12Resource> vertResource = nullptr;
 	ComPtr<ID3D12Resource> ibResource = nullptr;
 
-	auto [ret, vbView, ibView] = createResourcesInternal(&vertResource, s_debugVertices, &ibResource, s_debugIndices);
-
-	m_debugVbView = vbView;
-	m_debugIbView = ibView;
+	{
+		auto [ret, vbView] = createVertexBufferResource(&vertResource, s_debugVertices);
+		m_debugVbView = vbView;
+	}
+	{
+		auto [ret, ibView] = createIndexBufferResource(&ibResource, s_debugIndices);
+		m_debugIbView = ibView;
+	}
 
 	return S_OK;
 }
@@ -1279,11 +1291,10 @@ static std::string getTexturePathFromModelAndTexPath(const std::string& modelPat
 }
 
 template<typename T>
-static std::tuple<HRESULT, D3D12_VERTEX_BUFFER_VIEW, D3D12_INDEX_BUFFER_VIEW>
-createResourcesInternal(ComPtr<ID3D12Resource>* vertResource, const std::vector<T>& vertices, ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices)
+static std::pair<HRESULT, D3D12_VERTEX_BUFFER_VIEW>
+createVertexBufferResource(ComPtr<ID3D12Resource>* vertResource, const std::vector<T>& vertices)
 {
 	ThrowIfFalse(vertResource != nullptr);
-	ThrowIfFalse(ibResource != nullptr);
 
 	D3D12_VERTEX_BUFFER_VIEW vbView = { };
 	{
@@ -1310,6 +1321,13 @@ createResourcesInternal(ComPtr<ID3D12Resource>* vertResource, const std::vector<
 		(*vertResource)->Unmap(0, nullptr);
 	}
 
+	return { S_OK, vbView };
+}
+
+static std::pair<HRESULT, D3D12_INDEX_BUFFER_VIEW> createIndexBufferResource(ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices)
+{
+	ThrowIfFalse(ibResource != nullptr);
+
 	D3D12_INDEX_BUFFER_VIEW ibView = { };
 	{
 		const size_t sizeInBytes = indices.size() * sizeof(indices[0]);
@@ -1334,7 +1352,7 @@ createResourcesInternal(ComPtr<ID3D12Resource>* vertResource, const std::vector<
 		(*ibResource)->Unmap(0, nullptr);
 	}
 
-	return { S_OK, vbView , ibView };
+	return { S_OK, ibView };
 }
 
 static HRESULT createBufferResource(ComPtr<ID3D12Resource>* resource, size_t width)
