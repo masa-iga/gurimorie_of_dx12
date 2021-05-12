@@ -67,7 +67,7 @@ private:
 	HRESULT createBlackTexture();
 	HRESULT createGrayGradiationTexture();
 	HRESULT createDebugResources();
-	HRESULT createWorldMatrixResource();
+	HRESULT createTransformResource();
 	HRESULT createMaterialResrouces();
 
 	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -94,8 +94,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_blackTextureResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_grayGradiationTextureResource = nullptr;
 	std::map<std::string, ID3D12Resource*> m_resourceTable;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_worldMatrixDescHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_worldMatrixResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_transformDescHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_transformResource = nullptr;
 	DirectX::XMMATRIX *m_worldMatrix = nullptr; // needs to be aligned 16 bytes
 	std::map<std::string, BoneNode> m_boneNodeTable;
 	std::vector<DirectX::XMMATRIX> m_boneMatrices;

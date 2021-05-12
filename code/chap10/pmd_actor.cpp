@@ -87,7 +87,7 @@ static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
 		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 	},
 	{
-		"BONE_NO", 0, DXGI_FORMAT_R16G16_UINT, 0,
+		"BONENO", 0, DXGI_FORMAT_R16G16_UINT, 0,
 		D3D12_APPEND_ALIGNED_ELEMENT,
 		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 	},
@@ -440,12 +440,12 @@ HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
 			sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
-	// bind to b1: world matrix
+	// bind to b1: transform matrix
 	{
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_worldMatrixDescHeap.GetAddressOf());
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
 		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
 			1, // b1
-			m_worldMatrixDescHeap->GetGPUDescriptorHandleForHeapStart());
+			m_transformDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	// bind to b2: material
@@ -480,7 +480,7 @@ HRESULT PmdActor::createResources()
 	m_vbView = vbView;
 	m_ibView = ibView;
 
-	ret = createWorldMatrixResource();
+	ret = createTransformResource();
 	ThrowIfFailed(ret);
 
 	ret = createMaterialResrouces();
@@ -604,7 +604,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 		descTblRange[0].BaseShaderRegister = 0; // b0
 		descTblRange[0].RegisterSpace = 0;
 		descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		// world matrix
+		// transform matrix
 		descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 		descTblRange[1].NumDescriptors = 1;
 		descTblRange[1].BaseShaderRegister = 1; // b1
@@ -632,7 +632,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 		rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
 		rootParam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
 		rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		// world matrix
+		// transform matrix
 		rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParam[1].DescriptorTable.NumDescriptorRanges = 1;
 		rootParam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
@@ -975,10 +975,10 @@ HRESULT PmdActor::createDebugResources()
 	return S_OK;
 }
 
-HRESULT PmdActor::createWorldMatrixResource()
+HRESULT PmdActor::createTransformResource()
 {
 	{
-		const size_t w = Util::alignmentedSize(sizeof(DirectX::XMMATRIX), 256);
+		const size_t w = Util::alignmentedSize(sizeof(DirectX::XMMATRIX) * (1 + m_boneMatrices.size()), 256);
 
 		D3D12_HEAP_PROPERTIES heapProp = { };
 		{
@@ -1008,16 +1008,25 @@ HRESULT PmdActor::createWorldMatrixResource()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(m_worldMatrixResource.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_transformResource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 	}
 
+	// map and copy bone matrices
 	{
-		auto result = m_worldMatrixResource.Get()->Map(
+		// [0]: world matrix
+		// [1] .. [N]: bone matrices
+		DirectX::XMMATRIX* mappedMatrices = nullptr;
+
+		auto result = m_transformResource.Get()->Map(
 			0,
 			nullptr,
-			reinterpret_cast<void**>(&m_worldMatrix));
+			reinterpret_cast<void**>(&mappedMatrices));
 		ThrowIfFailed(result);
+
+		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), mappedMatrices + 1);
+
+		m_worldMatrix = mappedMatrices;
 	}
 
 	{
@@ -1031,17 +1040,17 @@ HRESULT PmdActor::createWorldMatrixResource()
 
 		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
-			IID_PPV_ARGS(m_worldMatrixDescHeap.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_transformDescHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 	}
 
 	{
 		D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = { };
 		{
-			viewDesc.BufferLocation = m_worldMatrixResource->GetGPUVirtualAddress();
-			viewDesc.SizeInBytes = static_cast<UINT>(m_worldMatrixResource->GetDesc().Width);
+			viewDesc.BufferLocation = m_transformResource->GetGPUVirtualAddress();
+			viewDesc.SizeInBytes = static_cast<UINT>(m_transformResource->GetDesc().Width);
 		}
-		auto handle = m_worldMatrixDescHeap->GetCPUDescriptorHandleForHeapStart();
+		auto handle = m_transformDescHeap->GetCPUDescriptorHandleForHeapStart();
 
 		Resource::instance()->getDevice()->CreateConstantBufferView(
 			&viewDesc,
