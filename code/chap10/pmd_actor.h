@@ -69,6 +69,7 @@ private:
 	HRESULT createDebugResources();
 	HRESULT createTransformResource();
 	HRESULT createMaterialResrouces();
+	void recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMATRIX& mat);
 
 	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	static Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
@@ -96,7 +97,8 @@ private:
 	std::map<std::string, ID3D12Resource*> m_resourceTable;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_transformDescHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_transformResource = nullptr;
-	DirectX::XMMATRIX *m_worldMatrix = nullptr; // needs to be aligned 16 bytes
+	DirectX::XMMATRIX* m_worldMatrixPointer = nullptr; // needs to be aligned 16 bytes
+	DirectX::XMMATRIX* m_boneMatrixPointer = nullptr;
 	std::map<std::string, BoneNode> m_boneNodeTable;
 	std::vector<DirectX::XMMATRIX> m_boneMatrices;
 

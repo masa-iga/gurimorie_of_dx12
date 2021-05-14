@@ -405,10 +405,13 @@ HRESULT PmdActor::loadAsset(Model model)
 
 void PmdActor::update(bool animationEnabled, bool animationReversed)
 {
+	using namespace DirectX;
+
+	static uint64_t totalNum = 0;
 	static float angle = 0.0f;
 	const auto worldMat = DirectX::XMMatrixRotationY(angle);
 
-	*m_worldMatrix = worldMat;
+	*m_worldMatrixPointer = worldMat;
 
 	if (!animationEnabled)
 		return;
@@ -417,6 +420,23 @@ void PmdActor::update(bool animationEnabled, bool animationReversed)
 		angle += 0.02f;
 	else
 		angle -= 0.02f;
+
+#if 1
+	if (totalNum == 0)
+	{
+		const auto node = m_boneNodeTable["ç∂òr"];
+
+		const XMMATRIX mat = XMMatrixTranslation(-node.startPos.x, -node.startPos.y, -node.startPos.z)
+			* XMMatrixRotationZ(XM_PIDIV2)
+			* XMMatrixTranslation(node.startPos.x, node.startPos.y, node.startPos.z);
+
+		recursiveMatrixMultiply(node, mat);
+
+		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
+	}
+#endif
+
+	++totalNum;
 }
 
 HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
@@ -1038,7 +1058,8 @@ HRESULT PmdActor::createTransformResource()
 
 		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), mappedMatrices + 1);
 
-		m_worldMatrix = mappedMatrices;
+		m_worldMatrixPointer = mappedMatrices;
+		m_boneMatrixPointer = mappedMatrices + 1;
 	}
 
 	{
@@ -1230,6 +1251,16 @@ HRESULT PmdActor::createMaterialResrouces()
 	}
 
 	return S_OK;
+}
+
+void PmdActor::recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMATRIX& mat)
+{
+	m_boneMatrices[node.boneIdx] *= mat;
+
+	for (const auto& cnode : node.children)
+	{
+		recursiveMatrixMultiply(*cnode, m_boneMatrices[node.boneIdx]);
+	}
 }
 
 static HRESULT setViewportScissor()
