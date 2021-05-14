@@ -29,18 +29,6 @@ struct PMDHeader
 	CHAR comment[256] = { };
 };
 
-#pragma pack(1) // size of the struct is 38 bytes, so need to prevent padding
-struct PMDVertex
-{
-	DirectX::XMFLOAT3 pos;
-	DirectX::XMFLOAT3 normal;
-	DirectX::XMFLOAT2 uv;
-	UINT16 boneNo[2] = { };
-	UINT8 boneWeight = 0;
-	UINT8 edgeFlag = 0;
-};
-static_assert(sizeof(PMDVertex) == 38);
-
 #pragma pack(1)
 struct PMDMaterial
 {

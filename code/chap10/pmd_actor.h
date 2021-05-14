@@ -11,6 +11,19 @@
 #include <wrl.h>
 #pragma warning(pop)
 
+#pragma pack(1) // size of the struct is 38 bytes, so need to prevent padding
+struct PMDVertex
+{
+	DirectX::XMFLOAT3 pos;
+	DirectX::XMFLOAT3 normal;
+	DirectX::XMFLOAT2 uv;
+	UINT16 boneNo[2] = { };
+	UINT8 boneWeight = 0;
+	UINT8 edgeFlag = 0;
+};
+static_assert(sizeof(PMDVertex) == 38);
+#pragma pack()
+
 struct MaterialForHlsl
 {
 	DirectX::XMFLOAT3 diffuse;
@@ -76,7 +89,7 @@ private:
 	static Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob;
 	static Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob;
 
-	std::vector<UINT8> m_vertices;
+	std::vector<PMDVertex> m_vertices;
 	std::vector<UINT16> m_indices;
 	std::vector<Material> m_materials;
 	UINT m_vertNum = 0;
