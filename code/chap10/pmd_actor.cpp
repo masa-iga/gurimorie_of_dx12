@@ -412,13 +412,20 @@ void PmdActor::update(bool animationEnabled, bool animationReversed)
 #if 1
 	if (totalNum == 0)
 	{
-		const auto node = m_boneNodeTable["ç∂òr"];
-
-		const XMMATRIX mat = XMMatrixTranslation(-node.startPos.x, -node.startPos.y, -node.startPos.z)
+		const auto armNode = m_boneNodeTable["ç∂òr"];
+		const XMMATRIX armMat = XMMatrixTranslation(-armNode.startPos.x, -armNode.startPos.y, -armNode.startPos.z)
 			* XMMatrixRotationZ(XM_PIDIV2)
-			* XMMatrixTranslation(node.startPos.x, node.startPos.y, node.startPos.z);
+			* XMMatrixTranslation(armNode.startPos.x, armNode.startPos.y, armNode.startPos.z);
 
-		recursiveMatrixMultiply(node, mat);
+		const auto elbowNode = m_boneNodeTable["ç∂Ç–Ç∂"];
+		const XMMATRIX elbowMat = XMMatrixTranslation(-elbowNode.startPos.x, -elbowNode.startPos.y, -elbowNode.startPos.z)
+			* XMMatrixRotationZ(-XM_PIDIV2)
+			* XMMatrixTranslation(elbowNode.startPos.x, elbowNode.startPos.y, elbowNode.startPos.z);
+
+		m_boneMatrices[armNode.boneIdx] = armMat;
+		m_boneMatrices[elbowNode.boneIdx] = elbowMat;
+
+		recursiveMatrixMultiply(m_boneNodeTable["ÉZÉìÉ^Å["], XMMatrixIdentity());
 
 		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
 	}

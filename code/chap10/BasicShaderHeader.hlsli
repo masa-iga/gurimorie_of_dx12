@@ -18,7 +18,7 @@ cbuffer SceneBuffer : register(b0)
 cbuffer Transform: register(b1)
 {
 	matrix world;
-	matrix bones[256];
+	matrix boneMat[256];
 }
 
 cbuffer Material : register(b2)
