@@ -19,6 +19,9 @@
     <Filter Include="リソース ファイル\toon">
       <UniqueIdentifier>{c2163f6b-fd34-4179-8bb4-188764f6a7f8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="リソース ファイル\Motion">
+      <UniqueIdentifier>{277fb2b0-303d-46bd-a834-5f96e73831a2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -124,6 +127,9 @@
     </None>
     <None Include="Model\鏡音レン.pmd">
       <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="Motion\pose.vmd">
+      <Filter>リソース ファイル\Motion</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

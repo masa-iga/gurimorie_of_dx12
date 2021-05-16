@@ -74,6 +74,8 @@ private:
 	static HRESULT createRootSignature(Microsoft::WRL::ComPtr<ID3D12RootSignature>* rootSignature);
 	static HRESULT createPipelineState();
 
+	HRESULT loadPmd(Model model);
+	HRESULT loadVmd();
 	Microsoft::WRL::ComPtr<ID3D12Resource> loadTextureFromFile(const std::string& texPath);
 	HRESULT createResources();
 	HRESULT createWhiteTexture();

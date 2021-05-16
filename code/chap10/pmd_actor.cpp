@@ -149,6 +149,7 @@ const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
 
 static HRESULT setViewportScissor();
 static std::string getModelPath(PmdActor::Model model);
+static std::string getMotionPath();
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
 template<typename T>
 static std::pair<HRESULT, D3D12_VERTEX_BUFFER_VIEW>
@@ -205,189 +206,8 @@ PmdActor::PmdActor()
 
 HRESULT PmdActor::loadAsset(Model model)
 {
-	const std::string modelPath = getModelPath(model);
-
-	FILE* fp = nullptr;
-	ThrowIfFalse(fopen_s(&fp, modelPath.c_str(), "rb") == 0);
-	{
-		char signature[kNumSignature] = { };
-		ThrowIfFalse(fread(signature, sizeof(signature), 1, fp) == 1);
-		ThrowIfFalse(strncmp(signature, kSignature, kNumSignature) == 0);
-
-		PMDHeader pmdHeader = { };
-		ThrowIfFalse(fread(&pmdHeader, sizeof(pmdHeader), 1, fp) == 1);
-
-		ThrowIfFalse(fread(&m_vertNum, sizeof(m_vertNum), 1, fp) == 1);
-
-		m_vertices.resize(m_vertNum * kPmdVertexSize);
-		ThrowIfFalse(fread(m_vertices.data(), m_vertices.size(), 1, fp) == 1);
-
-		ThrowIfFalse(fread(&m_indicesNum, sizeof(m_indicesNum), 1, fp) == 1);
-
-		m_indices.resize(m_indicesNum);
-		ThrowIfFalse(fread(m_indices.data(), m_indices.size() * sizeof(m_indices[0]), 1, fp) == 1);
-
-		UINT materialNum = 0;
-		ThrowIfFalse(fread(&materialNum, sizeof(materialNum), 1, fp) == 1);
-
-		std::vector<PMDMaterial> pmdMaterials(materialNum);
-		ThrowIfFalse(fread(pmdMaterials.data(), pmdMaterials.size() * sizeof(PMDMaterial), 1, fp) == 1);
-
-		UINT16 boneNum = 0;
-		ThrowIfFalse(fread(&boneNum, sizeof(boneNum), 1, fp) == 1);
-
-		std::vector<PMDBone> pmdBones(boneNum);
-		ThrowIfFalse(fread(pmdBones.data(), sizeof(PMDBone), boneNum, fp) == boneNum);
-
-		// load materials
-		{
-			m_materials.resize(pmdMaterials.size());
-
-			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
-			{
-				m_materials[i].indicesNum = pmdMaterials[i].indicesNum;
-				m_materials[i].material.diffuse = pmdMaterials[i].diffuse;
-				m_materials[i].material.alpha = pmdMaterials[i].alpha;
-				m_materials[i].material.specular = pmdMaterials[i].specular;
-				m_materials[i].material.specularity = pmdMaterials[i].specularity;
-				m_materials[i].material.ambient = pmdMaterials[i].ambient;
-			}
-
-			m_toonResources.resize(pmdMaterials.size());
-			m_textureResources.resize(pmdMaterials.size());
-			m_sphResources.resize(pmdMaterials.size());
-			m_spaResources.resize(pmdMaterials.size());
-
-			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
-			{
-				m_toonResources[i] = nullptr;
-				m_textureResources[i] = nullptr;
-				m_sphResources[i] = nullptr;
-				m_spaResources[i] = nullptr;
-
-				{
-					std::string toonFilePath = "toon/";
-					char toonFileName[16] = "";
-
-					int32_t ret = sprintf_s(
-						toonFileName,
-						"toon%02d.bmp",
-						pmdMaterials[i].toonIdx + 1);
-					ThrowIfFalse(ret != -1);
-
-					toonFilePath += toonFileName;
-
-					m_toonResources[i] = loadTextureFromFile(toonFilePath);
-				}
-
-				if (strlen(pmdMaterials[i].texFilePath) == 0)
-					continue;
-
-				std::string texFileName = pmdMaterials[i].texFilePath;
-				std::string sphFileName = std::string();
-				std::string spaFileName = std::string();
-
-				if (char splitter = '*'; std::count(texFileName.begin(), texFileName.end(), splitter) > 0)
-				{
-					const auto namepair = Util::splitFileName(texFileName, splitter);
-
-					if (Util::getExtension(namepair.first) == "sph")
-					{
-						sphFileName = namepair.first;
-					}
-					else if (Util::getExtension(namepair.first) == "spa")
-					{
-						spaFileName = namepair.first;
-					}
-					else
-					{
-						texFileName = namepair.first;
-					}
-
-					if (Util::getExtension(namepair.second) == "sph")
-					{
-						sphFileName = namepair.second;
-					}
-					else if (Util::getExtension(namepair.second) == "spa")
-					{
-						spaFileName = namepair.second;
-					}
-					else
-					{
-						texFileName = namepair.second;
-					}
-				}
-				else
-				{
-					if (Util::getExtension(texFileName) == "sph")
-					{
-						sphFileName = texFileName;
-						texFileName.clear();
-					}
-					else if (Util::getExtension(texFileName) == "spa")
-					{
-						spaFileName = texFileName;
-						texFileName.clear();
-					}
-				}
-
-				if (!texFileName.empty())
-				{
-					const auto texFilePath = getTexturePathFromModelAndTexPath(modelPath, texFileName.c_str());
-					m_textureResources[i] = loadTextureFromFile(texFilePath);
-				}
-
-				if (!sphFileName.empty())
-				{
-					const auto sphFilePath = getTexturePathFromModelAndTexPath(modelPath, sphFileName.c_str());
-					m_sphResources[i] = loadTextureFromFile(sphFilePath);
-				}
-
-				if (!spaFileName.empty())
-				{
-					const auto spaFilePath = getTexturePathFromModelAndTexPath(modelPath, spaFileName.c_str());
-					m_spaResources[i] = loadTextureFromFile(spaFilePath);
-				}
-			}
-		}
-
-		// load bones
-		{
-			std::vector<std::string> boneNames(pmdBones.size());
-
-			// create bone node map
-			for (uint32_t i = 0; i < pmdBones.size(); ++i)
-			{
-				boneNames.at(i) = pmdBones.at(i).boneName;
-				m_boneNodeTable[pmdBones.at(i).boneName].boneIdx = i;
-				m_boneNodeTable[pmdBones.at(i).boneName].startPos = pmdBones.at(i).pos;
-			}
-
-			// construct parent-child map
-			for (const PMDBone& bone : pmdBones)
-			{
-				if (bone.parentNo >= pmdBones.size())
-					continue;
-
-				const std::string& parentName = boneNames.at(bone.parentNo);
-				m_boneNodeTable[parentName].children.emplace_back(&m_boneNodeTable[bone.boneName]);
-			}
-		}
-
-		{
-			m_boneMatrices.resize(pmdBones.size());
-			std::fill(m_boneMatrices.begin(), m_boneMatrices.end(), DirectX::XMMatrixIdentity());
-		}
-	}
-	ThrowIfFalse(fclose(fp) == 0);
-
-	ThrowIfFailed(createResources());
-
-	DebugOutputFormatString("Vertex num  : %d\n", m_vertNum);
-	DebugOutputFormatString("Index num   : %d\n", m_indicesNum);
-	DebugOutputFormatString("Material num: %zd\n", m_materials.size());
-	DebugOutputFormatString("Bone num    : %zd\n", m_boneMatrices.size());
-
+	ThrowIfFailed(loadPmd(model));
+	ThrowIfFailed(loadVmd());
 	return S_OK;
 }
 
@@ -795,6 +615,201 @@ HRESULT PmdActor::createPipelineState()
 		&gpipeDesc,
 		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
+HRESULT PmdActor::loadPmd(Model model)
+{
+	const std::string modelPath = getModelPath(model);
+
+	FILE* fp = nullptr;
+	ThrowIfFalse(fopen_s(&fp, modelPath.c_str(), "rb") == 0);
+	{
+		char signature[kNumSignature] = { };
+		ThrowIfFalse(fread(signature, sizeof(signature), 1, fp) == 1);
+		ThrowIfFalse(strncmp(signature, kSignature, kNumSignature) == 0);
+
+		PMDHeader pmdHeader = { };
+		ThrowIfFalse(fread(&pmdHeader, sizeof(pmdHeader), 1, fp) == 1);
+
+		ThrowIfFalse(fread(&m_vertNum, sizeof(m_vertNum), 1, fp) == 1);
+
+		m_vertices.resize(m_vertNum * kPmdVertexSize);
+		ThrowIfFalse(fread(m_vertices.data(), m_vertices.size(), 1, fp) == 1);
+
+		ThrowIfFalse(fread(&m_indicesNum, sizeof(m_indicesNum), 1, fp) == 1);
+
+		m_indices.resize(m_indicesNum);
+		ThrowIfFalse(fread(m_indices.data(), m_indices.size() * sizeof(m_indices[0]), 1, fp) == 1);
+
+		UINT materialNum = 0;
+		ThrowIfFalse(fread(&materialNum, sizeof(materialNum), 1, fp) == 1);
+
+		std::vector<PMDMaterial> pmdMaterials(materialNum);
+		ThrowIfFalse(fread(pmdMaterials.data(), pmdMaterials.size() * sizeof(PMDMaterial), 1, fp) == 1);
+
+		UINT16 boneNum = 0;
+		ThrowIfFalse(fread(&boneNum, sizeof(boneNum), 1, fp) == 1);
+
+		std::vector<PMDBone> pmdBones(boneNum);
+		ThrowIfFalse(fread(pmdBones.data(), sizeof(PMDBone), boneNum, fp) == boneNum);
+
+		// load materials
+		{
+			m_materials.resize(pmdMaterials.size());
+
+			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
+			{
+				m_materials[i].indicesNum = pmdMaterials[i].indicesNum;
+				m_materials[i].material.diffuse = pmdMaterials[i].diffuse;
+				m_materials[i].material.alpha = pmdMaterials[i].alpha;
+				m_materials[i].material.specular = pmdMaterials[i].specular;
+				m_materials[i].material.specularity = pmdMaterials[i].specularity;
+				m_materials[i].material.ambient = pmdMaterials[i].ambient;
+			}
+
+			m_toonResources.resize(pmdMaterials.size());
+			m_textureResources.resize(pmdMaterials.size());
+			m_sphResources.resize(pmdMaterials.size());
+			m_spaResources.resize(pmdMaterials.size());
+
+			for (uint32_t i = 0; i < pmdMaterials.size(); ++i)
+			{
+				m_toonResources[i] = nullptr;
+				m_textureResources[i] = nullptr;
+				m_sphResources[i] = nullptr;
+				m_spaResources[i] = nullptr;
+
+				{
+					std::string toonFilePath = "toon/";
+					char toonFileName[16] = "";
+
+					int32_t ret = sprintf_s(
+						toonFileName,
+						"toon%02d.bmp",
+						pmdMaterials[i].toonIdx + 1);
+					ThrowIfFalse(ret != -1);
+
+					toonFilePath += toonFileName;
+
+					m_toonResources[i] = loadTextureFromFile(toonFilePath);
+				}
+
+				if (strlen(pmdMaterials[i].texFilePath) == 0)
+					continue;
+
+				std::string texFileName = pmdMaterials[i].texFilePath;
+				std::string sphFileName = std::string();
+				std::string spaFileName = std::string();
+
+				if (char splitter = '*'; std::count(texFileName.begin(), texFileName.end(), splitter) > 0)
+				{
+					const auto namepair = Util::splitFileName(texFileName, splitter);
+
+					if (Util::getExtension(namepair.first) == "sph")
+					{
+						sphFileName = namepair.first;
+					}
+					else if (Util::getExtension(namepair.first) == "spa")
+					{
+						spaFileName = namepair.first;
+					}
+					else
+					{
+						texFileName = namepair.first;
+					}
+
+					if (Util::getExtension(namepair.second) == "sph")
+					{
+						sphFileName = namepair.second;
+					}
+					else if (Util::getExtension(namepair.second) == "spa")
+					{
+						spaFileName = namepair.second;
+					}
+					else
+					{
+						texFileName = namepair.second;
+					}
+				}
+				else
+				{
+					if (Util::getExtension(texFileName) == "sph")
+					{
+						sphFileName = texFileName;
+						texFileName.clear();
+					}
+					else if (Util::getExtension(texFileName) == "spa")
+					{
+						spaFileName = texFileName;
+						texFileName.clear();
+					}
+				}
+
+				if (!texFileName.empty())
+				{
+					const auto texFilePath = getTexturePathFromModelAndTexPath(modelPath, texFileName.c_str());
+					m_textureResources[i] = loadTextureFromFile(texFilePath);
+				}
+
+				if (!sphFileName.empty())
+				{
+					const auto sphFilePath = getTexturePathFromModelAndTexPath(modelPath, sphFileName.c_str());
+					m_sphResources[i] = loadTextureFromFile(sphFilePath);
+				}
+
+				if (!spaFileName.empty())
+				{
+					const auto spaFilePath = getTexturePathFromModelAndTexPath(modelPath, spaFileName.c_str());
+					m_spaResources[i] = loadTextureFromFile(spaFilePath);
+				}
+			}
+		}
+
+		// load bones
+		{
+			std::vector<std::string> boneNames(pmdBones.size());
+
+			// create bone node map
+			for (uint32_t i = 0; i < pmdBones.size(); ++i)
+			{
+				boneNames.at(i) = pmdBones.at(i).boneName;
+				m_boneNodeTable[pmdBones.at(i).boneName].boneIdx = i;
+				m_boneNodeTable[pmdBones.at(i).boneName].startPos = pmdBones.at(i).pos;
+			}
+
+			// construct parent-child map
+			for (const PMDBone& bone : pmdBones)
+			{
+				if (bone.parentNo >= pmdBones.size())
+					continue;
+
+				const std::string& parentName = boneNames.at(bone.parentNo);
+				m_boneNodeTable[parentName].children.emplace_back(&m_boneNodeTable[bone.boneName]);
+			}
+		}
+
+		{
+			m_boneMatrices.resize(pmdBones.size());
+			std::fill(m_boneMatrices.begin(), m_boneMatrices.end(), DirectX::XMMatrixIdentity());
+		}
+	}
+	ThrowIfFalse(fclose(fp) == 0);
+
+	ThrowIfFailed(createResources());
+
+	DebugOutputFormatString("Vertex num  : %d\n", m_vertNum);
+	DebugOutputFormatString("Index num   : %d\n", m_indicesNum);
+	DebugOutputFormatString("Material num: %zd\n", m_materials.size());
+	DebugOutputFormatString("Bone num    : %zd\n", m_boneMatrices.size());
+
+	return S_OK;
+}
+
+HRESULT PmdActor::loadVmd()
+{
+	const std::string modelPath = getMotionPath();
 
 	return S_OK;
 }
@@ -1301,6 +1316,11 @@ static std::string getModelPath(PmdActor::Model model)
 	}
 
 	return "";
+}
+
+std::string getMotionPath()
+{
+	return "Motion/pose.vmd";
 }
 
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)
