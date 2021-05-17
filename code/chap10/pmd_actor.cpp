@@ -244,6 +244,7 @@ void PmdActor::update(bool animationEnabled, bool animationReversed)
 #if 1
 	if (totalNum == 0)
 	{
+#if 0
 		const auto armNode = m_boneNodeTable["左腕"];
 		const XMMATRIX armMat = XMMatrixTranslation(-armNode.startPos.x, -armNode.startPos.y, -armNode.startPos.z)
 			* XMMatrixRotationZ(XM_PIDIV2)
@@ -260,6 +261,21 @@ void PmdActor::update(bool animationEnabled, bool animationReversed)
 		recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
 
 		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
+#else
+		for (const auto& boneMotion : m_motionData)
+		{
+			const BoneNode node = m_boneNodeTable[boneMotion.first];
+			const XMFLOAT3& pos = node.startPos;
+			const XMMATRIX mat = XMMatrixTranslation(-pos.x, -pos.y, -pos.z)
+				* XMMatrixRotationQuaternion(boneMotion.second[0].quaternion)
+				* XMMatrixTranslation(pos.x, pos.y, pos.z);
+			m_boneMatrices[node.boneIdx] = mat;
+		}
+
+		recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
+
+		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
+#endif
 	}
 #endif
 
@@ -840,13 +856,6 @@ HRESULT PmdActor::loadVmd()
 			m_motionData[vmdMotion.boneName].emplace_back(
 				Motion(vmdMotion.frameNo, DirectX::XMLoadFloat4(&vmdMotion.quaternion)));
 		}
-
-#if 0
-		for (auto& motion : vmdMotionData)
-		{
-			DebugOutputFormatString("%s\n", motion.boneName);;
-		}
-#endif
 
 		DebugOutputFormatString("Motion num  : %d\n", motionDataNum);
 	}

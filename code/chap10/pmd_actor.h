@@ -106,7 +106,6 @@ private:
 	std::vector<PMDVertex> m_vertices;
 	std::vector<UINT16> m_indices;
 	std::vector<Material> m_materials;
-	std::unordered_map<std::string, std::vector<Motion>> m_motionData;
 	UINT m_vertNum = 0;
 	UINT m_indicesNum = 0;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertResource = nullptr;
@@ -129,6 +128,7 @@ private:
 	DirectX::XMMATRIX* m_boneMatrixPointer = nullptr;
 	std::map<std::string, BoneNode> m_boneNodeTable;
 	std::vector<DirectX::XMMATRIX> m_boneMatrices;
+	std::unordered_map<std::string, std::vector<Motion>> m_motionData;
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };
