@@ -6,6 +6,7 @@
 #include <DirectXMath.h>
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <wrl.h>
@@ -55,6 +56,17 @@ struct BoneNode
 	std::vector<BoneNode*> children;
 };
 
+struct Motion
+{
+	uint32_t frameNo = 0;
+	DirectX::XMVECTOR quaternion;
+
+	Motion(uint32_t fno, const DirectX::XMVECTOR& q)
+		: frameNo(fno)
+		, quaternion(q)
+	{ }
+};
+
 class PmdActor {
 public:
 	enum class Model;
@@ -94,6 +106,7 @@ private:
 	std::vector<PMDVertex> m_vertices;
 	std::vector<UINT16> m_indices;
 	std::vector<Material> m_materials;
+	std::unordered_map<std::string, std::vector<Motion>> m_motionData;
 	UINT m_vertNum = 0;
 	UINT m_indicesNum = 0;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertResource = nullptr;

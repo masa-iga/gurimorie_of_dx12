@@ -58,6 +58,18 @@ struct PMDBone
 #pragma pack()
 static_assert(sizeof(PMDBone) == 39);
 
+#pragma pack(1)
+struct VMDMotion
+{
+	char boneName[15] = { };
+	uint32_t frameNo = 0;
+	DirectX::XMFLOAT3 location;
+	DirectX::XMFLOAT4 quaternion;
+	uint8_t bezier[64] = { };
+};
+#pragma pack()
+static_assert(sizeof(VMDMotion) == 111);
+
 static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
 	{
 		"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
@@ -809,7 +821,36 @@ HRESULT PmdActor::loadPmd(Model model)
 
 HRESULT PmdActor::loadVmd()
 {
-	const std::string modelPath = getMotionPath();
+	const std::string motionPath = getMotionPath();
+
+	FILE* fp = nullptr;
+	ThrowIfFalse(fopen_s(&fp, motionPath.c_str(), "rb") == 0);
+	{
+		// skip 50 bytes from the beginning
+		ThrowIfFalse(fseek(fp, 50, SEEK_SET) == 0);
+
+		uint32_t motionDataNum = 0;
+		ThrowIfFalse(fread(&motionDataNum, sizeof(motionDataNum), 1, fp) == 1);
+
+		std::vector<VMDMotion> vmdMotionData(motionDataNum);
+		ThrowIfFalse(fread(vmdMotionData.data(), sizeof(VMDMotion), motionDataNum, fp) == motionDataNum);
+
+		for (const auto& vmdMotion : vmdMotionData)
+		{
+			m_motionData[vmdMotion.boneName].emplace_back(
+				Motion(vmdMotion.frameNo, DirectX::XMLoadFloat4(&vmdMotion.quaternion)));
+		}
+
+#if 0
+		for (auto& motion : vmdMotionData)
+		{
+			DebugOutputFormatString("%s\n", motion.boneName);;
+		}
+#endif
+
+		DebugOutputFormatString("Motion num  : %d\n", motionDataNum);
+	}
+	ThrowIfFalse(fclose(fp) == 0);
 
 	return S_OK;
 }
