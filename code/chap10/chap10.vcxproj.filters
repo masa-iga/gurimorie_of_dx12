@@ -131,6 +131,9 @@
     <None Include="Motion\pose.vmd">
       <Filter>リソース ファイル\Motion</Filter>
     </None>
+    <None Include="Motion\swing.vmd">
+      <Filter>リソース ファイル\Motion</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="img\textest.png">
