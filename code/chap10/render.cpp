@@ -43,6 +43,11 @@ HRESULT Render::init()
 	ThrowIfFailed(createSceneMatrixBuffer());
 	ThrowIfFailed(createViews());
 
+	for (auto& actor : m_pmdActors)
+	{
+		actor.enableAnimation(m_bAnimationEnabled);
+	}
+
 	return S_OK;
 }
 
@@ -51,7 +56,7 @@ HRESULT Render::update()
 	updateMvpMatrix();
 
 	for (auto& actor : m_pmdActors)
-		actor.update(m_bAnimationEnabled, m_bAnimationReversed);
+		actor.update(m_bAnimationReversed);
 
 	return S_OK;
 }
@@ -162,6 +167,9 @@ HRESULT Render::swap()
 void Render::toggleAnimationEnable()
 {
 	m_bAnimationEnabled = !m_bAnimationEnabled;
+
+	for (auto& actors : m_pmdActors)
+		actors.enableAnimation(m_bAnimationEnabled);
 }
 
 void Render::toggleAnimationReverse()

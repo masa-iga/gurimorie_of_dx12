@@ -7,6 +7,7 @@
 #include <d3dcompiler.h>
 #include <d3dx12.h>
 #include <DirectXTex.h>
+#include <timeapi.h>
 #pragma warning(pop)
 #include "config.h"
 #include "debug.h"
@@ -14,6 +15,7 @@
 #include "util.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "Winmm.lib")
 
 using namespace Microsoft::WRL;
 
@@ -223,17 +225,26 @@ HRESULT PmdActor::loadAsset(Model model)
 	return S_OK;
 }
 
-void PmdActor::update(bool animationEnabled, bool animationReversed)
+void PmdActor::enableAnimation(bool enable)
+{
+	m_bAnimation = enable;
+
+	if (!enable)
+		return;
+
+	m_animationStartTime = timeGetTime();
+}
+
+void PmdActor::update(bool animationReversed)
 {
 	using namespace DirectX;
 
-	static uint64_t totalNum = 0;
 	static float angle = 0.0f;
 	const auto worldMat = DirectX::XMMatrixRotationY(angle);
 
 	*m_worldMatrixPointer = worldMat;
 
-	if (!animationEnabled)
+	if (!m_bAnimation)
 		return;
 
 	if (!animationReversed)
@@ -241,45 +252,7 @@ void PmdActor::update(bool animationEnabled, bool animationReversed)
 	else
 		angle -= 0.02f;
 
-#if 1
-	if (totalNum == 0)
-	{
-#if 0
-		const auto armNode = m_boneNodeTable["左腕"];
-		const XMMATRIX armMat = XMMatrixTranslation(-armNode.startPos.x, -armNode.startPos.y, -armNode.startPos.z)
-			* XMMatrixRotationZ(XM_PIDIV2)
-			* XMMatrixTranslation(armNode.startPos.x, armNode.startPos.y, armNode.startPos.z);
-
-		const auto elbowNode = m_boneNodeTable["左ひじ"];
-		const XMMATRIX elbowMat = XMMatrixTranslation(-elbowNode.startPos.x, -elbowNode.startPos.y, -elbowNode.startPos.z)
-			* XMMatrixRotationZ(-XM_PIDIV2)
-			* XMMatrixTranslation(elbowNode.startPos.x, elbowNode.startPos.y, elbowNode.startPos.z);
-
-		m_boneMatrices[armNode.boneIdx] = armMat;
-		m_boneMatrices[elbowNode.boneIdx] = elbowMat;
-
-		recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
-
-		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
-#else
-		for (const auto& boneMotion : m_motionData)
-		{
-			const BoneNode node = m_boneNodeTable[boneMotion.first];
-			const XMFLOAT3& pos = node.startPos;
-			const XMMATRIX mat = XMMatrixTranslation(-pos.x, -pos.y, -pos.z)
-				* XMMatrixRotationQuaternion(boneMotion.second[0].quaternion)
-				* XMMatrixTranslation(pos.x, pos.y, pos.z);
-			m_boneMatrices[node.boneIdx] = mat;
-		}
-
-		recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
-
-		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
-#endif
-	}
-#endif
-
-	++totalNum;
+	updateMotion();
 }
 
 HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
@@ -1311,6 +1284,56 @@ HRESULT PmdActor::createMaterialResrouces()
 	}
 
 	return S_OK;
+}
+
+void PmdActor::updateMotion()
+{
+	using namespace DirectX;
+
+	static uint64_t totalNum = 0;
+
+	const DWORD elapsedTime = timeGetTime() - m_animationStartTime;
+	const uint32_t frameNo = static_cast<uint32_t>(30 * (elapsedTime / 1000.0f));
+
+#if 0
+	if (totalNum == 0)
+	{
+#if 0
+		const auto armNode = m_boneNodeTable["左腕"];
+		const XMMATRIX armMat = XMMatrixTranslation(-armNode.startPos.x, -armNode.startPos.y, -armNode.startPos.z)
+			* XMMatrixRotationZ(XM_PIDIV2)
+			* XMMatrixTranslation(armNode.startPos.x, armNode.startPos.y, armNode.startPos.z);
+
+		const auto elbowNode = m_boneNodeTable["左ひじ"];
+		const XMMATRIX elbowMat = XMMatrixTranslation(-elbowNode.startPos.x, -elbowNode.startPos.y, -elbowNode.startPos.z)
+			* XMMatrixRotationZ(-XM_PIDIV2)
+			* XMMatrixTranslation(elbowNode.startPos.x, elbowNode.startPos.y, elbowNode.startPos.z);
+
+		m_boneMatrices[armNode.boneIdx] = armMat;
+		m_boneMatrices[elbowNode.boneIdx] = elbowMat;
+
+		recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
+
+		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
+#else
+		for (const auto& boneMotion : m_motionData)
+		{
+			const BoneNode node = m_boneNodeTable[boneMotion.first];
+			const XMFLOAT3& pos = node.startPos;
+			const XMMATRIX mat = XMMatrixTranslation(-pos.x, -pos.y, -pos.z)
+				* XMMatrixRotationQuaternion(boneMotion.second[0].quaternion)
+				* XMMatrixTranslation(pos.x, pos.y, pos.z);
+			m_boneMatrices[node.boneIdx] = mat;
+		}
+
+		recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
+
+		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
+#endif
+	}
+#endif
+
+	++totalNum;
 }
 
 void PmdActor::recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMATRIX& mat)

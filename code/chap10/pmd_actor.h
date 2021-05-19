@@ -78,7 +78,8 @@ public:
 
 	PmdActor();
 	HRESULT loadAsset(Model model);
-	void update(bool animationEnabled, bool animationReversed);
+	void enableAnimation(bool enable);
+	void update(bool animationReversed);
 	HRESULT render(ID3D12DescriptorHeap* sceneDescHeap) const;
 
 private:
@@ -96,6 +97,7 @@ private:
 	HRESULT createDebugResources();
 	HRESULT createTransformResource();
 	HRESULT createMaterialResrouces();
+	void updateMotion();
 	void recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMATRIX& mat);
 
 	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -103,6 +105,8 @@ private:
 	static Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob;
 	static Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob;
 
+	bool m_bAnimation = false;
+	DWORD m_animationStartTime = 0;
 	std::vector<PMDVertex> m_vertices;
 	std::vector<UINT16> m_indices;
 	std::vector<Material> m_materials;
