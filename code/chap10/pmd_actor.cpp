@@ -1290,15 +1290,16 @@ void PmdActor::updateMotion()
 {
 	using namespace DirectX;
 
-	static uint64_t totalNum = 0;
-
+	constexpr uint32_t kFps = 60;
 	const DWORD elapsedTime = timeGetTime() - m_animationStartTime;
-	const uint32_t frameNo = static_cast<uint32_t>(30 * (elapsedTime / 1000.0f));
+	const uint32_t frameNo = static_cast<uint32_t>(kFps * (elapsedTime / 1000.0f));
 
-#if 0
-	if (totalNum == 0)
+	// clear bone matrices with identity
+	std::fill(m_boneMatrices.begin(), m_boneMatrices.end(), XMMatrixIdentity());
+
+#define TEST0 (0)
+#if TEST0
 	{
-#if 0
 		const auto armNode = m_boneNodeTable["左腕"];
 		const XMMATRIX armMat = XMMatrixTranslation(-armNode.startPos.x, -armNode.startPos.y, -armNode.startPos.z)
 			* XMMatrixRotationZ(XM_PIDIV2)
@@ -1311,11 +1312,12 @@ void PmdActor::updateMotion()
 
 		m_boneMatrices[armNode.boneIdx] = armMat;
 		m_boneMatrices[elbowNode.boneIdx] = elbowMat;
+	}
+#endif // TEST0
 
-		recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
-
-		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
-#else
+#define TEST1 (0)
+#if TEST1
+	{
 		for (const auto& boneMotion : m_motionData)
 		{
 			const BoneNode node = m_boneNodeTable[boneMotion.first];
@@ -1325,15 +1327,49 @@ void PmdActor::updateMotion()
 				* XMMatrixTranslation(pos.x, pos.y, pos.z);
 			m_boneMatrices[node.boneIdx] = mat;
 		}
-
-		recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
-
-		std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
-#endif
 	}
-#endif
+#endif // TEST1
 
-	++totalNum;
+	for (const auto& boneMotion : m_motionData)
+	{
+		const BoneNode node = m_boneNodeTable[boneMotion.first];
+		const auto motions = boneMotion.second;
+
+		auto rit = std::find_if(
+			motions.rbegin(),
+			motions.rend(),
+			[frameNo](const Motion& motion)
+			{
+				return motion.frameNo <= frameNo;
+			});
+
+		if (rit == motions.rend())
+			continue;
+
+		XMMATRIX rotation;
+		auto it = rit.base();
+
+		if (it != motions.end())
+		{
+			const float t = static_cast<float>(frameNo - rit->frameNo) / static_cast<float>(it->frameNo - rit->frameNo);
+
+			rotation = XMMatrixRotationQuaternion(XMQuaternionSlerp(rit->quaternion, it->quaternion, t));
+		}
+		else
+		{
+			rotation = XMMatrixRotationQuaternion(rit->quaternion);
+		}
+
+		const XMMATRIX mat = XMMatrixTranslation(-node.startPos.x, -node.startPos.y, -node.startPos.z)
+			* rotation
+			* XMMatrixTranslation(node.startPos.x, node.startPos.y, node.startPos.z);
+
+		m_boneMatrices[node.boneIdx] = mat;
+	}
+
+	recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
+
+	std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
 }
 
 void PmdActor::recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMATRIX& mat)
@@ -1393,7 +1429,7 @@ static std::string getModelPath(PmdActor::Model model)
 
 std::string getMotionPath()
 {
-	return "Motion/pose.vmd";
+	return "Motion/swing.vmd";
 }
 
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)
