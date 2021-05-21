@@ -824,10 +824,21 @@ HRESULT PmdActor::loadVmd()
 		std::vector<VMDMotion> vmdMotionData(motionDataNum);
 		ThrowIfFalse(fread(vmdMotionData.data(), sizeof(VMDMotion), motionDataNum, fp) == motionDataNum);
 
-		for (const auto& vmdMotion : vmdMotionData)
+		for (const VMDMotion& vmdMotion : vmdMotionData)
 		{
 			m_motionData[vmdMotion.boneName].emplace_back(
 				Motion(vmdMotion.frameNo, DirectX::XMLoadFloat4(&vmdMotion.quaternion)));
+		}
+
+		for (auto& motionData : m_motionData)
+		{
+			std::sort(
+				motionData.second.begin(),
+				motionData.second.end(),
+				[](const Motion& lval, const Motion& rval)
+				{
+					return lval.frameNo <= rval.frameNo;
+				});
 		}
 
 		DebugOutputFormatString("Motion num  : %d\n", motionDataNum);
@@ -1330,9 +1341,8 @@ void PmdActor::updateMotion()
 	}
 #endif // TEST1
 
-	for (const auto& boneMotion : m_motionData)
+	for (const std::pair<std::string, std::vector<Motion>>& boneMotion : m_motionData)
 	{
-		const BoneNode node = m_boneNodeTable[boneMotion.first];
 		const auto motions = boneMotion.second;
 
 		auto rit = std::find_if(
@@ -1360,6 +1370,7 @@ void PmdActor::updateMotion()
 			rotation = XMMatrixRotationQuaternion(rit->quaternion);
 		}
 
+		const BoneNode node = m_boneNodeTable[boneMotion.first];
 		const XMMATRIX mat = XMMatrixTranslation(-node.startPos.x, -node.startPos.y, -node.startPos.z)
 			* rotation
 			* XMMatrixTranslation(node.startPos.x, node.startPos.y, node.startPos.z);
@@ -1429,7 +1440,7 @@ static std::string getModelPath(PmdActor::Model model)
 
 std::string getMotionPath()
 {
-	return "Motion/swing.vmd";
+	return "Motion/motion.vmd";
 }
 
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)

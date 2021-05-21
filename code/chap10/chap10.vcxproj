@@ -217,6 +217,7 @@
     <None Include="Model\鏡音リン.pmd" />
     <None Include="Model\鏡音リン_act2.pmd" />
     <None Include="Model\鏡音レン.pmd" />
+    <None Include="Motion\motion.vmd" />
     <None Include="Motion\pose.vmd" />
     <None Include="Motion\swing.vmd" />
   </ItemGroup>
