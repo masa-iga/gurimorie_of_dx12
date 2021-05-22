@@ -1343,7 +1343,12 @@ void PmdActor::updateMotion()
 
 	for (const std::pair<std::string, std::vector<Motion>>& boneMotion : m_motionData)
 	{
-		const auto motions = boneMotion.second;
+		const auto itBoneNode = m_boneNodeTable.find(boneMotion.first);
+
+		if (itBoneNode == m_boneNodeTable.end())
+			continue;
+
+		const std::vector<Motion> motions = boneMotion.second;
 
 		auto rit = std::find_if(
 			motions.rbegin(),
@@ -1361,6 +1366,7 @@ void PmdActor::updateMotion()
 
 		if (it != motions.end())
 		{
+			// linear interpolation with two samples
 			const float t = static_cast<float>(frameNo - rit->frameNo) / static_cast<float>(it->frameNo - rit->frameNo);
 
 			rotation = XMMatrixRotationQuaternion(XMQuaternionSlerp(rit->quaternion, it->quaternion, t));
