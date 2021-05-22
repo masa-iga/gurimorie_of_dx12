@@ -130,6 +130,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_transformResource = nullptr;
 	DirectX::XMMATRIX* m_worldMatrixPointer = nullptr; // needs to be aligned 16 bytes
 	DirectX::XMMATRIX* m_boneMatrixPointer = nullptr;
+	uint32_t m_duration = 0;
 	std::map<std::string, BoneNode> m_boneNodeTable;
 	std::vector<DirectX::XMMATRIX> m_boneMatrices;
 	std::unordered_map<std::string, std::vector<Motion>> m_motionData;

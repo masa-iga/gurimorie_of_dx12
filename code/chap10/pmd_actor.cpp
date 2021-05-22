@@ -828,6 +828,8 @@ HRESULT PmdActor::loadVmd()
 		{
 			m_motionData[vmdMotion.boneName].emplace_back(
 				Motion(vmdMotion.frameNo, DirectX::XMLoadFloat4(&vmdMotion.quaternion)));
+
+			m_duration = std::max<uint32_t>(m_duration, vmdMotion.frameNo);
 		}
 
 		for (auto& motionData : m_motionData)
@@ -842,6 +844,7 @@ HRESULT PmdActor::loadVmd()
 		}
 
 		DebugOutputFormatString("Motion num  : %d\n", motionDataNum);
+		DebugOutputFormatString("Duration    : %d\n", m_duration);
 	}
 	ThrowIfFalse(fclose(fp) == 0);
 
@@ -1301,9 +1304,15 @@ void PmdActor::updateMotion()
 {
 	using namespace DirectX;
 
-	constexpr uint32_t kFps = 60;
+	constexpr uint32_t kFps = 30;
 	const DWORD elapsedTime = timeGetTime() - m_animationStartTime;
-	const uint32_t frameNo = static_cast<uint32_t>(kFps * (elapsedTime / 1000.0f));
+	uint32_t frameNo = static_cast<uint32_t>(kFps * (elapsedTime / 1000.0f));
+
+	if (frameNo > m_duration)
+	{
+		m_animationStartTime = timeGetTime();
+		frameNo = 0;
+	}
 
 	// clear bone matrices with identity
 	std::fill(m_boneMatrices.begin(), m_boneMatrices.end(), XMMatrixIdentity());
