@@ -34,11 +34,11 @@ struct PMDHeader
 #pragma pack(1)
 struct PMDMaterial
 {
-	DirectX::XMFLOAT3 diffuse;
+	DirectX::XMFLOAT3 diffuse = { };
 	FLOAT alpha = 0.0f;
 	FLOAT specularity = 0.0f;
-	DirectX::XMFLOAT3 specular;
-	DirectX::XMFLOAT3 ambient;
+	DirectX::XMFLOAT3 specular = { };
+	DirectX::XMFLOAT3 ambient = { };
 	UINT8 toonIdx = 0;
 	UINT8 edgeFlg = 0;
 	UINT indicesNum = 0;
@@ -55,7 +55,7 @@ struct PMDBone
 	UINT16 nextNo = 0;
 	UCHAR type = '0';
 	UINT16 ikBoneNo = 0;
-	DirectX::XMFLOAT3 pos;
+	DirectX::XMFLOAT3 pos = { };
 };
 #pragma pack()
 static_assert(sizeof(PMDBone) == 39);
@@ -65,8 +65,8 @@ struct VMDMotion
 {
 	char boneName[15] = { };
 	uint32_t frameNo = 0;
-	DirectX::XMFLOAT3 location;
-	DirectX::XMFLOAT4 quaternion;
+	DirectX::XMFLOAT3 location = { };
+	DirectX::XMFLOAT4 quaternion = { };
 	uint8_t bezier[64] = { };
 };
 #pragma pack()
@@ -170,6 +170,7 @@ static std::pair<HRESULT, D3D12_VERTEX_BUFFER_VIEW>
 createVertexBufferResource(ComPtr<ID3D12Resource>* vertResource, const std::vector<T>& vertices);
 static std::pair<HRESULT, D3D12_INDEX_BUFFER_VIEW> createIndexBufferResource(ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ComPtr<ID3D12Resource>* vertResource, size_t width);
+static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const DirectX::XMFLOAT2& b, uint8_t n);
 static void outputDebugMessage(ID3DBlob* errorBlob);
 
 void PmdActor::release()
@@ -1573,6 +1574,33 @@ static HRESULT createBufferResource(ComPtr<ID3D12Resource>* resource, size_t wid
 	}
 
 	return S_OK;
+}
+
+static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const DirectX::XMFLOAT2& b, uint8_t n)
+{
+	if (a.x == a.y && b.x == b.y)
+		return x;
+
+	float t = x;
+	const float k0 = 1 + 3 * a.x - 3 * b.x; // coefficient of t^3
+	const float k1 = 3 * b.x - 6 * b.x; // coefficient of t^2
+	const float k2 = 3 * a.x; // coefficient of t
+
+	constexpr float epsilon = 0.0005f;
+
+	for (int32_t i = 0; i < n; ++i)
+	{
+		const float ft = k0 * t * t * t + k1 * t * t + k2 * t - x;
+
+		if (-epsilon <= ft && ft <= epsilon)
+			break;
+
+		t -= ft / 2;
+	}
+
+	const float r = 1 - t;
+
+	return (t * t * t) + (3 * t * t * r * b.y) + (3 * t * r * r * a.y);
 }
 
 static void outputDebugMessage(ID3DBlob* errorBlob)

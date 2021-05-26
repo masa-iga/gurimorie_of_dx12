@@ -15,9 +15,9 @@
 #pragma pack(1) // size of the struct is 38 bytes, so need to prevent padding
 struct PMDVertex
 {
-	DirectX::XMFLOAT3 pos;
-	DirectX::XMFLOAT3 normal;
-	DirectX::XMFLOAT2 uv;
+	DirectX::XMFLOAT3 pos = { };
+	DirectX::XMFLOAT3 normal = { };
+	DirectX::XMFLOAT2 uv = { };
 	UINT16 boneNo[2] = { };
 	UINT8 boneWeight = 0;
 	UINT8 edgeFlag = 0;
@@ -27,11 +27,11 @@ static_assert(sizeof(PMDVertex) == 38);
 
 struct MaterialForHlsl
 {
-	DirectX::XMFLOAT3 diffuse;
+	DirectX::XMFLOAT3 diffuse = { };
 	float alpha = 0.0f;
-	DirectX::XMFLOAT3 specular;
+	DirectX::XMFLOAT3 specular = { };
 	float specularity = 0.0f;
-	DirectX::XMFLOAT3 ambient;
+	DirectX::XMFLOAT3 ambient = { };
 };
 
 struct AdditionalMaterial
@@ -51,8 +51,8 @@ struct Material
 struct BoneNode
 {
 	int32_t boneIdx = 0;
-	DirectX::XMFLOAT3 startPos;
-	DirectX::XMFLOAT3 endPos;
+	DirectX::XMFLOAT3 startPos = { };
+	DirectX::XMFLOAT3 endPos = { };
 	std::vector<BoneNode*> children;
 };
 
