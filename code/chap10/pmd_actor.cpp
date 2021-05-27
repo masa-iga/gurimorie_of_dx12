@@ -828,7 +828,10 @@ HRESULT PmdActor::loadVmd()
 		for (const VMDMotion& vmdMotion : vmdMotionData)
 		{
 			m_motionData[vmdMotion.boneName].emplace_back(
-				Motion(vmdMotion.frameNo, DirectX::XMLoadFloat4(&vmdMotion.quaternion)));
+				Motion(vmdMotion.frameNo,
+					DirectX::XMLoadFloat4(&vmdMotion.quaternion),
+					DirectX::XMFLOAT2(static_cast<float>(vmdMotion.bezier[3]) / 127.0f, static_cast<float>(vmdMotion.bezier[7]) / 127.0f),
+					DirectX::XMFLOAT2(static_cast<float>(vmdMotion.bezier[11]) / 127.0f, static_cast<float>(vmdMotion.bezier[15]) / 127.0f)));
 
 			m_duration = std::max<uint32_t>(m_duration, vmdMotion.frameNo);
 		}
@@ -1376,9 +1379,9 @@ void PmdActor::updateMotion()
 
 		if (it != motions.end())
 		{
-			// linear interpolation with two samples
-			const float t = static_cast<float>(frameNo - rit->frameNo) / static_cast<float>(it->frameNo - rit->frameNo);
-
+			// interpolation with Bezier curve
+			float t = static_cast<float>(frameNo - rit->frameNo) / static_cast<float>(it->frameNo - rit->frameNo);
+			t = getYfromXOnBezier(t, it->p1, it->p2, 12);
 			rotation = XMMatrixRotationQuaternion(XMQuaternionSlerp(rit->quaternion, it->quaternion, t));
 		}
 		else
@@ -1583,7 +1586,7 @@ static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const Direct
 
 	float t = x;
 	const float k0 = 1 + 3 * a.x - 3 * b.x; // coefficient of t^3
-	const float k1 = 3 * b.x - 6 * b.x; // coefficient of t^2
+	const float k1 = 3 * b.x - 6 * a.x; // coefficient of t^2
 	const float k2 = 3 * a.x; // coefficient of t
 
 	constexpr float epsilon = 0.0005f;

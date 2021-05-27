@@ -60,10 +60,14 @@ struct Motion
 {
 	uint32_t frameNo = 0;
 	DirectX::XMVECTOR quaternion;
+	DirectX::XMFLOAT2 p1 = { };
+	DirectX::XMFLOAT2 p2 = { };
 
-	Motion(uint32_t fno, const DirectX::XMVECTOR& q)
+	Motion(uint32_t fno, const DirectX::XMVECTOR& q, const DirectX::XMFLOAT2& ip1, const DirectX::XMFLOAT2& ip2)
 		: frameNo(fno)
 		, quaternion(q)
+		, p1(ip1)
+		, p2(ip2)
 	{ }
 };
 
