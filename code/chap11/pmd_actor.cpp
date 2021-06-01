@@ -1319,7 +1319,7 @@ void PmdActor::updateMotion()
 	}
 
 	// clear bone matrices with identity
-	std::fill(m_boneMatrices.begin(), m_boneMatrices.end(), XMMatrixIdentity());
+	std::fill(m_boneMatrices.begin(), m_boneMatrices.end(), DirectX::XMMatrixIdentity());
 
 #define TEST0 (0)
 #if TEST0
@@ -1390,14 +1390,14 @@ void PmdActor::updateMotion()
 		}
 
 		const BoneNode node = m_boneNodeTable[boneMotion.first];
-		const XMMATRIX mat = XMMatrixTranslation(-node.startPos.x, -node.startPos.y, -node.startPos.z)
+		const XMMATRIX mat = DirectX::XMMatrixTranslation(-node.startPos.x, -node.startPos.y, -node.startPos.z)
 			* rotation
-			* XMMatrixTranslation(node.startPos.x, node.startPos.y, node.startPos.z);
+			* DirectX::XMMatrixTranslation(node.startPos.x, node.startPos.y, node.startPos.z);
 
 		m_boneMatrices[node.boneIdx] = mat;
 	}
 
-	recursiveMatrixMultiply(m_boneNodeTable["センター"], XMMatrixIdentity());
+	recursiveMatrixMultiply(m_boneNodeTable["センター"], DirectX::XMMatrixIdentity());
 
 	std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
 }
