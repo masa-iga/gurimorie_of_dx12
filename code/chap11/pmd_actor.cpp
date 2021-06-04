@@ -657,6 +657,60 @@ HRESULT PmdActor::loadPmd(Model model)
 		std::vector<PMDBone> pmdBones(boneNum);
 		ThrowIfFalse(fread(pmdBones.data(), sizeof(PMDBone), boneNum, fp) == boneNum);
 
+		uint16_t ikNum = 0;
+		ThrowIfFalse(fread(&ikNum, sizeof(ikNum), 1, fp) == 1);
+
+		struct PmdIk
+		{
+			uint16_t boneIdx = 0;
+			uint16_t targetIdx = 0;
+			//uint8_t chainLen = 0;
+			uint16_t iterations = 0;
+			float limit = 0.0f;
+			std::vector<uint16_t> nodeIdxes;
+		};
+
+		std::vector<PmdIk> pmdIks(ikNum);
+
+		for (auto& ik : pmdIks)
+		{
+			ThrowIfFalse(fread(&ik.boneIdx, sizeof(ik.boneIdx), 1, fp) == 1);
+			ThrowIfFalse(fread(&ik.targetIdx, sizeof(ik.targetIdx), 1, fp) == 1);
+
+			uint8_t chainLen = 0;
+			ThrowIfFalse(fread(&chainLen, sizeof(chainLen), 1, fp) == 1);
+
+			ik.nodeIdxes.resize(chainLen);
+			ThrowIfFalse(fread(&ik.iterations, sizeof(ik.iterations), 1, fp) == 1);
+			ThrowIfFalse(fread(&ik.limit, sizeof(ik.limit), 1, fp) == 1);
+
+			if (chainLen == 0)
+				continue;
+
+			ThrowIfFalse(fread(ik.nodeIdxes.data(), sizeof(ik.nodeIdxes[0]), chainLen, fp) == chainLen);
+		}
+
+		struct Motion
+		{
+			uint32_t frameNo = 0;
+			DirectX::XMVECTOR quaternion = { };
+			DirectX::XMFLOAT3 offset = { };
+			DirectX::XMFLOAT2 p1 = { }; // Bezier curve control point 0
+			DirectX::XMFLOAT2 p2 = { }; // Bezier curve control point 1
+
+			Motion(uint32_t fno,
+				DirectX::XMVECTOR& q,
+				DirectX::XMFLOAT3& ofst,
+				DirectX::XMFLOAT2& ip1,
+				const DirectX::XMFLOAT2& ip2)
+				: frameNo(fno)
+				, quaternion(q)
+				, offset(ofst)
+				, p1(ip1)
+				, p2(ip2)
+			{ }
+		};
+
 		// load materials
 		{
 			m_materials.resize(pmdMaterials.size());
@@ -796,6 +850,36 @@ HRESULT PmdActor::loadPmd(Model model)
 			m_boneMatrices.resize(pmdBones.size());
 			std::fill(m_boneMatrices.begin(), m_boneMatrices.end(), DirectX::XMMatrixIdentity());
 		}
+
+// TODO: move somewhere
+#define PRINT_IK_DATA (1)
+#if PRINT_IK_DATA
+		{
+			auto getNameFromIdx = [&](uint16_t idx) -> std::string
+			{
+				auto it = std::find_if(m_boneNodeTable.begin(), m_boneNodeTable.end(),
+					[idx](const std::pair<std::string, BoneNode>& obj)
+					{
+						return obj.second.boneIdx == idx;
+					});
+
+				if (it != m_boneNodeTable.end())
+					return it->first;
+
+				return std::string("");
+			};
+
+			for (const auto& ik : pmdIks)
+			{
+				DebugOutputFormatString("IK bone # = %d : %s\n", ik.boneIdx, getNameFromIdx(ik.boneIdx).c_str());
+
+				for (const auto& node : ik.nodeIdxes)
+				{
+					DebugOutputFormatString("\tNode bone = %d : %s\n", node, getNameFromIdx(node).c_str());
+				}
+			}
+		}
+#endif // PRINT_IK_DATA
 	}
 	ThrowIfFalse(fclose(fp) == 0);
 
