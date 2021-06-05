@@ -53,7 +53,7 @@ struct PMDBone
 	CHAR boneName[20] = "";
 	UINT16 parentNo = 0;
 	UINT16 nextNo = 0;
-	UCHAR type = '0';
+	UCHAR type = 0;
 	UINT16 ikBoneNo = 0;
 	DirectX::XMFLOAT3 pos = { };
 };
@@ -825,14 +825,21 @@ HRESULT PmdActor::loadPmd(Model model)
 
 		// load bones
 		{
-			std::vector<std::string> boneNames(pmdBones.size());
+			m_boneNameArray.resize(pmdBones.size());
+			m_boneNodeAddressArray.resize(pmdBones.size());
 
 			// create bone node map
 			for (uint32_t i = 0; i < pmdBones.size(); ++i)
 			{
-				boneNames.at(i) = pmdBones.at(i).boneName;
-				m_boneNodeTable[pmdBones.at(i).boneName].boneIdx = i;
-				m_boneNodeTable[pmdBones.at(i).boneName].startPos = pmdBones.at(i).pos;
+				const PMDBone& pb = pmdBones.at(i);
+				BoneNode& node = m_boneNodeTable[pb.boneName];
+				node.boneIdx = i;
+				node.startPos = pb.pos;
+				node.boneType = pb.type;
+				node.ikParentBone = pb.ikBoneNo;
+
+				m_boneNameArray[i] = pb.boneName;
+				m_boneNodeAddressArray[i] = &m_boneNodeTable[pb.boneName];
 			}
 
 			// construct parent-child map
@@ -841,7 +848,7 @@ HRESULT PmdActor::loadPmd(Model model)
 				if (bone.parentNo >= pmdBones.size())
 					continue;
 
-				const std::string& parentName = boneNames.at(bone.parentNo);
+				const std::string& parentName = m_boneNameArray.at(bone.parentNo);
 				m_boneNodeTable[parentName].children.emplace_back(&m_boneNodeTable[bone.boneName]);
 			}
 		}
@@ -914,6 +921,7 @@ HRESULT PmdActor::loadVmd()
 			m_motionData[vmdMotion.boneName].emplace_back(
 				Motion(vmdMotion.frameNo,
 					DirectX::XMLoadFloat4(&vmdMotion.quaternion),
+					DirectX::XMFLOAT3(), // TODO: needs to be updated
 					DirectX::XMFLOAT2(static_cast<float>(vmdMotion.bezier[3]) / 127.0f, static_cast<float>(vmdMotion.bezier[7]) / 127.0f),
 					DirectX::XMFLOAT2(static_cast<float>(vmdMotion.bezier[11]) / 127.0f, static_cast<float>(vmdMotion.bezier[15]) / 127.0f)));
 

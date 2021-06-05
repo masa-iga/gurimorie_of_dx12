@@ -12,6 +12,18 @@
 #include <wrl.h>
 #pragma warning(pop)
 
+enum class BoneType
+{
+	kRotation,
+	kRotAndMove,
+	kIk,
+	kUndefined,
+	kIkChild,
+	kRotationChild,
+	kIkDestination,
+	kInvisible,
+};
+
 #pragma pack(1) // size of the struct is 38 bytes, so need to prevent padding
 struct PMDVertex
 {
@@ -51,6 +63,8 @@ struct Material
 struct BoneNode
 {
 	int32_t boneIdx = 0;
+	uint32_t boneType = 0;
+	uint32_t ikParentBone = 0;
 	DirectX::XMFLOAT3 startPos = { };
 	DirectX::XMFLOAT3 endPos = { };
 	std::vector<BoneNode*> children;
@@ -59,13 +73,19 @@ struct BoneNode
 struct Motion
 {
 	uint32_t frameNo = 0;
-	DirectX::XMVECTOR quaternion;
+	DirectX::XMVECTOR quaternion = { };
+	DirectX::XMFLOAT3 offset = { };
 	DirectX::XMFLOAT2 p1 = { };
 	DirectX::XMFLOAT2 p2 = { };
 
-	Motion(uint32_t fno, const DirectX::XMVECTOR& q, const DirectX::XMFLOAT2& ip1, const DirectX::XMFLOAT2& ip2)
+	Motion(uint32_t fno,
+		const DirectX::XMVECTOR& q,
+		const DirectX::XMFLOAT3& ofst,
+		const DirectX::XMFLOAT2& ip1,
+		const DirectX::XMFLOAT2& ip2)
 		: frameNo(fno)
 		, quaternion(q)
+		, offset(ofst)
 		, p1(ip1)
 		, p2(ip2)
 	{ }
@@ -136,6 +156,8 @@ private:
 	DirectX::XMMATRIX* m_boneMatrixPointer = nullptr;
 	uint32_t m_duration = 0;
 	std::map<std::string, BoneNode> m_boneNodeTable;
+	std::vector<std::string> m_boneNameArray;
+	std::vector<BoneNode*> m_boneNodeAddressArray;
 	std::vector<DirectX::XMMATRIX> m_boneMatrices;
 	std::unordered_map<std::string, std::vector<Motion>> m_motionData;
 
