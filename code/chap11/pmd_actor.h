@@ -75,8 +75,8 @@ struct Motion
 	uint32_t frameNo = 0;
 	DirectX::XMVECTOR quaternion = { };
 	DirectX::XMFLOAT3 offset = { };
-	DirectX::XMFLOAT2 p1 = { };
-	DirectX::XMFLOAT2 p2 = { };
+	DirectX::XMFLOAT2 p1 = { }; // Bezier curve control point 0
+	DirectX::XMFLOAT2 p2 = { }; // Bezier curve control point 1
 
 	Motion(uint32_t fno,
 		const DirectX::XMVECTOR& q,
@@ -89,6 +89,16 @@ struct Motion
 		, p1(ip1)
 		, p2(ip2)
 	{ }
+};
+
+struct PmdIk
+{
+	uint16_t boneIdx = 0;
+	uint16_t targetIdx = 0;
+	//uint8_t chainLen = 0;
+	uint16_t iterations = 0;
+	float limit = 0.0f;
+	std::vector<uint16_t> nodeIdxes;
 };
 
 class PmdActor {
@@ -160,6 +170,7 @@ private:
 	std::vector<BoneNode*> m_boneNodeAddressArray;
 	std::vector<DirectX::XMMATRIX> m_boneMatrices;
 	std::unordered_map<std::string, std::vector<Motion>> m_motionData;
+	std::vector<PmdIk> m_pmdIks;
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };
