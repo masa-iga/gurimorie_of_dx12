@@ -133,6 +133,7 @@ private:
 	HRESULT createMaterialResrouces();
 	void updateMotion();
 	void recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMATRIX& mat);
+	void IKSolve();
 
 	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	static Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;

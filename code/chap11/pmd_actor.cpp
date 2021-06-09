@@ -171,6 +171,11 @@ createVertexBufferResource(ComPtr<ID3D12Resource>* vertResource, const std::vect
 static std::pair<HRESULT, D3D12_INDEX_BUFFER_VIEW> createIndexBufferResource(ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ComPtr<ID3D12Resource>* vertResource, size_t width);
 static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const DirectX::XMFLOAT2& b, uint8_t n);
+static void solveLookAt(const PmdIk& ik);
+static void solveCosineIK(const PmdIk& ik);
+static void solveCCDIK(const PmdIk& ik);
+static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& lookat, DirectX::XMFLOAT3& up, DirectX::XMFLOAT3& right);
+static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, DirectX::XMFLOAT3& up, DirectX::XMFLOAT3& right);
 static void outputDebugMessage(ID3DBlob* errorBlob);
 
 void PmdActor::release()
@@ -1472,6 +1477,30 @@ void PmdActor::recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMA
 	}
 }
 
+void PmdActor::IKSolve()
+{
+	for (const PmdIk& ik : m_pmdIks)
+	{
+		const size_t childrenNodesCount = ik.nodeIdxes.size();
+
+		switch (childrenNodesCount)
+		{
+		case 0:
+			ThrowIfFalse(false);
+			continue;
+		case 1:
+			solveLookAt(ik);
+			break;
+		case 2:
+			solveCosineIK(ik);
+			break;
+		default:
+			solveCCDIK(ik);
+			break;
+		}
+	}
+}
+
 static HRESULT setViewportScissor()
 {
 	D3D12_VIEWPORT viewport = { };
@@ -1664,6 +1693,52 @@ static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const Direct
 	const float r = 1 - t;
 
 	return (t * t * t) + (3 * t * t * r * b.y) + (3 * t * r * r * a.y);
+}
+
+void solveLookAt(const PmdIk& ik)
+{
+	;
+}
+
+void solveCosineIK(const PmdIk& ik)
+{
+	;
+}
+
+void solveCCDIK(const PmdIk& ik)
+{
+	;
+}
+
+static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& lookat, DirectX::XMFLOAT3& up, DirectX::XMFLOAT3& right)
+{
+	return DirectX::XMMatrixTranspose(lookAtMatrix(origin, up, right)) * lookAtMatrix(lookat, up, right);
+}
+
+static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, DirectX::XMFLOAT3& up, DirectX::XMFLOAT3& right)
+{
+	using namespace DirectX;
+
+	const XMVECTOR& vz = lookat;
+	XMVECTOR vy = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&up));
+	XMVECTOR vx = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(vy, vz));
+
+	vy = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(vz, vx));
+
+	// if both LookAt and up vectors direct in the same way, vx should be updated based on right vector
+	if (std::abs(XMVector3Dot(vy, vz).m128_f32[0]) == 1.0f)
+	{
+		vx = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&right));
+		vy = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(vz, vx));
+		vx = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(vy, vz));
+	}
+
+	XMMATRIX ret = DirectX::XMMatrixIdentity();
+	ret.r[0] = vx;
+	ret.r[1] = vy;
+	ret.r[2] = vz;
+
+	return ret;
 }
 
 static void outputDebugMessage(ID3DBlob* errorBlob)
