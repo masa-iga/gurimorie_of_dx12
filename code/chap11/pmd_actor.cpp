@@ -3,6 +3,7 @@
 #include <codeanalysis/warnings.h>
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <algorithm>
+#include <array>
 #include <cstdio>
 #include <d3dcompiler.h>
 #include <d3dx12.h>
@@ -171,11 +172,8 @@ createVertexBufferResource(ComPtr<ID3D12Resource>* vertResource, const std::vect
 static std::pair<HRESULT, D3D12_INDEX_BUFFER_VIEW> createIndexBufferResource(ComPtr<ID3D12Resource>* ibResource, const std::vector<UINT16>& indices);
 static HRESULT createBufferResource(ComPtr<ID3D12Resource>* vertResource, size_t width);
 static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const DirectX::XMFLOAT2& b, uint8_t n);
-static void solveLookAt(const PmdIk& ik);
-static void solveCosineIK(const PmdIk& ik);
-static void solveCCDIK(const PmdIk& ik);
-static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& lookat, DirectX::XMFLOAT3& up, DirectX::XMFLOAT3& right);
-static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, DirectX::XMFLOAT3& up, DirectX::XMFLOAT3& right);
+static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right);
+static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right);
 static void outputDebugMessage(ID3DBlob* errorBlob);
 
 void PmdActor::release()
@@ -801,6 +799,7 @@ HRESULT PmdActor::loadPmd(Model model)
 		{
 			m_boneNameArray.resize(pmdBones.size());
 			m_boneNodeAddressArray.resize(pmdBones.size());
+			m_kneeIdxes.clear();
 
 			// create bone node map
 			for (uint32_t i = 0; i < pmdBones.size(); ++i)
@@ -814,6 +813,13 @@ HRESULT PmdActor::loadPmd(Model model)
 
 				m_boneNameArray[i] = pb.boneName;
 				m_boneNodeAddressArray[i] = &m_boneNodeTable[pb.boneName];
+
+				const std::string boneName = pb.boneName;
+
+				if (boneName.find("‚Ð‚´") != std::string::npos)
+				{
+					m_kneeIdxes.emplace_back(i);
+				}
 			}
 
 			// construct parent-child map
@@ -1501,6 +1507,107 @@ void PmdActor::IKSolve()
 	}
 }
 
+void PmdActor::solveLookAt(const PmdIk& ik)
+{
+	using namespace DirectX;
+
+	const BoneNode* rootNode = m_boneNodeAddressArray[ik.nodeIdxes[0]];
+	const BoneNode* targetNode = m_boneNodeAddressArray[ik.boneIdx];
+
+	const XMVECTOR rpos1 = DirectX::XMLoadFloat3(&rootNode->startPos);
+	const XMVECTOR tpos1 = DirectX::XMLoadFloat3(&targetNode->startPos);
+
+	const XMVECTOR rpos2 = DirectX::XMVector3TransformCoord(rpos1, m_boneMatrices[ik.nodeIdxes[0]]);
+	const XMVECTOR tpos2 = DirectX::XMVector3TransformCoord(tpos1, m_boneMatrices[ik.boneIdx]);
+
+	XMVECTOR originVec = DirectX::XMVectorSubtract(tpos1, rpos1);
+	XMVECTOR targetVec = DirectX::XMVectorSubtract(tpos2, rpos2);
+	originVec = DirectX::XMVector3Normalize(originVec);
+	targetVec = DirectX::XMVector3Normalize(targetVec);
+
+	m_boneMatrices[ik.nodeIdxes[0]] = lookAtMatrix(
+		originVec,
+		targetVec,
+		DirectX::XMFLOAT3(0, 1, 0),
+		DirectX::XMFLOAT3(1, 0, 0));
+}
+
+void PmdActor::solveCosineIK(const PmdIk& ik)
+{
+	using namespace DirectX;
+
+	// last bone
+	const BoneNode* endNode = m_boneNodeAddressArray[ik.targetIdx];
+
+	// intermidiate & root bones
+	std::vector<XMVECTOR> positions;
+	positions.emplace_back(XMLoadFloat3(&endNode->startPos));
+
+	for (uint16_t chainBoneIdx : ik.nodeIdxes)
+	{
+		const BoneNode* boneNode = m_boneNodeAddressArray[chainBoneIdx];
+		positions.emplace_back(XMLoadFloat3(&boneNode->startPos));
+	}
+
+	// reverse orders for simplicity
+	std::reverse(positions.begin(), positions.end());
+
+	// store lengths
+	std::array<float, 2> edgeLens;
+	edgeLens[0] = XMVector3Length(DirectX::XMVectorSubtract(positions[1], positions[0])).m128_f32[0];
+	edgeLens[1] = XMVector3Length(DirectX::XMVectorSubtract(positions[2], positions[1])).m128_f32[0];
+
+	positions[0] = DirectX::XMVector3Transform(positions[0], m_boneMatrices[ik.nodeIdxes[1]]); // root bone
+	// positions[1] will be automatically calculated
+	positions[2] = DirectX::XMVector3Transform(positions[2], m_boneMatrices[ik.boneIdx]); // last bone
+
+	XMVECTOR linearVec = DirectX::XMVectorSubtract(positions[2], positions[0]);
+	const float A = DirectX::XMVector3Length(linearVec).m128_f32[0];
+	const float B = edgeLens[0];
+	const float C = edgeLens[1];
+
+	linearVec = DirectX::XMVector3Normalize(linearVec);
+
+	const float theta1 = acosf((A * A + B * B - C * C) / (2 * A * B));
+	const float theta2 = acosf((B * B + C * C - A * A) / (2 * B * C));
+
+	XMVECTOR axis = { };
+
+	if (find(m_kneeIdxes.begin(), m_kneeIdxes.end(), ik.nodeIdxes[0]) == m_kneeIdxes.end())
+	{
+		const BoneNode* targetNode = m_boneNodeAddressArray[ik.boneIdx];
+		const XMVECTOR targetPos = DirectX::XMVector3Transform(
+			DirectX::XMLoadFloat3(&targetNode->startPos),
+			m_boneMatrices[ik.boneIdx]);
+
+		const XMVECTOR vm = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(positions[2], positions[0]));
+		const XMVECTOR vt = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(targetPos, positions[0]));
+		axis = DirectX::XMVector3Cross(vt, vm);
+	}
+	else
+	{
+		const auto right = XMFLOAT3(1, 0, 0);
+		axis = DirectX::XMLoadFloat3(&right);
+	}
+
+	XMMATRIX mat1 = DirectX::XMMatrixTranslationFromVector(-positions[0]);
+	mat1 *= DirectX::XMMatrixRotationAxis(axis, theta1);
+	mat1 *= DirectX::XMMatrixTranslationFromVector(positions[0]);
+
+	XMMATRIX mat2 = DirectX::XMMatrixTranslationFromVector(-positions[1]);
+	mat2 *= DirectX::XMMatrixRotationAxis(axis, theta2 - XM_PI);
+	mat2 *= DirectX::XMMatrixTranslationFromVector(positions[1]);
+
+	m_boneMatrices[ik.nodeIdxes[1]] *= mat1;
+	m_boneMatrices[ik.nodeIdxes[0]] = mat2 * m_boneMatrices[ik.nodeIdxes[1]];
+	m_boneMatrices[ik.targetIdx] = m_boneMatrices[ik.nodeIdxes[0]];
+}
+
+void PmdActor::solveCCDIK(const PmdIk& ik)
+{
+	;
+}
+
 static HRESULT setViewportScissor()
 {
 	D3D12_VIEWPORT viewport = { };
@@ -1695,27 +1802,12 @@ static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const Direct
 	return (t * t * t) + (3 * t * t * r * b.y) + (3 * t * r * r * a.y);
 }
 
-void solveLookAt(const PmdIk& ik)
-{
-	;
-}
-
-void solveCosineIK(const PmdIk& ik)
-{
-	;
-}
-
-void solveCCDIK(const PmdIk& ik)
-{
-	;
-}
-
-static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& lookat, DirectX::XMFLOAT3& up, DirectX::XMFLOAT3& right)
+static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right)
 {
 	return DirectX::XMMatrixTranspose(lookAtMatrix(origin, up, right)) * lookAtMatrix(lookat, up, right);
 }
 
-static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, DirectX::XMFLOAT3& up, DirectX::XMFLOAT3& right)
+static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right)
 {
 	using namespace DirectX;
 

@@ -134,6 +134,9 @@ private:
 	void updateMotion();
 	void recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMATRIX& mat);
 	void IKSolve();
+	void solveLookAt(const PmdIk& ik);
+	void solveCosineIK(const PmdIk& ik);
+	void solveCCDIK(const PmdIk& ik);
 
 	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	static Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
@@ -169,6 +172,7 @@ private:
 	std::map<std::string, BoneNode> m_boneNodeTable;
 	std::vector<std::string> m_boneNameArray;
 	std::vector<BoneNode*> m_boneNodeAddressArray;
+	std::vector<uint32_t> m_kneeIdxes;
 	std::vector<DirectX::XMMATRIX> m_boneMatrices;
 	std::unordered_map<std::string, std::vector<Motion>> m_motionData;
 	std::vector<PmdIk> m_pmdIks;
