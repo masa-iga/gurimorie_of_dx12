@@ -15,6 +15,9 @@
 #include "init.h"
 #include "util.h"
 
+#undef min
+#undef max
+
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "Winmm.lib")
 
@@ -1541,12 +1544,12 @@ void PmdActor::solveCosineIK(const PmdIk& ik)
 
 	// intermidiate & root bones
 	std::vector<XMVECTOR> positions;
-	positions.emplace_back(XMLoadFloat3(&endNode->startPos));
+	positions.emplace_back(DirectX::XMLoadFloat3(&endNode->startPos));
 
 	for (uint16_t chainBoneIdx : ik.nodeIdxes)
 	{
 		const BoneNode* boneNode = m_boneNodeAddressArray[chainBoneIdx];
-		positions.emplace_back(XMLoadFloat3(&boneNode->startPos));
+		positions.emplace_back(DirectX::XMLoadFloat3(&boneNode->startPos));
 	}
 
 	// reverse orders for simplicity
@@ -1605,7 +1608,84 @@ void PmdActor::solveCosineIK(const PmdIk& ik)
 
 void PmdActor::solveCCDIK(const PmdIk& ik)
 {
-	;
+	using namespace DirectX;
+
+	const BoneNode* targetBoneNode = m_boneNodeAddressArray[ik.boneIdx];
+	const XMVECTOR targetOriginPos = DirectX::XMLoadFloat3(&targetBoneNode->startPos);
+
+	const XMMATRIX parentMat = m_boneMatrices[m_boneNodeAddressArray[ik.boneIdx]->ikParentBone];
+	XMVECTOR det = { };
+	const XMMATRIX invParentMat = DirectX::XMMatrixInverse(&det, parentMat);
+	const XMVECTOR targetNextPos = DirectX::XMVector3Transform(targetOriginPos, m_boneMatrices[ik.boneIdx] * invParentMat);
+
+	XMVECTOR endPos = XMLoadFloat3(&m_boneNodeAddressArray[ik.targetIdx]->startPos);
+
+	std::vector<XMVECTOR> bonePositions;
+
+	for (uint16_t cidx : ik.nodeIdxes)
+	{
+		bonePositions.emplace_back(XMLoadFloat3(&m_boneNodeAddressArray[cidx]->startPos));
+	}
+
+	std::vector<XMMATRIX> mats(bonePositions.size());
+	std::fill(mats.begin(), mats.end(), DirectX::XMMatrixIdentity());
+
+	constexpr float epsilon = 0.0005f;
+	const float ikLimit = ik.limit * XM_PI;
+
+	for (int32_t c = 0; c < ik.iterations; ++c)
+	{
+		// stop processing if we are almost close to target position
+		if (XMVector3Length(DirectX::XMVectorSubtract(endPos, targetNextPos)).m128_f32[0] <= epsilon)
+			break;
+
+		for (int32_t bidx = 0; bidx < bonePositions.size(); ++bidx)
+		{
+			const XMVECTOR& pos = bonePositions[bidx];
+
+			const XMVECTOR vecToEnd = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(endPos, pos));
+			const XMVECTOR vecToTarget = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(targetNextPos, pos));
+
+			// move to next bone if both vectors are almost same (since we couldn't do cross operation)
+			if (DirectX::XMVector3Length(DirectX::XMVectorSubtract(vecToEnd, vecToTarget)).m128_f32[0] <= epsilon)
+				continue;
+
+			const XMVECTOR cross = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(vecToEnd, vecToTarget));
+			float angle = DirectX::XMVector3AngleBetweenVectors(vecToEnd, vecToTarget).m128_f32[0];
+			angle = std::min(angle, ikLimit);
+
+			const XMMATRIX rot = DirectX::XMMatrixRotationAxis(cross, angle);
+
+			XMMATRIX mat = DirectX::XMMatrixTranslationFromVector(-pos)
+				* rot
+				* DirectX::XMMatrixTranslationFromVector(pos);
+
+			mats[bidx] *= mat;
+
+			for (int32_t idx = bidx - 1; idx >= 0; --idx)
+			{
+				bonePositions[idx] = DirectX::XMVector3Transform(bonePositions[idx], mat);
+			}
+
+			endPos = DirectX::XMVector3Transform(endPos, mat);
+
+			if (DirectX::XMVector3Length(DirectX::XMVectorSubtract(endPos, targetNextPos)).m128_f32[0] <= epsilon)
+				break;
+		}
+	}
+
+	{
+		int32_t idx = 0;
+
+		for (uint16_t cidx : ik.nodeIdxes)
+		{
+			m_boneMatrices[cidx] = mats[idx];
+			++idx;
+
+			BoneNode* rootNode = m_boneNodeAddressArray[ik.nodeIdxes.back()];
+			recursiveMatrixMultiply(*rootNode, parentMat);
+		}
+	}
 }
 
 static HRESULT setViewportScissor()
