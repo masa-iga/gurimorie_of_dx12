@@ -137,6 +137,9 @@
     <None Include="Motion\motion.vmd">
       <Filter>リソース ファイル\Motion</Filter>
     </None>
+    <None Include="Motion\squat.vmd">
+      <Filter>リソース ファイル\Motion</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="img\textest.png">
