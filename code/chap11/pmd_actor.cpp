@@ -901,9 +901,10 @@ HRESULT PmdActor::loadVmd()
 		for (const VMDMotion& vmdMotion : vmdMotionData)
 		{
 			m_motionData[vmdMotion.boneName].emplace_back(
-				Motion(vmdMotion.frameNo,
+				Motion(
+					vmdMotion.frameNo,
 					DirectX::XMLoadFloat4(&vmdMotion.quaternion),
-					DirectX::XMFLOAT3(), // TODO: needs to be updated
+					vmdMotion.location,
 					DirectX::XMFLOAT2(static_cast<float>(vmdMotion.bezier[3]) / 127.0f, static_cast<float>(vmdMotion.bezier[7]) / 127.0f),
 					DirectX::XMFLOAT2(static_cast<float>(vmdMotion.bezier[11]) / 127.0f, static_cast<float>(vmdMotion.bezier[15]) / 127.0f)));
 
@@ -1448,7 +1449,8 @@ void PmdActor::updateMotion()
 		if (rit == motions.rend())
 			continue;
 
-		XMMATRIX rotation;
+		XMMATRIX rotation = DirectX::XMMatrixIdentity();
+		XMVECTOR offset = XMLoadFloat3(&rit->offset);
 		auto it = rit.base();
 
 		if (it != motions.end())
@@ -1457,6 +1459,7 @@ void PmdActor::updateMotion()
 			float t = static_cast<float>(frameNo - rit->frameNo) / static_cast<float>(it->frameNo - rit->frameNo);
 			t = getYfromXOnBezier(t, it->p1, it->p2, 12);
 			rotation = XMMatrixRotationQuaternion(XMQuaternionSlerp(rit->quaternion, it->quaternion, t));
+			offset = DirectX::XMVectorLerp(offset, XMLoadFloat3(&it->offset), t);
 		}
 		else
 		{
@@ -1468,10 +1471,12 @@ void PmdActor::updateMotion()
 			* rotation
 			* DirectX::XMMatrixTranslation(node.startPos.x, node.startPos.y, node.startPos.z);
 
-		m_boneMatrices[node.boneIdx] = mat;
+		m_boneMatrices[node.boneIdx] = mat * DirectX::XMMatrixTranslationFromVector(offset);
 	}
 
 	recursiveMatrixMultiply(m_boneNodeTable["ÉZÉìÉ^Å["], DirectX::XMMatrixIdentity());
+
+	IKSolve(frameNo);
 
 	std::copy(m_boneMatrices.begin(), m_boneMatrices.end(), m_boneMatrixPointer);
 }
@@ -1486,7 +1491,7 @@ void PmdActor::recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMA
 	}
 }
 
-void PmdActor::IKSolve()
+void PmdActor::IKSolve([[maybe_unused]] uint32_t frameNo)
 {
 	for (const PmdIk& ik : m_pmdIks)
 	{
@@ -1681,10 +1686,10 @@ void PmdActor::solveCCDIK(const PmdIk& ik)
 		{
 			m_boneMatrices[cidx] = mats[idx];
 			++idx;
-
-			BoneNode* rootNode = m_boneNodeAddressArray[ik.nodeIdxes.back()];
-			recursiveMatrixMultiply(*rootNode, parentMat);
 		}
+
+		BoneNode* rootNode = m_boneNodeAddressArray[ik.nodeIdxes.back()];
+		recursiveMatrixMultiply(*rootNode, parentMat);
 	}
 }
 
@@ -1735,7 +1740,7 @@ static std::string getModelPath(PmdActor::Model model)
 
 std::string getMotionPath()
 {
-	return "Motion/motion.vmd";
+	return "Motion/squat.vmd";
 }
 
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)

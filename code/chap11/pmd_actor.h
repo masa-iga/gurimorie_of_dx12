@@ -133,7 +133,7 @@ private:
 	HRESULT createMaterialResrouces();
 	void updateMotion();
 	void recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMATRIX& mat);
-	void IKSolve();
+	void IKSolve(uint32_t frameNo);
 	void solveLookAt(const PmdIk& ik);
 	void solveCosineIK(const PmdIk& ik);
 	void solveCCDIK(const PmdIk& ik);
