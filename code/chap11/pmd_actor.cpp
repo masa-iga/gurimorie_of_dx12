@@ -76,6 +76,46 @@ struct VMDMotion
 #pragma pack()
 static_assert(sizeof(VMDMotion) == 111);
 
+#pragma pack(1)
+struct VMDMorph
+{
+	char name[15] = { };
+	uint32_t frameNo = 0;
+	float weight = 0.0f;
+};
+#pragma pack()
+static_assert(sizeof(VMDMorph) == 23);
+
+#pragma pack(1)
+struct VMDCamera
+{
+	uint32_t frameNo = 0;
+	float distance = 0.0f;
+	DirectX::XMFLOAT3 pos = { };
+	DirectX::XMFLOAT3 eulerAngle = { };
+	uint8_t interpolation[24] = { };
+	uint32_t fov = 0;
+	uint8_t persFlg = 0;
+};
+#pragma pack()
+static_assert(sizeof(VMDCamera) == 61);
+
+struct VMDLight
+{
+	DirectX::XMFLOAT3 rgb = { };
+	DirectX::XMFLOAT3 vec = { };
+};
+
+#pragma pack(1)
+struct VMDSelfShadow
+{
+	uint32_t frameNo = 0;
+	uint8_t mode = 0;
+	float distance = 0.0f;
+};
+#pragma pack()
+static_assert(sizeof(VMDSelfShadow) == 9);
+
 static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
 	{
 		"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
@@ -898,6 +938,58 @@ HRESULT PmdActor::loadVmd()
 		std::vector<VMDMotion> vmdMotionData(motionDataNum);
 		ThrowIfFalse(fread(vmdMotionData.data(), sizeof(VMDMotion), motionDataNum, fp) == motionDataNum);
 
+		uint32_t morphCount = 0;
+		ThrowIfFalse(fread(&morphCount, sizeof(morphCount), 1, fp) == 1);
+
+		std::vector<VMDMorph> morphs(morphCount);
+		fread(morphs.data(), sizeof(VMDMorph), morphCount, fp);
+
+		uint32_t vmdCameraCount = 0;
+		ThrowIfFalse(fread(&vmdCameraCount, sizeof(vmdCameraCount), 1, fp) == 1);
+
+		std::vector<VMDCamera> cameraData(vmdCameraCount);
+		ThrowIfFalse(fread(cameraData.data(), sizeof(VMDCamera), vmdCameraCount, fp) == vmdCameraCount);
+
+		uint32_t vmdLightCount = 0;
+		ThrowIfFalse(fread(&vmdLightCount, sizeof(vmdLightCount), 1, fp) == 1);
+
+		std::vector<VMDLight> lights(vmdLightCount);
+		ThrowIfFalse(fread(lights.data(), sizeof(VMDLight), vmdLightCount, fp) == vmdLightCount);
+
+		uint32_t selfShadowCount = 0;
+		ThrowIfFalse(fread(&selfShadowCount, sizeof(selfShadowCount), 1, fp) == 1);
+
+		std::vector<VMDSelfShadow> selfShadowData(selfShadowCount);
+		ThrowIfFalse(fread(selfShadowData.data(), sizeof(VMDSelfShadow), selfShadowCount, fp) == selfShadowCount);
+
+		uint32_t ikSwitchCount = 0;
+		ThrowIfFalse(fread(&ikSwitchCount, sizeof(ikSwitchCount), 1, fp) == 1);
+
+		m_ikEnableData.resize(ikSwitchCount);
+
+		for (auto& ikEnable : m_ikEnableData)
+		{
+			ThrowIfFalse(fread(&ikEnable.frameNo, sizeof(ikEnable.frameNo), 1, fp) == 1);
+
+			// visibility flag won't be used
+			uint8_t visibleFlg = 0;
+			ThrowIfFalse(fread(&visibleFlg, sizeof(visibleFlg), 1, fp) == 1);
+
+			uint32_t ikBoneCount = 0;
+			ThrowIfFalse(fread(&ikBoneCount, sizeof(ikBoneCount), 1, fp) == 1);
+
+			for (uint32_t i = 0; i < ikBoneCount; ++i)
+			{
+				char ikBoneName[20] = "";
+				ThrowIfFalse(fread(ikBoneName, _countof(ikBoneName), 1, fp) == 1);
+
+				uint8_t flg = 0;
+				ThrowIfFalse(fread(&flg, sizeof(flg), 1, fp) == 1);
+
+				ikEnable.ikEnableTable[ikBoneName] = flg;
+			}
+		}
+
 		for (const VMDMotion& vmdMotion : vmdMotionData)
 		{
 			m_motionData[vmdMotion.boneName].emplace_back(
@@ -1493,8 +1585,27 @@ void PmdActor::recursiveMatrixMultiply(const BoneNode& node, const DirectX::XMMA
 
 void PmdActor::IKSolve([[maybe_unused]] uint32_t frameNo)
 {
+	const auto it = find_if(
+		m_ikEnableData.rbegin(),
+		m_ikEnableData.rend(),
+		[frameNo](const VMDIkEnable& ikEnable)
+		{
+			return ikEnable.frameNo <= frameNo;
+		});
+
 	for (const PmdIk& ik : m_pmdIks)
 	{
+		if (it != m_ikEnableData.rend())
+		{
+			const auto ikEnableIt = it->ikEnableTable.find(m_boneNameArray[ik.boneIdx]);
+
+			if (ikEnableIt != it->ikEnableTable.end())
+			{
+				if (!ikEnableIt->second)
+					continue;
+			}
+		}
+
 		const size_t childrenNodesCount = ik.nodeIdxes.size();
 
 		switch (childrenNodesCount)

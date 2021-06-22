@@ -91,6 +91,12 @@ struct Motion
 	{ }
 };
 
+struct VMDIkEnable
+{
+	uint32_t frameNo = 0;
+	std::unordered_map<std::string, bool> ikEnableTable;
+};
+
 struct PmdIk
 {
 	uint16_t boneIdx = 0;
@@ -176,6 +182,7 @@ private:
 	std::vector<DirectX::XMMATRIX> m_boneMatrices;
 	std::unordered_map<std::string, std::vector<Motion>> m_motionData;
 	std::vector<PmdIk> m_pmdIks;
+	std::vector<VMDIkEnable> m_ikEnableData;
 
 	D3D12_VERTEX_BUFFER_VIEW m_debugVbView = { };
 	D3D12_INDEX_BUFFER_VIEW m_debugIbView = { };
