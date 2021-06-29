@@ -45,6 +45,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_sceneDescHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneMatrixResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraRTVHeap = nullptr;
 	SceneMatrix* m_sceneMatrix = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;

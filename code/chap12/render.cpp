@@ -500,6 +500,95 @@ HRESULT Render::createViews()
 		);
 	}
 
+	ComPtr<ID3D12Resource> peraResource;
+
+	// create resource for render-to-texture
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+
+		constexpr float clsClr[4] = { 0.5f, 0.5f, 0.5f, 1.0f };
+		D3D12_CLEAR_VALUE clearValue = { };
+		{
+			clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			memcpy(&clearValue.Color, &clsClr[0], sizeof(clearValue.Color));
+		}
+
+		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getBackBuffer(0)->GetDesc();
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			&clearValue,
+			IID_PPV_ARGS(peraResource.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	// create RTV heap
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = Resource::instance()->getRtvHeaps()->GetDesc();
+		{
+			heapDesc.NumDescriptors = 1;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_peraRTVHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = { };
+		{
+			rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		}
+
+		Resource::instance()->getDevice()->CreateRenderTargetView(
+			peraResource.Get(),
+			&rtvDesc,
+			m_peraRTVHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	{
+		ComPtr<ID3D12DescriptorHeap> peraSRVHeap;
+
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(peraSRVHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC resourceDesc = { };
+		{
+			resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			resourceDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			resourceDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			resourceDesc.Texture2D.MostDetailedMip = 0;
+			resourceDesc.Texture2D.MipLevels = 1;
+			resourceDesc.Texture2D.PlaneSlice = 0;
+			resourceDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		}
+
+		Resource::instance()->getDevice()->CreateShaderResourceView(
+			peraResource.Get(),
+			&resourceDesc,
+			peraSRVHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
 	return S_OK;
 }
 
