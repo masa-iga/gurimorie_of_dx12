@@ -66,6 +66,8 @@
   <ItemGroup>
     <FxCompile Include="BasicVertexShader.hlsl" />
     <FxCompile Include="BasicPixelShader.hlsl" />
+    <FxCompile Include="peraVertex.hlsl" />
+    <FxCompile Include="peraPixel.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BasicShaderHeader.hlsli">
@@ -139,6 +141,9 @@
     </None>
     <None Include="Motion\squat.vmd">
       <Filter>リソース ファイル\Motion</Filter>
+    </None>
+    <None Include="peraHeader.hlsli">
+      <Filter>ヘッダー ファイル</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
