@@ -31,9 +31,11 @@ private:
 	HRESULT loadImage();
 	HRESULT createTextureBuffer();
 	HRESULT createTextureBuffer2();
+	HRESULT createPeraTexture();
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
 	HRESULT updateMvpMatrix();
+	HRESULT renderToPera();
 
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
@@ -45,6 +47,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_sceneDescHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneMatrixResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_peraResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraRTVHeap = nullptr;
 	SceneMatrix* m_sceneMatrix = nullptr;
 
