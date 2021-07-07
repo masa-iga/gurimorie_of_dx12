@@ -50,6 +50,8 @@ HRESULT Render::init()
 
 	m_pera.createView();
 	m_pera.createTexture();
+	m_pera.compileShaders();
+	m_pera.createPipelineState();
 
 	return S_OK;
 }

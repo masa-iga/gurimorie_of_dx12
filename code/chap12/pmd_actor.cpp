@@ -217,7 +217,6 @@ static HRESULT createBufferResource(ComPtr<ID3D12Resource>* vertResource, size_t
 static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const DirectX::XMFLOAT2& b, uint8_t n);
 static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right);
 static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right);
-static void outputDebugMessage(ID3DBlob* errorBlob);
 
 void PmdActor::release()
 {
@@ -2029,19 +2028,3 @@ static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, const Dir
 	return ret;
 }
 
-static void outputDebugMessage(ID3DBlob* errorBlob)
-{
-	if (errorBlob == nullptr)
-		return;
-
-	std::string errStr;
-	errStr.resize(errorBlob->GetBufferSize());
-
-	std::copy_n(
-		static_cast<char*>(errorBlob->GetBufferPointer()),
-		errorBlob->GetBufferSize(),
-		errStr.begin());
-	errStr += "\n";
-
-	OutputDebugStringA(errStr.c_str());
-}

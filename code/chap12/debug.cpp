@@ -50,6 +50,23 @@ void DebugOutputFormatString(const char* format, ...)
 #endif // ENABLE_DEBUG_MESSAGE
 }
 
+void outputDebugMessage(ID3DBlob* errorBlob)
+{
+	if (errorBlob == nullptr)
+		return;
+
+	std::string errStr;
+	errStr.resize(errorBlob->GetBufferSize());
+
+	std::copy_n(
+		static_cast<char*>(errorBlob->GetBufferPointer()),
+		errorBlob->GetBufferSize(),
+		errStr.begin());
+	errStr += "\n";
+
+	OutputDebugStringA(errStr.c_str());
+}
+
 void ThrowIfFailed(HRESULT hr)
 {
 	if (FAILED(hr))

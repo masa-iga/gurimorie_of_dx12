@@ -1,4 +1,9 @@
 #include "pera.h"
+#pragma warning(push, 0)
+#include <codeanalysis/warnings.h>
+#pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
+#include <d3dcompiler.h>
+#pragma warning(pop)
 #include "debug.h"
 #include "init.h"
 
@@ -162,6 +167,141 @@ HRESULT Pera::createTexture()
 		peraVBV.BufferLocation = peraVB.Get()->GetGPUVirtualAddress();
 		peraVBV.SizeInBytes = sizeof(pv);
 		peraVBV.StrideInBytes = sizeof(PeraVertex);
+	}
+
+	return S_OK;
+}
+
+HRESULT Pera::compileShaders()
+{
+	ComPtr<ID3DBlob> errBlob = nullptr;
+
+	auto result = D3DCompileFromFile(
+		L"peraVertex.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"main",
+		"vs_5_0",
+		0,
+		0,
+		m_vs.ReleaseAndGetAddressOf(),
+		errBlob.ReleaseAndGetAddressOf());
+
+	if (FAILED(result))
+	{
+		outputDebugMessage(errBlob.Get());
+	}
+	ThrowIfFailed(result);
+
+	result = D3DCompileFromFile(
+		L"peraPixel.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"main",
+		"ps_5_0",
+		0,
+		0,
+		m_ps.ReleaseAndGetAddressOf(),
+		errBlob.ReleaseAndGetAddressOf());
+
+	if (FAILED(result))
+	{
+		outputDebugMessage(errBlob.Get());
+	}
+	ThrowIfFailed(result);
+
+	return S_OK;
+}
+
+HRESULT Pera::createPipelineState()
+{
+	constexpr D3D12_INPUT_ELEMENT_DESC layout[2] = {
+		{
+			"POSITION",
+			0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			0
+		},
+		{
+			"TEXCOORD",
+			0,
+			DXGI_FORMAT_R32G32_FLOAT,
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			0
+		}
+	};
+
+	ThrowIfFalse(m_vs != nullptr);
+	ThrowIfFalse(m_ps != nullptr);
+
+	{
+		D3D12_ROOT_SIGNATURE_DESC rsDesc = { };
+		{
+			rsDesc.NumParameters = 0;
+			rsDesc.pParameters = nullptr;
+			rsDesc.NumStaticSamplers = 0;
+			rsDesc.pStaticSamplers = nullptr;
+			rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		}
+
+		ComPtr<ID3DBlob> rsBlob = nullptr;
+		ComPtr<ID3DBlob> errBlob = nullptr;
+
+		auto result = D3D12SerializeRootSignature(
+			&rsDesc,
+			D3D_ROOT_SIGNATURE_VERSION_1,
+			rsBlob.ReleaseAndGetAddressOf(),
+			errBlob.ReleaseAndGetAddressOf());
+
+		if (FAILED(result))
+		{
+			outputDebugMessage(errBlob.Get());
+		}
+		ThrowIfFailed(result);
+
+		result = Resource::instance()->getDevice()->CreateRootSignature(
+			0,
+			rsBlob->GetBufferPointer(),
+			rsBlob->GetBufferSize(),
+			IID_PPV_ARGS(m_rs.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = { };
+		{
+			gpsDesc.pRootSignature = m_rs.Get();
+			gpsDesc.VS.pShaderBytecode = m_vs.Get()->GetBufferPointer();
+			gpsDesc.VS.BytecodeLength = m_vs.Get()->GetBufferSize();
+			gpsDesc.PS.pShaderBytecode = m_ps.Get()->GetBufferPointer();
+			gpsDesc.PS.BytecodeLength = m_ps.Get()->GetBufferSize();
+			//D3D12_STREAM_OUTPUT_DESC StreamOutput;
+			gpsDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			gpsDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+			gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+			//D3D12_DEPTH_STENCIL_DESC DepthStencilState;
+			gpsDesc.InputLayout.NumElements = _countof(layout);
+			gpsDesc.InputLayout.pInputElementDescs = layout;
+			//D3D12_INDEX_BUFFER_STRIP_CUT_VALUE IBStripCutValue;
+			gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			gpsDesc.NumRenderTargets = 1;
+			gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+			//DXGI_FORMAT DSVFormat;
+			gpsDesc.SampleDesc = { 1, 0 };
+			//UINT NodeMask;
+			//D3D12_CACHED_PIPELINE_STATE CachedPSO;
+			gpsDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&gpsDesc,
+			IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
 	}
 
 	return S_OK;
