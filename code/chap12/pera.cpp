@@ -4,6 +4,7 @@
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <d3dcompiler.h>
 #pragma warning(pop)
+#include "config.h"
 #include "debug.h"
 #include "init.h"
 
@@ -115,8 +116,6 @@ HRESULT Pera::createTexture()
 		{{  1.0f,  1.0f, 0.1f}, {1.0f, 0.0f}}, // right-upper
 	};
 
-	ComPtr<ID3D12Resource> peraVB = { };
-
 	{
 		D3D12_HEAP_PROPERTIES heapProp = { };
 		{
@@ -147,26 +146,25 @@ HRESULT Pera::createTexture()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(peraVB.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_peraVertexBuffer.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 	}
 
 	{
 		PeraVertex* pMappedPera = nullptr;
 
-		auto result = peraVB->Map(0, nullptr, reinterpret_cast<void**>(&pMappedPera));
+		auto result = m_peraVertexBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pMappedPera));
 		ThrowIfFailed(result);
 
 		std::copy(std::begin(pv), std::end(pv), pMappedPera);
 
-		peraVB->Unmap(0, nullptr);
+		m_peraVertexBuffer->Unmap(0, nullptr);
 	}
 
-	D3D12_VERTEX_BUFFER_VIEW peraVBV = { };
 	{
-		peraVBV.BufferLocation = peraVB.Get()->GetGPUVirtualAddress();
-		peraVBV.SizeInBytes = sizeof(pv);
-		peraVBV.StrideInBytes = sizeof(PeraVertex);
+		m_peraVertexBufferView.BufferLocation = m_peraVertexBuffer.Get()->GetGPUVirtualAddress();
+		m_peraVertexBufferView.SizeInBytes = sizeof(pv);
+		m_peraVertexBufferView.StrideInBytes = sizeof(PeraVertex);
 	}
 
 	return S_OK;
@@ -268,14 +266,14 @@ HRESULT Pera::createPipelineState()
 			0,
 			rsBlob->GetBufferPointer(),
 			rsBlob->GetBufferSize(),
-			IID_PPV_ARGS(m_rs.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_rootSignature.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 	}
 
 	{
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = { };
 		{
-			gpsDesc.pRootSignature = m_rs.Get();
+			gpsDesc.pRootSignature = m_rootSignature.Get();
 			gpsDesc.VS.pShaderBytecode = m_vs.Get()->GetBufferPointer();
 			gpsDesc.VS.BytecodeLength = m_vs.Get()->GetBufferSize();
 			gpsDesc.PS.pShaderBytecode = m_ps.Get()->GetBufferPointer();
@@ -285,12 +283,16 @@ HRESULT Pera::createPipelineState()
 			gpsDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 			gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 			//D3D12_DEPTH_STENCIL_DESC DepthStencilState;
-			gpsDesc.InputLayout.NumElements = _countof(layout);
 			gpsDesc.InputLayout.pInputElementDescs = layout;
+			gpsDesc.InputLayout.NumElements = _countof(layout);
 			//D3D12_INDEX_BUFFER_STRIP_CUT_VALUE IBStripCutValue;
 			gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 			gpsDesc.NumRenderTargets = 1;
+#if 0
 			gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+#else
+			gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+#endif
 			//DXGI_FORMAT DSVFormat;
 			gpsDesc.SampleDesc = { 1, 0 };
 			//UINT NodeMask;
@@ -307,10 +309,8 @@ HRESULT Pera::createPipelineState()
 	return S_OK;
 }
 
-HRESULT Pera::render()
+HRESULT Pera::renderToTexture()
 {
-	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_rtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
-
 	{
 		D3D12_RESOURCE_BARRIER barrier = { };
 		{
@@ -323,6 +323,64 @@ HRESULT Pera::render()
 		}
 		Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
 	}
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_rtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+	Resource::instance()->getCommandList()->OMSetRenderTargets(
+		1,
+		&rtvH,
+		false,
+		nullptr); // TODO: set DSV view
+
+	{
+		D3D12_RESOURCE_BARRIER barrier = { };
+		{
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			barrier.Transition.pResource = m_resource.Get();
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		}
+		Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	}
+
+	// TODO: impl draw
+
+	return S_OK;
+}
+
+HRESULT Pera::render()
+{
+	{
+		D3D12_VIEWPORT viewport = { };
+		{
+			viewport.Width = kWindowWidth;
+			viewport.Height = kWindowHeight;
+			viewport.TopLeftX = 0;
+			viewport.TopLeftY = 0;
+			viewport.MaxDepth = 1.0f;
+			viewport.MinDepth = 0.0f;
+		}
+		Resource::instance()->getCommandList()->RSSetViewports(1, &viewport);
+	}
+
+	{
+		D3D12_RECT scissorRect = { };
+		{
+			scissorRect.top = 0;
+			scissorRect.left = 0;
+			scissorRect.right = scissorRect.left + kWindowWidth;
+			scissorRect.bottom = scissorRect.top + kWindowHeight;
+		}
+		Resource::instance()->getCommandList()->RSSetScissorRects(1, &scissorRect);
+	}
+
+	Resource::instance()->getCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
+	Resource::instance()->getCommandList()->SetPipelineState(m_pipelineState.Get());
+	Resource::instance()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, &m_peraVertexBufferView);
+	Resource::instance()->getCommandList()->DrawInstanced(4, 1, 0, 0);
 
 	return S_OK;
 }

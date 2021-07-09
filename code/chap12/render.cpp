@@ -108,11 +108,15 @@ HRESULT Render::render()
 		0,
         nullptr);
 
+#if 0
 	// render
 	for (const auto& actor : m_pmdActors)
 	{
 		actor.render(m_sceneDescHeap.Get());
 	}
+#else
+	m_pera.render();
+#endif
 
 	// resource barrier
 	{
