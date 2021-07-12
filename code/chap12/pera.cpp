@@ -8,6 +8,8 @@
 #include "debug.h"
 #include "init.h"
 
+#define NO_UPDATE_TEXTURE_FROM_CPU (0)
+
 using namespace Microsoft::WRL;
 
 HRESULT Pera::createView()
@@ -16,9 +18,15 @@ HRESULT Pera::createView()
 	{
 		D3D12_HEAP_PROPERTIES heapProp = { };
 		{
+#if NO_UPDATE_TEXTURE_FROM_CPU
 			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
 			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+#else
+			heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+#endif // NO_UPDATE_TEXTURE_FROM_CPU
 			heapProp.CreationNodeMask = 0;
 			heapProp.VisibleNodeMask = 0;
 		}
@@ -41,6 +49,28 @@ HRESULT Pera::createView()
 			IID_PPV_ARGS(m_resource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 	}
+
+#if NO_UPDATE_TEXTURE_FROM_CPU
+#else
+	{
+		auto desc = m_resource->GetDesc();
+		const uint32_t width = (uint32_t)desc.Width;
+		const uint32_t height = (uint32_t)desc.Height;
+
+		uint32_t* white = new uint32_t[width * height];
+		memset(white, 0x80, (size_t)width * height * sizeof(uint32_t));
+
+		auto result = m_resource->WriteToSubresource(
+			0,
+			nullptr,
+			white,
+			width * sizeof(uint32_t),
+			width * height * sizeof(uint32_t));
+		ThrowIfFailed(result);
+
+		delete[] white;
+	}
+#endif // NO_UPDATE_TEXTURE_FROM_CPU
 
 	// create RTV heap
 	{
@@ -238,12 +268,44 @@ HRESULT Pera::createPipelineState()
 	ThrowIfFalse(m_ps != nullptr);
 
 	{
+		D3D12_DESCRIPTOR_RANGE range = { };
+		{
+			range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			range.BaseShaderRegister = 0;
+			range.NumDescriptors = 1;
+		}
+
+		D3D12_ROOT_PARAMETER rootParameter = { };
+		{
+			rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParameter.DescriptorTable.NumDescriptorRanges = 1;
+			rootParameter.DescriptorTable.pDescriptorRanges = &range;
+			rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		}
+
+		D3D12_STATIC_SAMPLER_DESC sampler = {};
+		{
+			sampler.Filter = D3D12_FILTER_ANISOTROPIC;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			sampler.MipLODBias = 0;
+			sampler.MaxAnisotropy = 16;
+			sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+			sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+			sampler.MinLOD = 0.f;
+			sampler.MaxLOD = D3D12_FLOAT32_MAX;
+			sampler.ShaderRegister = 0;
+			sampler.RegisterSpace = 0;
+			sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		}
+
 		D3D12_ROOT_SIGNATURE_DESC rsDesc = { };
 		{
-			rsDesc.NumParameters = 0;
-			rsDesc.pParameters = nullptr;
-			rsDesc.NumStaticSamplers = 0;
-			rsDesc.pStaticSamplers = nullptr;
+			rsDesc.NumParameters = 1;
+			rsDesc.pParameters = &rootParameter;
+			rsDesc.NumStaticSamplers = 1;
+			rsDesc.pStaticSamplers = &sampler;
 			rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 		}
 
@@ -352,6 +414,13 @@ HRESULT Pera::renderToTexture()
 
 HRESULT Pera::render()
 {
+	Resource::instance()->getCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
+	Resource::instance()->getCommandList()->SetPipelineState(m_pipelineState.Get());
+
+	Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_srvHeap.GetAddressOf());
+	D3D12_GPU_DESCRIPTOR_HANDLE handle = m_srvHeap.Get()->GetGPUDescriptorHandleForHeapStart();
+	Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(0, handle);
+
 	{
 		D3D12_VIEWPORT viewport = { };
 		{
@@ -376,8 +445,6 @@ HRESULT Pera::render()
 		Resource::instance()->getCommandList()->RSSetScissorRects(1, &scissorRect);
 	}
 
-	Resource::instance()->getCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
-	Resource::instance()->getCommandList()->SetPipelineState(m_pipelineState.Get());
 	Resource::instance()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, &m_peraVertexBufferView);
 	Resource::instance()->getCommandList()->DrawInstanced(4, 1, 0, 0);
