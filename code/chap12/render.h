@@ -34,6 +34,7 @@ private:
 	HRESULT createTextureBuffer2();
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
+	HRESULT createPeraView();
 	HRESULT updateMvpMatrix();
 
 	bool m_bAnimationEnabled = true;
@@ -52,5 +53,9 @@ private:
 	UINT64 m_fenceVal = 0;
 
 	std::vector<PmdActor> m_pmdActors;
+
 	Pera m_pera;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_peraResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraRtvHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
 };

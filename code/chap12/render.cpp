@@ -16,6 +16,7 @@
 #pragma comment(lib, "DirectXTex.lib")
 
 #define DISABLE_MATRIX (0)
+#define NO_UPDATE_TEXTURE_FROM_CPU (1)
 
 using namespace Microsoft::WRL;
 
@@ -48,8 +49,8 @@ HRESULT Render::init()
 		actor.enableAnimation(m_bAnimationEnabled);
 	}
 
-	m_pera.createView();
-	m_pera.createTexture();
+	createPeraView();
+	m_pera.createVertexBufferView();
 	m_pera.compileShaders();
 	m_pera.createPipelineState();
 
@@ -71,6 +72,43 @@ HRESULT Render::render()
 	// reset command allocator & list
 	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
 	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), nullptr));
+
+	// TODO: off screen buffer‚É•`‚­‚æ‚¤‚É‚·‚é
+#if 0
+	{
+		D3D12_RESOURCE_BARRIER barrier = { };
+		{
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			barrier.Transition.pResource = m_peraResource.Get();
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		}
+		Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+
+		const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+		Resource::instance()->getCommandList()->OMSetRenderTargets(
+			1,
+			&rtvH,
+			false,
+			nullptr); // TODO: need to set DSV view ?
+	}
+
+	{
+		D3D12_RESOURCE_BARRIER barrier = { };
+		{
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			barrier.Transition.pResource = m_peraResource.Get();
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		}
+		Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	}
+#endif
 
 	const UINT bbIdx = Resource::instance()->getSwapChain()->GetCurrentBackBufferIndex();
 
@@ -115,7 +153,7 @@ HRESULT Render::render()
 		actor.render(m_sceneDescHeap.Get());
 	}
 #else
-	m_pera.render();
+	m_pera.render(m_peraSrvHeap.Get());
 #endif
 
 	// resource barrier
@@ -507,6 +545,125 @@ HRESULT Render::createViews()
 			&bvDesc,
 			basicHeapHandle
 		);
+	}
+
+	return S_OK;
+}
+
+HRESULT Render::createPeraView()
+{
+	// create resource for render-to-texture
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+#if NO_UPDATE_TEXTURE_FROM_CPU
+			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+#else
+			heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+#endif // NO_UPDATE_TEXTURE_FROM_CPU
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+
+		constexpr float clsClr[4] = { 0.5f, 0.5f, 0.5f, 1.0f };
+		D3D12_CLEAR_VALUE clearValue = { };
+		{
+			clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			memcpy(&clearValue.Color, &clsClr[0], sizeof(clearValue.Color));
+		}
+
+		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getBackBuffer(0)->GetDesc();
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			&clearValue,
+			IID_PPV_ARGS(m_peraResource.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+#if NO_UPDATE_TEXTURE_FROM_CPU
+#else
+	{
+		auto desc = m_peraResource->GetDesc();
+		const uint32_t width = (uint32_t)desc.Width;
+		const uint32_t height = (uint32_t)desc.Height;
+
+		uint32_t* white = new uint32_t[width * height];
+		memset(white, 0x80, (size_t)width * height * sizeof(uint32_t));
+
+		auto result = m_peraResource->WriteToSubresource(
+			0,
+			nullptr,
+			white,
+			width * sizeof(uint32_t),
+			width * height * sizeof(uint32_t));
+		ThrowIfFailed(result);
+
+		delete[] white;
+	}
+#endif // NO_UPDATE_TEXTURE_FROM_CPU
+
+	// create RTV heap
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = Resource::instance()->getRtvHeaps()->GetDesc();
+		{
+			heapDesc.NumDescriptors = 1;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_peraRtvHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = { };
+		{
+			rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		}
+
+		Resource::instance()->getDevice()->CreateRenderTargetView(
+			m_peraResource.Get(),
+			&rtvDesc,
+			m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	// create SRV heap
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_peraSrvHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC resourceDesc = { };
+		{
+			resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			resourceDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			resourceDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			resourceDesc.Texture2D.MostDetailedMip = 0;
+			resourceDesc.Texture2D.MipLevels = 1;
+			resourceDesc.Texture2D.PlaneSlice = 0;
+			resourceDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		}
+
+		Resource::instance()->getDevice()->CreateShaderResourceView(
+			m_peraResource.Get(),
+			&resourceDesc,
+			m_peraSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	return S_OK;

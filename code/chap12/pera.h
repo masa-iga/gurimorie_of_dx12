@@ -11,19 +11,14 @@
 class Pera
 {
 public:
-	HRESULT createView();
-	HRESULT createTexture();
+	HRESULT createVertexBufferView();
 	HRESULT compileShaders();
 	HRESULT createPipelineState();
-	HRESULT renderToTexture();
-	HRESULT render();
+	HRESULT render(ID3D12DescriptorHeap *pDescHeap);
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_resource = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vs = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_ps = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_peraVertexBuffer = nullptr;
