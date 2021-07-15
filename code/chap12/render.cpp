@@ -73,42 +73,17 @@ HRESULT Render::render()
 	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
 	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), nullptr));
 
-	// TODO: off screen buffer‚É•`‚­‚æ‚¤‚É‚·‚é
-#if 0
+	// TODO: clear off screen buffer
+
+	// render to off screen buffer
+	preRenderToPeraBuffer();
 	{
-		D3D12_RESOURCE_BARRIER barrier = { };
+		for (const auto& actor : m_pmdActors)
 		{
-			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition.pResource = m_peraResource.Get();
-			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			actor.render(m_sceneDescHeap.Get());
 		}
-		Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
-
-		const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
-
-		Resource::instance()->getCommandList()->OMSetRenderTargets(
-			1,
-			&rtvH,
-			false,
-			nullptr); // TODO: need to set DSV view ?
 	}
-
-	{
-		D3D12_RESOURCE_BARRIER barrier = { };
-		{
-			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition.pResource = m_peraResource.Get();
-			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-		}
-		Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
-	}
-#endif
+	postRenderToPeraBuffer();
 
 	const UINT bbIdx = Resource::instance()->getSwapChain()->GetCurrentBackBufferIndex();
 
@@ -146,15 +121,9 @@ HRESULT Render::render()
 		0,
         nullptr);
 
-#if 0
-	// render
-	for (const auto& actor : m_pmdActors)
-	{
-		actor.render(m_sceneDescHeap.Get());
-	}
-#else
+	// TODO: barrier, render target‚ÌÝ’è‚ð‚Ü‚Æ‚ß‚é
+
 	m_pera.render(m_peraSrvHeap.Get());
-#endif
 
 	// resource barrier
 	{
@@ -586,6 +555,9 @@ HRESULT Render::createPeraView()
 			&clearValue,
 			IID_PPV_ARGS(m_peraResource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
+
+		result = m_peraResource.Get()->SetName(Util::getWideStringFromString("peraBuffer").c_str());
+		ThrowIfFailed(result);
 	}
 
 #if NO_UPDATE_TEXTURE_FROM_CPU
@@ -649,20 +621,20 @@ HRESULT Render::createPeraView()
 			IID_PPV_ARGS(m_peraSrvHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		D3D12_SHADER_RESOURCE_VIEW_DESC resourceDesc = { };
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
 		{
-			resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			resourceDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			resourceDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			resourceDesc.Texture2D.MostDetailedMip = 0;
-			resourceDesc.Texture2D.MipLevels = 1;
-			resourceDesc.Texture2D.PlaneSlice = 0;
-			resourceDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+			srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.PlaneSlice = 0;
+			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 		}
 
 		Resource::instance()->getDevice()->CreateShaderResourceView(
 			m_peraResource.Get(),
-			&resourceDesc,
+			&srvDesc,
 			m_peraSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 	}
 
@@ -699,6 +671,47 @@ HRESULT Render::updateMvpMatrix()
 	m_sceneMatrix->proj = projMat;
 	m_sceneMatrix->eye = eye;
 #endif // DISABLE_MATRIX
+
+	return S_OK;
+}
+
+HRESULT Render::preRenderToPeraBuffer()
+{
+	D3D12_RESOURCE_BARRIER barrier = { };
+	{
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrier.Transition.pResource = m_peraResource.Get();
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	}
+	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+	const D3D12_CPU_DESCRIPTOR_HANDLE dsvH = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+	Resource::instance()->getCommandList()->OMSetRenderTargets(
+		1,
+		&rtvH,
+		false,
+		&dsvH);
+
+	return S_OK;
+}
+
+HRESULT Render::postRenderToPeraBuffer()
+{
+	D3D12_RESOURCE_BARRIER barrier = { };
+	{
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrier.Transition.pResource = m_peraResource.Get();
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	}
+	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
 
 	return S_OK;
 }

@@ -647,7 +647,7 @@ HRESULT PmdActor::createPipelineState()
 		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		gpipeDesc.NumRenderTargets = 1;
-		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		gpipeDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 		gpipeDesc.SampleDesc = {
 			1 /* count */,

@@ -36,6 +36,8 @@ private:
 	HRESULT createViews();
 	HRESULT createPeraView();
 	HRESULT updateMvpMatrix();
+	HRESULT preRenderToPeraBuffer();
+	HRESULT postRenderToPeraBuffer();
 
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
