@@ -23,6 +23,9 @@ using namespace Microsoft::WRL;
 static HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
 static HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap);
 
+constexpr float kClearColorRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+constexpr float kClearColorPeraRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
 HRESULT Render::init()
 {
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
@@ -73,7 +76,21 @@ HRESULT Render::render()
 	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
 	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), nullptr));
 
-	// TODO: clear off screen buffer
+	ID3D12Resource* backBufferResource = nullptr;
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = { };
+	const D3D12_CPU_DESCRIPTOR_HANDLE dsvH = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	{
+		const UINT bbIdx = Resource::instance()->getSwapChain()->GetCurrentBackBufferIndex();
+
+		backBufferResource = Resource::instance()->getBackBuffer(bbIdx);
+
+		rtvH = Resource::instance()->getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
+		rtvH.ptr += bbIdx * static_cast<SIZE_T>(Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+	}
+
+	clearRenderTarget(backBufferResource, rtvH);
+	clearDepthRenderTarget(dsvH);
+	clearPeraRenderTarget();
 
 	// render to off screen buffer
 	preRenderToPeraBuffer();
@@ -85,48 +102,20 @@ HRESULT Render::render()
 	}
 	postRenderToPeraBuffer();
 
-	const UINT bbIdx = Resource::instance()->getSwapChain()->GetCurrentBackBufferIndex();
 
-	// resource barrier
+	// render to display render target
+	Resource::instance()->getCommandList()->OMSetRenderTargets(1, &rtvH, false, &dsvH);
+	{
+		m_pera.render(m_peraSrvHeap.Get());
+	}
+
+
 	D3D12_RESOURCE_BARRIER barrier = { };
 	{
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = Resource::instance()->getBackBuffer(bbIdx);
+		barrier.Transition.pResource = backBufferResource;
 		barrier.Transition.Subresource = 0;
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	}
-	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
-
-
-	// link swap chain's and depth buffers to output merger
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = Resource::instance()->getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
-	rtvH.ptr += bbIdx * static_cast<SIZE_T>(Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
-
-	const D3D12_CPU_DESCRIPTOR_HANDLE dsvH = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
-
-	Resource::instance()->getCommandList()->OMSetRenderTargets(1, &rtvH, false, &dsvH);
-
-	// clear render target
-	constexpr float clearColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	Resource::instance()->getCommandList()->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
-
-	// clear depth buffer
-	Resource::instance()->getCommandList()->ClearDepthStencilView(
-		dsvH,
-		D3D12_CLEAR_FLAG_DEPTH,
-		1.0f,
-		0,
-		0,
-        nullptr);
-
-	// TODO: barrier, render target‚ÌÝ’è‚ð‚Ü‚Æ‚ß‚é
-
-	m_pera.render(m_peraSrvHeap.Get());
-
-	// resource barrier
-	{
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	}
@@ -538,11 +527,10 @@ HRESULT Render::createPeraView()
 			heapProp.VisibleNodeMask = 0;
 		}
 
-		constexpr float clsClr[4] = { 0.5f, 0.5f, 0.5f, 1.0f };
 		D3D12_CLEAR_VALUE clearValue = { };
 		{
 			clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			memcpy(&clearValue.Color, &clsClr[0], sizeof(clearValue.Color));
+			memcpy(&clearValue.Color, &kClearColorPeraRenderTarget, sizeof(clearValue.Color));
 		}
 
 		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getBackBuffer(0)->GetDesc();
@@ -675,19 +663,59 @@ HRESULT Render::updateMvpMatrix()
 	return S_OK;
 }
 
-HRESULT Render::preRenderToPeraBuffer()
+HRESULT Render::clearRenderTarget(ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH)
+{
+	D3D12_RESOURCE_BARRIER barrier = { };
+	{
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrier.Transition.pResource = resource;
+		barrier.Transition.Subresource = 0;
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	}
+	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+
+	Resource::instance()->getCommandList()->ClearRenderTargetView(rtvH, kClearColorRenderTarget, 0, nullptr);
+
+	return S_OK;
+}
+
+HRESULT Render::clearDepthRenderTarget(D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
+{
+	Resource::instance()->getCommandList()->ClearDepthStencilView(
+		dsvH,
+		D3D12_CLEAR_FLAG_DEPTH,
+		1.0f,
+		0,
+		0,
+        nullptr);
+
+	return S_OK;
+}
+
+HRESULT Render::clearPeraRenderTarget()
 {
 	D3D12_RESOURCE_BARRIER barrier = { };
 	{
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 		barrier.Transition.pResource = m_peraResource.Get();
-		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barrier.Transition.Subresource = 0;
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	}
 	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
 
+	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+	Resource::instance()->getCommandList()->ClearRenderTargetView(rtvH, kClearColorPeraRenderTarget, 0, nullptr);
+
+	return S_OK;
+}
+
+HRESULT Render::preRenderToPeraBuffer()
+{
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 	const D3D12_CPU_DESCRIPTOR_HANDLE dsvH = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
@@ -702,11 +730,13 @@ HRESULT Render::preRenderToPeraBuffer()
 
 HRESULT Render::postRenderToPeraBuffer()
 {
+	ID3D12Resource* resource = m_peraResource.Get();
+
 	D3D12_RESOURCE_BARRIER barrier = { };
 	{
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = m_peraResource.Get();
+		barrier.Transition.pResource = resource;
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;

@@ -36,6 +36,9 @@ private:
 	HRESULT createViews();
 	HRESULT createPeraView();
 	HRESULT updateMvpMatrix();
+	HRESULT clearRenderTarget(ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH);
+	HRESULT clearDepthRenderTarget(D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
+	HRESULT clearPeraRenderTarget();
 	HRESULT preRenderToPeraBuffer();
 	HRESULT postRenderToPeraBuffer();
 
