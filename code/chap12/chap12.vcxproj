@@ -158,6 +158,7 @@
     <ClCompile Include="pmd_actor.cpp" />
     <ClCompile Include="render.cpp" />
     <ClCompile Include="util.cpp" />
+    <ClCompile Include="timestamp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h" />
@@ -166,6 +167,7 @@
     <ClInclude Include="pera.h" />
     <ClInclude Include="pmd_actor.h" />
     <ClInclude Include="render.h" />
+    <ClInclude Include="timestamp.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>

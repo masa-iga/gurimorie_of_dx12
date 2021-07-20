@@ -57,6 +57,8 @@ HRESULT Render::init()
 	m_pera.compileShaders();
 	m_pera.createPipelineState();
 
+	m_timeStamp.init();
+
 	return S_OK;
 }
 
@@ -105,9 +107,14 @@ HRESULT Render::render()
 
 	// render to display render target
 	Resource::instance()->getCommandList()->OMSetRenderTargets(1, &rtvH, false, &dsvH);
+
+	m_timeStamp.set(TimeStamp::Index::k0);
 	{
 		m_pera.render(m_peraSrvHeap.Get());
 	}
+	m_timeStamp.set(TimeStamp::Index::k1);
+
+	m_timeStamp.resolve();
 
 
 	D3D12_RESOURCE_BARRIER barrier = { };
@@ -157,6 +164,10 @@ HRESULT Render::waitForEndOfRendering()
 			DebugOutputFormatString("failed to close handle. (ret %d error %d)\n", ret2, GetLastError());
 			ThrowIfFalse(FALSE);
 		}
+	}
+
+	{
+		m_timeStamp.get(TimeStamp::Index::k0, TimeStamp::Index::k1);
 	}
 
 	return S_OK;
