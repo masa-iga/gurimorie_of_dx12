@@ -79,7 +79,7 @@ void TimeStamp::resolve()
 		0);
 }
 
-void TimeStamp::get(Index index0, Index index1)
+float TimeStamp::getInUsec(Index index0, Index index1)
 {
 	const size_t idx0 = static_cast<size_t>(index0);
 	const size_t idx1 = static_cast<size_t>(index1);
@@ -100,6 +100,7 @@ void TimeStamp::get(Index index0, Index index1)
 
 	m_tsResource->Unmap(0, nullptr);
 
-	DebugOutputFormatString("%6.1f us (%zd %zd %zd)\n", time_us, m_gpuFreq, pData[idx1], pData[idx0]);
+	//DebugOutputFormatString("%6.1f us (%zd %zd %zd)\n", time_us, m_gpuFreq, pData[idx1], pData[idx0]);
+	return time_us;
 }
 

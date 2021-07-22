@@ -19,7 +19,7 @@ public:
 	HRESULT init();
 	void set(Index index);
 	void resolve();
-	void get(Index index0, Index index1);
+	float getInUsec(Index index0, Index index1);
 
 private:
 	static constexpr size_t kNumOfTimestamp = 2;

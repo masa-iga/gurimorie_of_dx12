@@ -14,7 +14,7 @@ public:
 	HRESULT createVertexBufferView();
 	HRESULT compileShaders();
 	HRESULT createPipelineState();
-	HRESULT render(ID3D12DescriptorHeap *pDescHeap);
+	HRESULT render(ID3D12DescriptorHeap *pSrvDescHeap);
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
