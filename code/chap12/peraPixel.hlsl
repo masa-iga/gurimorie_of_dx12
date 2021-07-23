@@ -5,9 +5,10 @@
 #define INVERSION (0)
 #define DOWNGRADE (0)
 #define BLUR (0)
+#define GAUSSIAN_BLUR (1)
 #define EMBOSS (0)
 #define SHARPNESS (0)
-#define EDGE (1)
+#define EDGE (0)
 
 float4 main(Output input) : SV_TARGET
 {
@@ -50,6 +51,47 @@ float4 main(Output input) : SV_TARGET
 
 	return ret / 9.0f;
 #endif // BLUR
+
+#if GAUSSIAN_BLUR
+	float w, h, levels;
+	tex.GetDimensions(0 /* mip level*/, w, h, levels);
+
+	const float dx = 1.0f / w;
+	const float dy = 1.0f / h;
+	float4 ret = float4(0.0f, 0.0f, 0.0f, 0.0f);
+
+	ret += tex.Sample(smp, input.uv + float2(-2 * dx, 2 * dy)) *  1 / 256;
+	ret += tex.Sample(smp, input.uv + float2(-1 * dx, 2 * dy)) *  4 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 0 * dx, 2 * dy)) *  6 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 1 * dx, 2 * dy)) *  4 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 2 * dx, 2 * dy)) *  1 / 256;
+	
+	ret += tex.Sample(smp, input.uv + float2(-2 * dx, 1 * dy)) *  4 / 256;
+	ret += tex.Sample(smp, input.uv + float2(-1 * dx, 1 * dy)) * 16 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 0 * dx, 1 * dy)) * 24 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 1 * dx, 1 * dy)) * 16 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 2 * dx, 1 * dy)) *  4 / 256;
+
+	ret += tex.Sample(smp, input.uv + float2(-2 * dx, 0 * dy)) *  6 / 256;
+	ret += tex.Sample(smp, input.uv + float2(-1 * dx, 0 * dy)) * 24 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 0 * dx, 0 * dy)) * 36 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 1 * dx, 0 * dy)) * 24 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 2 * dx, 0 * dy)) *  6 / 256;
+
+	ret += tex.Sample(smp, input.uv + float2(-2 * dx, -1 * dy)) *  4 / 256;
+	ret += tex.Sample(smp, input.uv + float2(-1 * dx, -1 * dy)) * 16 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 0 * dx, -1 * dy)) * 24 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 1 * dx, -1 * dy)) * 16 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 2 * dx, -1 * dy)) *  4 / 256;
+
+	ret += tex.Sample(smp, input.uv + float2(-2 * dx, -2 * dy)) *  1 / 256;
+	ret += tex.Sample(smp, input.uv + float2(-1 * dx, -2 * dy)) *  4 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 0 * dx, -2 * dy)) *  6 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 1 * dx, -2 * dy)) *  4 / 256;
+	ret += tex.Sample(smp, input.uv + float2( 2 * dx, -2 * dy)) *  1 / 256;
+
+	return ret;
+#endif // GAUSSIAN_BLUR
 
 #if EMBOSS
 	float w, h, levels;
