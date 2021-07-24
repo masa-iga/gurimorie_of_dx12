@@ -53,7 +53,7 @@ HRESULT Render::init()
 	}
 
 	createPeraView();
-	m_pera.createVertexBufferView();
+	m_pera.createResources();
 	m_pera.compileShaders();
 	m_pera.createPipelineState();
 

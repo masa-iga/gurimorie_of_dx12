@@ -7,74 +7,16 @@
 #include "config.h"
 #include "debug.h"
 #include "init.h"
+#include "util.h"
 
 using namespace Microsoft::WRL;
 
-HRESULT Pera::createVertexBufferView()
+static std::vector<float> getGaussianWeights(size_t count, float sigma);
+
+HRESULT Pera::createResources()
 {
-	struct PeraVertex
-	{
-		DirectX::XMFLOAT3 pos = { };
-		DirectX::XMFLOAT2 uv = { };
-	};
-
-	constexpr PeraVertex pv[4] = {
-		{{ -1.0f, -1.0f, 0.1f}, {0.0f, 1.0f}}, // left-lower
-		{{ -1.0f,  1.0f, 0.1f}, {0.0f, 0.0f}}, // left-upper
-		{{  1.0f, -1.0f, 0.1f}, {1.0f, 1.0f}}, // right-lower
-		{{  1.0f,  1.0f, 0.1f}, {1.0f, 0.0f}}, // right-upper
-	};
-
-	{
-		D3D12_HEAP_PROPERTIES heapProp = { };
-		{
-			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
-			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			heapProp.CreationNodeMask = 0;
-			heapProp.VisibleNodeMask = 0;
-		}
-
-		D3D12_RESOURCE_DESC resourceDesc = { };
-		{
-			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-			resourceDesc.Alignment = 0;
-			resourceDesc.Width = sizeof(pv);
-			resourceDesc.Height = 1;
-			resourceDesc.DepthOrArraySize = 1;
-			resourceDesc.MipLevels = 1;
-			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-			resourceDesc.SampleDesc = { 1, 0 };
-			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		}
-
-		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_peraVertexBuffer.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
-	}
-
-	{
-		PeraVertex* pMappedPera = nullptr;
-
-		auto result = m_peraVertexBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pMappedPera));
-		ThrowIfFailed(result);
-
-		std::copy(std::begin(pv), std::end(pv), pMappedPera);
-
-		m_peraVertexBuffer->Unmap(0, nullptr);
-	}
-
-	{
-		m_peraVertexBufferView.BufferLocation = m_peraVertexBuffer.Get()->GetGPUVirtualAddress();
-		m_peraVertexBufferView.SizeInBytes = sizeof(pv);
-		m_peraVertexBufferView.StrideInBytes = sizeof(PeraVertex);
-	}
+	ThrowIfFailed(createVertexBufferResource());
+	ThrowIfFailed(createBokehResource());
 
 	return S_OK;
 }
@@ -286,4 +228,145 @@ HRESULT Pera::render(ID3D12DescriptorHeap *pSrvDescHeap)
 	Resource::instance()->getCommandList()->DrawInstanced(4, 1, 0, 0);
 
 	return S_OK;
+}
+
+HRESULT Pera::createVertexBufferResource()
+{
+	struct PeraVertex
+	{
+		DirectX::XMFLOAT3 pos = { };
+		DirectX::XMFLOAT2 uv = { };
+	};
+
+	constexpr PeraVertex pv[4] = {
+		{{ -1.0f, -1.0f, 0.1f}, {0.0f, 1.0f}}, // left-lower
+		{{ -1.0f,  1.0f, 0.1f}, {0.0f, 0.0f}}, // left-upper
+		{{  1.0f, -1.0f, 0.1f}, {1.0f, 1.0f}}, // right-lower
+		{{  1.0f,  1.0f, 0.1f}, {1.0f, 0.0f}}, // right-upper
+	};
+
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = sizeof(pv);
+			resourceDesc.Height = 1;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_peraVertexBuffer.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	{
+		PeraVertex* pMappedPera = nullptr;
+
+		auto result = m_peraVertexBuffer->Map(0, nullptr, reinterpret_cast<void**>(&pMappedPera));
+		ThrowIfFailed(result);
+
+		std::copy(std::begin(pv), std::end(pv), pMappedPera);
+
+		m_peraVertexBuffer->Unmap(0, nullptr);
+	}
+
+	{
+		m_peraVertexBufferView.BufferLocation = m_peraVertexBuffer.Get()->GetGPUVirtualAddress();
+		m_peraVertexBufferView.SizeInBytes = sizeof(pv);
+		m_peraVertexBufferView.StrideInBytes = sizeof(PeraVertex);
+	}
+
+	return S_OK;
+}
+
+HRESULT Pera::createBokehResource()
+{
+	std::vector<float> weights = getGaussianWeights(8, 1.0f);
+	ThrowIfFalse(weights.size() > 0);
+
+	D3D12_HEAP_PROPERTIES heapProp = { };
+	{
+		heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+		heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		heapProp.CreationNodeMask = 0;
+		heapProp.VisibleNodeMask = 0;
+	}
+
+	D3D12_RESOURCE_DESC resourceDesc = { };
+	{
+		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		resourceDesc.Alignment = 0;
+		resourceDesc.Width = Util::alignmentedSize(sizeof(weights[0]) * weights.size(), 256);
+		resourceDesc.Height = 1;
+		resourceDesc.DepthOrArraySize = 1;
+		resourceDesc.MipLevels = 1;
+		resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+		resourceDesc.SampleDesc = { 1, 0 };
+		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	}
+
+	auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_bokehParamBuffer.GetAddressOf()));
+	ThrowIfFailed(result);
+
+	float* pMappedWeight = nullptr;
+
+	result = m_bokehParamBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pMappedWeight));
+	ThrowIfFailed(result);
+	{
+		std::copy(weights.begin(), weights.end(), pMappedWeight);
+	}
+	m_bokehParamBuffer.Get()->Unmap(0, nullptr);
+
+	return S_OK;
+}
+
+static std::vector<float> getGaussianWeights(size_t count, float sigma)
+{
+	std::vector<float> weights(count);
+	float x = 0.0f;
+	float total = 0.0f;
+
+	for (auto& wgt : weights)
+	{
+		wgt = std::expf(-(x * x) / (2 * sigma * sigma));
+		total += wgt;
+		x += 1.0f;
+	}
+
+	total = total * 2.0f - 1.0f;
+
+	for (auto& wgt : weights)
+	{
+		wgt /= total;
+	}
+
+	return weights;
 }

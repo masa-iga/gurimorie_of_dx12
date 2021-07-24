@@ -11,17 +11,21 @@
 class Pera
 {
 public:
-	HRESULT createVertexBufferView();
+	HRESULT createResources();
 	HRESULT compileShaders();
 	HRESULT createPipelineState();
 	HRESULT render(ID3D12DescriptorHeap *pSrvDescHeap);
 
 private:
+	HRESULT createVertexBufferResource();
+	HRESULT createBokehResource();
+
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vs = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_ps = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_peraVertexBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_bokehParamBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_peraVertexBufferView = { };
 
 };
