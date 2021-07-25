@@ -304,46 +304,78 @@ HRESULT Pera::createBokehResource()
 	std::vector<float> weights = getGaussianWeights(8, 1.0f);
 	ThrowIfFalse(weights.size() > 0);
 
-	D3D12_HEAP_PROPERTIES heapProp = { };
 	{
-		heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
-		heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-		heapProp.CreationNodeMask = 0;
-		heapProp.VisibleNodeMask = 0;
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = Util::alignmentedSize(sizeof(weights[0]) * weights.size(), 256);
+			resourceDesc.Height = 1;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_bokehParamBuffer.GetAddressOf()));
+		ThrowIfFailed(result);
 	}
 
-	D3D12_RESOURCE_DESC resourceDesc = { };
 	{
-		resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		resourceDesc.Alignment = 0;
-		resourceDesc.Width = Util::alignmentedSize(sizeof(weights[0]) * weights.size(), 256);
-		resourceDesc.Height = 1;
-		resourceDesc.DepthOrArraySize = 1;
-		resourceDesc.MipLevels = 1;
-		resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-		resourceDesc.SampleDesc = { 1, 0 };
-		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		float* pMappedWeight = nullptr;
+
+		auto result = m_bokehParamBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pMappedWeight));
+		ThrowIfFailed(result);
+		{
+			std::copy(weights.begin(), weights.end(), pMappedWeight);
+		}
+		m_bokehParamBuffer.Get()->Unmap(0, nullptr);
 	}
 
-	auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-		&heapProp,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(m_bokehParamBuffer.GetAddressOf()));
-	ThrowIfFailed(result);
 
-	float* pMappedWeight = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvHeap = nullptr;
 
-	result = m_bokehParamBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pMappedWeight));
-	ThrowIfFailed(result);
 	{
-		std::copy(weights.begin(), weights.end(), pMappedWeight);
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_cbvHeap.GetAddressOf()));
+		ThrowIfFailed(result);
+
+		D3D12_CONSTANT_BUFFER_VIEW_DESC cbViewDesc = { };
+		{
+			cbViewDesc.BufferLocation = m_bokehParamBuffer.Get()->GetGPUVirtualAddress();
+			cbViewDesc.SizeInBytes = static_cast<UINT>(m_bokehParamBuffer.Get()->GetDesc().Width);
+		}
+
+		Resource::instance()->getDevice()->CreateConstantBufferView(
+			&cbViewDesc,
+			m_cbvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 	}
-	m_bokehParamBuffer.Get()->Unmap(0, nullptr);
 
 	return S_OK;
 }
