@@ -89,19 +89,30 @@ HRESULT Pera::createPipelineState()
 	ThrowIfFalse(m_ps != nullptr);
 
 	{
-		D3D12_DESCRIPTOR_RANGE range = { };
+		D3D12_DESCRIPTOR_RANGE range[2] = { };
 		{
-			range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-			range.BaseShaderRegister = 0;
-			range.NumDescriptors = 1;
+			range[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			range[0].BaseShaderRegister = 0;
+			range[0].NumDescriptors = 1;
+		}
+		{
+			range[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+			range[1].BaseShaderRegister = 0;
+			range[1].NumDescriptors = 1;
 		}
 
-		D3D12_ROOT_PARAMETER rootParameter = { };
+		D3D12_ROOT_PARAMETER rootParameter[2] = { };
 		{
-			rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			rootParameter.DescriptorTable.NumDescriptorRanges = 1;
-			rootParameter.DescriptorTable.pDescriptorRanges = &range;
-			rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			rootParameter[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParameter[0].DescriptorTable.NumDescriptorRanges = 1;
+			rootParameter[0].DescriptorTable.pDescriptorRanges = &range[0];
+			rootParameter[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		}
+		{
+			rootParameter[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParameter[1].DescriptorTable.NumDescriptorRanges = 1;
+			rootParameter[1].DescriptorTable.pDescriptorRanges = &range[1];
+			rootParameter[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		}
 
 		D3D12_STATIC_SAMPLER_DESC sampler = {};
@@ -123,8 +134,8 @@ HRESULT Pera::createPipelineState()
 
 		D3D12_ROOT_SIGNATURE_DESC rsDesc = { };
 		{
-			rsDesc.NumParameters = 1;
-			rsDesc.pParameters = &rootParameter;
+			rsDesc.NumParameters = 2;
+			rsDesc.pParameters = rootParameter;
 			rsDesc.NumStaticSamplers = 1;
 			rsDesc.pStaticSamplers = &sampler;
 			rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -150,6 +161,9 @@ HRESULT Pera::createPipelineState()
 			rsBlob->GetBufferPointer(),
 			rsBlob->GetBufferSize(),
 			IID_PPV_ARGS(m_rootSignature.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_rootSignature.Get()->SetName(Util::getWideStringFromString("peraRootSignature").c_str());
 		ThrowIfFailed(result);
 	}
 
@@ -183,6 +197,9 @@ HRESULT Pera::createPipelineState()
 			&gpsDesc,
 			IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
+
+		result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("peraPipelineState").c_str());
+		ThrowIfFailed(result);
 	}
 
 	return S_OK;
@@ -196,8 +213,16 @@ HRESULT Pera::render(ID3D12DescriptorHeap *pSrvDescHeap)
 	Resource::instance()->getCommandList()->SetPipelineState(m_pipelineState.Get());
 
 	Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &pSrvDescHeap);
-	D3D12_GPU_DESCRIPTOR_HANDLE handle = pSrvDescHeap->GetGPUDescriptorHandleForHeapStart();
-	Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(0, handle);
+	{
+		D3D12_GPU_DESCRIPTOR_HANDLE handle = pSrvDescHeap->GetGPUDescriptorHandleForHeapStart();
+		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(0, handle);
+	}
+
+	Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_cbvHeap.GetAddressOf());
+	{
+		D3D12_GPU_DESCRIPTOR_HANDLE handle = m_cbvHeap.Get()->GetGPUDescriptorHandleForHeapStart();
+		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(1, handle);
+	}
 
 	{
 		D3D12_VIEWPORT viewport = { };
@@ -277,6 +302,9 @@ HRESULT Pera::createVertexBufferResource()
 			nullptr,
 			IID_PPV_ARGS(m_peraVertexBuffer.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
+
+		result = m_peraVertexBuffer.Get()->SetName(Util::getWideStringFromString("peraVertexBuffer").c_str());
+		ThrowIfFailed(result);
 	}
 
 	{
@@ -336,6 +364,9 @@ HRESULT Pera::createBokehResource()
 			nullptr,
 			IID_PPV_ARGS(m_bokehParamBuffer.GetAddressOf()));
 		ThrowIfFailed(result);
+
+		result = m_bokehParamBuffer.Get()->SetName(Util::getWideStringFromString("bokehParamBuffer").c_str());
+		ThrowIfFailed(result);
 	}
 
 	{
@@ -349,9 +380,6 @@ HRESULT Pera::createBokehResource()
 		m_bokehParamBuffer.Get()->Unmap(0, nullptr);
 	}
 
-
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvHeap = nullptr;
-
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
 		{
@@ -364,6 +392,9 @@ HRESULT Pera::createBokehResource()
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
 			IID_PPV_ARGS(m_cbvHeap.GetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_cbvHeap.Get()->SetName(Util::getWideStringFromString("peraCbvHeap").c_str());
 		ThrowIfFailed(result);
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbViewDesc = { };

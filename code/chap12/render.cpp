@@ -243,6 +243,9 @@ HRESULT Render::createTextureBuffer()
 		IID_PPV_ARGS(m_texResource.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(ret);
 
+	ret = m_texResource.Get()->SetName(Util::getWideStringFromString("renderTexResource").c_str());
+	ThrowIfFailed(ret);
+
 	const auto img = m_scratchImage.GetImage(0, 0, 0);
 	ThrowIfFalse(img != nullptr);
 
@@ -300,6 +303,9 @@ HRESULT Render::createTextureBuffer2()
 			IID_PPV_ARGS(texUploadBuff.ReleaseAndGetAddressOf())
 		);
 		ThrowIfFailed(result);
+
+		result = texUploadBuff.Get()->SetName(Util::getWideStringFromString("renderTexUploadBuffer").c_str());
+		ThrowIfFailed(result);
 	}
 
 
@@ -356,6 +362,9 @@ HRESULT Render::createTextureBuffer2()
 			nullptr,
 			IID_PPV_ARGS(m_texResource.ReleaseAndGetAddressOf())
 		);
+		ThrowIfFailed(result);
+
+		result = m_texResource.Get()->SetName(Util::getWideStringFromString("renderTexBuffer").c_str());
 		ThrowIfFailed(result);
 	}
 
@@ -471,6 +480,9 @@ HRESULT Render::createSceneMatrixBuffer()
 			IID_PPV_ARGS(m_sceneMatrixResource.ReleaseAndGetAddressOf())
 		);
 		ThrowIfFailed(result);
+
+		result = m_sceneMatrixResource.Get()->SetName(Util::getWideStringFromString("renderSceneMatrixBuffer").c_str());
+		ThrowIfFailed(result);
 	}
 
 	{
@@ -500,6 +512,9 @@ HRESULT Render::createViews()
 		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&descHeapDesc,
 			IID_PPV_ARGS(m_sceneDescHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(ret);
+
+		ret = m_sceneDescHeap.Get()->SetName(Util::getWideStringFromString("renderSceneDescHeap").c_str());
 		ThrowIfFailed(ret);
 	}
 
@@ -594,6 +609,9 @@ HRESULT Render::createPeraView()
 			IID_PPV_ARGS(m_peraRtvHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
+		result = m_peraRtvHeap.Get()->SetName(Util::getWideStringFromString("peraRtvHeap").c_str());
+		ThrowIfFailed(result);
+
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = { };
 		{
 			rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -619,6 +637,9 @@ HRESULT Render::createPeraView()
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
 			IID_PPV_ARGS(m_peraSrvHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_peraSrvHeap.Get()->SetName(Util::getWideStringFromString("peraSrvHeap").c_str());
 		ThrowIfFailed(result);
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
@@ -807,6 +828,9 @@ HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12Descrip
 			&clearVal,
 			IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
+
+		ret = resource->Get()->SetName(Util::getWideStringFromString("depthBuffer").c_str());
+		ThrowIfFailed(ret);
 	}
 
 	{
@@ -821,6 +845,9 @@ HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12Descrip
 		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&descHeapDesc,
 			IID_PPV_ARGS(descHeap->ReleaseAndGetAddressOf()));
+		ThrowIfFailed(ret);
+
+		ret = descHeap->Get()->SetName(Util::getWideStringFromString("depthHeap").c_str());
 		ThrowIfFailed(ret);
 	}
 

@@ -27,5 +27,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_peraVertexBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_bokehParamBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_peraVertexBufferView = { };
-
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvHeap = nullptr;
 };
