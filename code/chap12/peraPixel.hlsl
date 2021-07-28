@@ -5,7 +5,8 @@
 #define INVERSION (0)
 #define DOWNGRADE (0)
 #define BLUR (0)
-#define GAUSSIAN_BLUR (1)
+#define GAUSSIAN_BLUR (0)
+#define GAUSSIAN_BLUR2 (1)
 #define EMBOSS (0)
 #define SHARPNESS (0)
 #define EDGE (0)
@@ -92,6 +93,24 @@ float4 main(Output input) : SV_TARGET
 
 	return ret;
 #endif // GAUSSIAN_BLUR
+
+#if GAUSSIAN_BLUR2
+	float w, h, levels;
+	tex.GetDimensions(0 /* mip level*/, w, h, levels);
+	const float dx = 1.0f / w;
+
+	float4 ret = float4(0.0f, 0.0f, 0.0f, 0.0f);
+
+	ret += bkweights[0][0] * col;
+
+	for (int i = 1; i < 8; ++i)
+	{
+		ret += bkweights[i >> 2][(uint)i % 4] * tex.Sample(smp, input.uv + float2(i * dx, 0));
+		ret += bkweights[i >> 2][(uint)i % 4] * tex.Sample(smp, input.uv + float2(-i * dx, 0));
+	}
+
+	return float4(ret.rgb, col.a);
+#endif // GAUSSIAN_BLUR2
 
 #if EMBOSS
 	float w, h, levels;

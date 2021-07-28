@@ -329,7 +329,7 @@ HRESULT Pera::createVertexBufferResource()
 
 HRESULT Pera::createBokehResource()
 {
-	std::vector<float> weights = getGaussianWeights(8, 1.0f);
+	std::vector<float> weights = getGaussianWeights(8, 5.0f);
 	ThrowIfFalse(weights.size() > 0);
 
 	{
