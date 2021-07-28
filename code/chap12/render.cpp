@@ -105,12 +105,10 @@ HRESULT Render::render()
 	postRenderToPeraBuffer();
 
 
-	// render to display render target
-	Resource::instance()->getCommandList()->OMSetRenderTargets(1, &rtvH, false, &dsvH);
-
+	// render to display buffer
 	m_timeStamp.set(TimeStamp::Index::k0);
 	{
-		m_pera.render(m_peraSrvHeap.Get());
+		m_pera.render(&rtvH, &dsvH, m_peraSrvHeap.Get());
 	}
 	m_timeStamp.set(TimeStamp::Index::k1);
 

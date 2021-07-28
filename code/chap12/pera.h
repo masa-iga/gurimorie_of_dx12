@@ -14,7 +14,7 @@ public:
 	HRESULT createResources();
 	HRESULT compileShaders();
 	HRESULT createPipelineState();
-	HRESULT render(ID3D12DescriptorHeap *pSrvDescHeap);
+	HRESULT render(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, const D3D12_CPU_DESCRIPTOR_HANDLE *pDsvHeap, ID3D12DescriptorHeap *pSrvDescHeap);
 
 private:
 	HRESULT createVertexBufferResource();

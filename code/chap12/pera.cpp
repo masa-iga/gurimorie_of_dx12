@@ -205,9 +205,11 @@ HRESULT Pera::createPipelineState()
 	return S_OK;
 }
 
-HRESULT Pera::render(ID3D12DescriptorHeap *pSrvDescHeap)
+HRESULT Pera::render(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, const D3D12_CPU_DESCRIPTOR_HANDLE *pDsvHeap, ID3D12DescriptorHeap *pSrvDescHeap)
 {
 	ThrowIfFalse(pSrvDescHeap != nullptr);
+
+	Resource::instance()->getCommandList()->OMSetRenderTargets(1, pRtvHeap, false, pDsvHeap);
 
 	Resource::instance()->getCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
 	Resource::instance()->getCommandList()->SetPipelineState(m_pipelineState.Get());
