@@ -19,6 +19,7 @@ public:
 private:
 	HRESULT createVertexBufferResource();
 	HRESULT createBokehResource();
+	HRESULT createOffscreenResource();
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
@@ -26,6 +27,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob> m_ps = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_peraVertexBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_bokehParamBuffer = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_offscreenBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_peraVertexBufferView = { };
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_cbvHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_offscreenRtvHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_offscreenSrvHeap = nullptr;
 };

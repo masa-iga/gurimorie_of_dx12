@@ -17,6 +17,7 @@ HRESULT Pera::createResources()
 {
 	ThrowIfFailed(createVertexBufferResource());
 	ThrowIfFailed(createBokehResource());
+	ThrowIfFailed(createOffscreenResource());
 
 	return S_OK;
 }
@@ -408,6 +409,94 @@ HRESULT Pera::createBokehResource()
 		Resource::instance()->getDevice()->CreateConstantBufferView(
 			&cbViewDesc,
 			m_cbvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	return S_OK;
+}
+
+HRESULT Pera::createOffscreenResource()
+{
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+
+		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getBackBuffer(0)->GetDesc();
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resDesc,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			nullptr,
+			IID_PPV_ARGS(m_offscreenBuffer.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_offscreenRtvHeap.GetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_RENDER_TARGET_VIEW_DESC viewDesc = { };
+		{
+			viewDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			viewDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		}
+
+		Resource::instance()->getDevice()->CreateRenderTargetView(
+			m_offscreenBuffer.Get(),
+			&viewDesc,
+			m_offscreenRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_offscreenSrvHeap.GetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = { };
+		{
+			viewDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			viewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			viewDesc.Texture2D.MostDetailedMip = 0;
+			viewDesc.Texture2D.MipLevels = 1;
+			viewDesc.Texture2D.PlaneSlice = 0;
+			viewDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		}
+
+		Resource::instance()->getDevice()->CreateShaderResourceView(
+			m_offscreenBuffer.Get(),
+			&viewDesc,
+			m_offscreenSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	return S_OK;
