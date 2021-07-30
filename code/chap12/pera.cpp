@@ -365,7 +365,7 @@ HRESULT Pera::createBokehResource()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(m_bokehParamBuffer.GetAddressOf()));
+			IID_PPV_ARGS(m_bokehParamBuffer.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
 		result = m_bokehParamBuffer.Get()->SetName(Util::getWideStringFromString("bokehParamBuffer").c_str());
@@ -394,7 +394,7 @@ HRESULT Pera::createBokehResource()
 
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
-			IID_PPV_ARGS(m_cbvHeap.GetAddressOf()));
+			IID_PPV_ARGS(m_cbvHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
 		result = m_cbvHeap.Get()->SetName(Util::getWideStringFromString("peraCbvHeap").c_str());
@@ -449,7 +449,7 @@ HRESULT Pera::createOffscreenResource()
 
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
-			IID_PPV_ARGS(m_offscreenRtvHeap.GetAddressOf()));
+			IID_PPV_ARGS(m_offscreenRtvHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 	}
 
@@ -477,7 +477,7 @@ HRESULT Pera::createOffscreenResource()
 
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
-			IID_PPV_ARGS(m_offscreenSrvHeap.GetAddressOf()));
+			IID_PPV_ARGS(m_offscreenSrvHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 	}
 
