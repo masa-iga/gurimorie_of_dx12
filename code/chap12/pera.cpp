@@ -436,6 +436,9 @@ HRESULT Pera::createOffscreenResource()
 			nullptr,
 			IID_PPV_ARGS(m_offscreenBuffer.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
+
+		result = m_offscreenBuffer.Get()->SetName(Util::getWideStringFromString("offscreenBuffer").c_str());
+		ThrowIfFailed(result);
 	}
 
 	{
@@ -450,6 +453,9 @@ HRESULT Pera::createOffscreenResource()
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
 			IID_PPV_ARGS(m_offscreenRtvHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_offscreenRtvHeap.Get()->SetName(Util::getWideStringFromString("offscreenRtvHeap").c_str());
 		ThrowIfFailed(result);
 	}
 
@@ -478,6 +484,9 @@ HRESULT Pera::createOffscreenResource()
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
 			IID_PPV_ARGS(m_offscreenSrvHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_offscreenSrvHeap.Get()->SetName(Util::getWideStringFromString("offscreenSrvHeap").c_str());
 		ThrowIfFailed(result);
 	}
 
