@@ -60,6 +60,23 @@ HRESULT Pera::compileShaders()
 	}
 	ThrowIfFailed(result);
 
+	result = D3DCompileFromFile(
+		L"VerticalBokehPs.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"main",
+		"ps_5_0",
+		0,
+		0,
+		m_verticalBokehPs.ReleaseAndGetAddressOf(),
+		errBlob.ReleaseAndGetAddressOf());
+
+	if (FAILED(result))
+	{
+		outputDebugMessage(errBlob.Get());
+	}
+	ThrowIfFailed(result);
+
 	return S_OK;
 }
 
@@ -104,12 +121,14 @@ HRESULT Pera::createPipelineState()
 
 		D3D12_ROOT_PARAMETER rootParameter[2] = { };
 		{
+			// SRV for reading a texture
 			rootParameter[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 			rootParameter[0].DescriptorTable.NumDescriptorRanges = 1;
 			rootParameter[0].DescriptorTable.pDescriptorRanges = &range[0];
 			rootParameter[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		}
 		{
+			// CBV for Gaussian parameters
 			rootParameter[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 			rootParameter[1].DescriptorTable.NumDescriptorRanges = 1;
 			rootParameter[1].DescriptorTable.pDescriptorRanges = &range[1];
@@ -180,7 +199,8 @@ HRESULT Pera::createPipelineState()
 			gpsDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			gpsDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
 			gpsDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-			//D3D12_DEPTH_STENCIL_DESC DepthStencilState;
+			gpsDesc.DepthStencilState.DepthEnable = false;
+			gpsDesc.DepthStencilState.StencilEnable = false;
 			gpsDesc.InputLayout.pInputElementDescs = layout;
 			gpsDesc.InputLayout.NumElements = _countof(layout);
 			//D3D12_INDEX_BUFFER_STRIP_CUT_VALUE IBStripCutValue;
@@ -201,30 +221,50 @@ HRESULT Pera::createPipelineState()
 
 		result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("peraPipelineState").c_str());
 		ThrowIfFailed(result);
+
+		{
+			gpsDesc.PS.pShaderBytecode = m_verticalBokehPs.Get()->GetBufferPointer();
+			gpsDesc.PS.BytecodeLength = m_verticalBokehPs.Get()->GetBufferSize();
+		}
+
+		result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&gpsDesc,
+			IID_PPV_ARGS(m_pipelineState2.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_pipelineState2.Get()->SetName(Util::getWideStringFromString("peraPipelineState2").c_str());
+		ThrowIfFailed(result);
 	}
 
 	return S_OK;
 }
 
-HRESULT Pera::render(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, const D3D12_CPU_DESCRIPTOR_HANDLE *pDsvHeap, ID3D12DescriptorHeap *pSrvDescHeap)
+HRESULT Pera::render(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, ID3D12DescriptorHeap *pSrvDescHeap)
 {
 	ThrowIfFalse(pSrvDescHeap != nullptr);
 
-	Resource::instance()->getCommandList()->OMSetRenderTargets(1, pRtvHeap, false, pDsvHeap);
+	ID3D12GraphicsCommandList* commandList = Resource::instance()->getCommandList();
 
-	Resource::instance()->getCommandList()->SetGraphicsRootSignature(m_rootSignature.Get());
-	Resource::instance()->getCommandList()->SetPipelineState(m_pipelineState.Get());
+	// first, horizontal bokeh
+	commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+	commandList->SetPipelineState(m_pipelineState.Get());
 
-	Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &pSrvDescHeap);
+	commandList->SetDescriptorHeaps(1, &pSrvDescHeap);
 	{
 		D3D12_GPU_DESCRIPTOR_HANDLE handle = pSrvDescHeap->GetGPUDescriptorHandleForHeapStart();
-		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(0, handle);
+		commandList->SetGraphicsRootDescriptorTable(0, handle);
 	}
 
-	Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_cbvHeap.GetAddressOf());
+	commandList->SetDescriptorHeaps(1, m_cbvHeap.GetAddressOf());
 	{
 		D3D12_GPU_DESCRIPTOR_HANDLE handle = m_cbvHeap.Get()->GetGPUDescriptorHandleForHeapStart();
-		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(1, handle);
+		commandList->SetGraphicsRootDescriptorTable(1, handle);
+	}
+
+	{
+		// render to off screen buffer
+		const D3D12_CPU_DESCRIPTOR_HANDLE rtvHeap = m_offscreenRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+		commandList->OMSetRenderTargets(1, &rtvHeap, false, nullptr);
 	}
 
 	{
@@ -237,7 +277,7 @@ HRESULT Pera::render(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, const D3D12_CP
 			viewport.MaxDepth = 1.0f;
 			viewport.MinDepth = 0.0f;
 		}
-		Resource::instance()->getCommandList()->RSSetViewports(1, &viewport);
+		commandList->RSSetViewports(1, &viewport);
 	}
 
 	{
@@ -248,12 +288,26 @@ HRESULT Pera::render(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, const D3D12_CP
 			scissorRect.right = scissorRect.left + kWindowWidth;
 			scissorRect.bottom = scissorRect.top + kWindowHeight;
 		}
-		Resource::instance()->getCommandList()->RSSetScissorRects(1, &scissorRect);
+		commandList->RSSetScissorRects(1, &scissorRect);
 	}
 
-	Resource::instance()->getCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, &m_peraVertexBufferView);
-	Resource::instance()->getCommandList()->DrawInstanced(4, 1, 0, 0);
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	commandList->IASetVertexBuffers(0, 1, &m_peraVertexBufferView);
+	commandList->DrawInstanced(4, 1, 0, 0);
+
+	// vertical bokeh
+	commandList->SetPipelineState(m_pipelineState2.Get()); // to access vertical bokeh shader
+
+	commandList->OMSetRenderTargets(1, pRtvHeap, false, nullptr);
+
+	// read off screen texture which is applied horizontal bokeh
+	commandList->SetDescriptorHeaps(1, m_offscreenSrvHeap.GetAddressOf());
+	{
+		D3D12_GPU_DESCRIPTOR_HANDLE handle = m_offscreenSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart();
+		commandList->SetGraphicsRootDescriptorTable(0, handle);
+	}
+
+	commandList->DrawInstanced(4, 1, 0, 0);
 
 	return S_OK;
 }
