@@ -1,12 +1,17 @@
+#pragma warning(push, 0)
+#include <codeanalysis/warnings.h>
+#pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <Windows.h>
 #include <array>
 #include <cstdio>
 #include <cassert>
 #include <dxgidebug.h>
 #include <tchar.h>
-#include "init.h"
-#include "debug.h"
+#pragma warning(pop)
 #include "config.h"
+#include "debug.h"
+#include "init.h"
+#include "loader.h"
 #include "pmd_actor.h"
 #include "render.h"
 
@@ -63,6 +68,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	Resource::create();
 	ThrowIfFailed(Resource::instance()->allocate(hwnd));
+
+	Loader::init();
 
 	ShowWindow(hwnd, SW_SHOW);
 
@@ -158,6 +165,7 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 	{
 		PmdActor::release();
 		ThrowIfFailed(Resource::instance()->release());
+		Loader::quit();
 		Resource::instance()->destroy();
 	}
 

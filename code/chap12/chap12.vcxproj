@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="init.cpp" />
+    <ClCompile Include="loader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pera.cpp" />
     <ClCompile Include="pmd_actor.cpp" />
@@ -164,6 +165,7 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="init.h" />
+    <ClInclude Include="loader.h" />
     <ClInclude Include="pera.h" />
     <ClInclude Include="pmd_actor.h" />
     <ClInclude Include="render.h" />

@@ -108,7 +108,7 @@ HRESULT Render::render()
 	// render to display buffer
 	m_timeStamp.set(TimeStamp::Index::k0);
 	{
-		m_pera.render(&rtvH, &dsvH, m_peraSrvHeap.Get());
+		m_pera.render(&rtvH, m_peraSrvHeap.Get());
 	}
 	m_timeStamp.set(TimeStamp::Index::k1);
 
