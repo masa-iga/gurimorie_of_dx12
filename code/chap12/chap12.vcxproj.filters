@@ -89,7 +89,6 @@
     <FxCompile Include="BasicPixelShader.hlsl" />
     <FxCompile Include="peraVertex.hlsl" />
     <FxCompile Include="peraPixel.hlsl" />
-    <FxCompile Include="VerticalBokehPs.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BasicShaderHeader.hlsli">

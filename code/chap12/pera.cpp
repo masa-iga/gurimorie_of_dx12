@@ -49,7 +49,7 @@ HRESULT Pera::compileShaders()
 		L"peraPixel.hlsl",
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main",
+		"peraPs",
 		"ps_5_0",
 		0,
 		0,
@@ -63,10 +63,10 @@ HRESULT Pera::compileShaders()
 	ThrowIfFailed(result);
 
 	result = D3DCompileFromFile(
-		L"VerticalBokehPs.hlsl",
+		L"peraPixel.hlsl",
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main",
+		"verticalBokehPs",
 		"ps_5_0",
 		0,
 		0,
