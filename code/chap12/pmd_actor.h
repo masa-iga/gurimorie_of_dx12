@@ -129,7 +129,6 @@ private:
 
 	HRESULT loadPmd(Model model);
 	HRESULT loadVmd();
-	Microsoft::WRL::ComPtr<ID3D12Resource> loadTextureFromFile(const std::string& texPath);
 	HRESULT createResources();
 	HRESULT createWhiteTexture();
 	HRESULT createBlackTexture();
@@ -169,7 +168,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_whiteTextureResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_blackTextureResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_grayGradiationTextureResource = nullptr;
-	std::map<std::string, ID3D12Resource*> m_resourceTable;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_transformDescHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_transformResource = nullptr;
 	DirectX::XMMATRIX* m_worldMatrixPointer = nullptr; // needs to be aligned 16 bytes

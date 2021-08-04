@@ -13,6 +13,7 @@
 #include "config.h"
 #include "debug.h"
 #include "init.h"
+#include "loader.h"
 #include "util.h"
 
 #undef min
@@ -763,7 +764,7 @@ HRESULT PmdActor::loadPmd(Model model)
 
 					toonFilePath += toonFileName;
 
-					m_toonResources[i] = loadTextureFromFile(toonFilePath);
+					ThrowIfFailed(Loader::instance()->loadImageFromFile(toonFilePath, m_toonResources[i]));
 				}
 
 				if (strlen(pmdMaterials[i].texFilePath) == 0)
@@ -820,19 +821,19 @@ HRESULT PmdActor::loadPmd(Model model)
 				if (!texFileName.empty())
 				{
 					const auto texFilePath = getTexturePathFromModelAndTexPath(modelPath, texFileName.c_str());
-					m_textureResources[i] = loadTextureFromFile(texFilePath);
+					ThrowIfFailed(Loader::instance()->loadImageFromFile(texFilePath, m_textureResources[i]));
 				}
 
 				if (!sphFileName.empty())
 				{
 					const auto sphFilePath = getTexturePathFromModelAndTexPath(modelPath, sphFileName.c_str());
-					m_sphResources[i] = loadTextureFromFile(sphFilePath);
+					ThrowIfFailed(Loader::instance()->loadImageFromFile(sphFilePath, m_sphResources[i]));
 				}
 
 				if (!spaFileName.empty())
 				{
 					const auto spaFilePath = getTexturePathFromModelAndTexPath(modelPath, spaFileName.c_str());
-					m_spaResources[i] = loadTextureFromFile(spaFilePath);
+					ThrowIfFailed(Loader::instance()->loadImageFromFile(spaFilePath, m_spaResources[i]));
 				}
 			}
 		}
@@ -1019,77 +1020,6 @@ HRESULT PmdActor::loadVmd()
 	ThrowIfFalse(fclose(fp) == 0);
 
 	return S_OK;
-}
-
-ComPtr<ID3D12Resource> PmdActor::loadTextureFromFile(const std::string& texPath)
-{
-	const auto it = m_resourceTable.find(texPath);
-
-	if (it != m_resourceTable.end())
-		return it->second;
-
-	using namespace DirectX;
-
-	TexMetadata metadata = { };
-	ScratchImage scratchImg = { };
-
-	auto ret = LoadFromWICFile(
-		Util::getWideStringFromString(texPath).c_str(),
-		WIC_FLAGS_NONE,
-		&metadata,
-		scratchImg);
-
-	if (FAILED(ret))
-		return nullptr;
-
-	const auto img = scratchImg.GetImage(0, 0, 0);
-
-	D3D12_HEAP_PROPERTIES heapProp = { };
-	{
-		heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
-		heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
-		heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
-		heapProp.CreationNodeMask = 0;
-		heapProp.VisibleNodeMask = 0;
-	}
-
-	D3D12_RESOURCE_DESC resourceDesc = { };
-	{
-		resourceDesc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(metadata.dimension);
-		resourceDesc.Alignment = 0;
-		resourceDesc.Width = metadata.width;
-		resourceDesc.Height = static_cast<UINT>(metadata.height);
-		resourceDesc.DepthOrArraySize = static_cast<UINT16>(metadata.arraySize);
-		resourceDesc.MipLevels = static_cast<UINT16>(metadata.mipLevels);
-		resourceDesc.Format = metadata.format;
-		resourceDesc.SampleDesc = { 1, 0 };
-		resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-	}
-
-	ComPtr<ID3D12Resource> resource = nullptr;
-	{
-		ret = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(ret);
-
-		ret = resource->WriteToSubresource(
-			0,
-			nullptr,
-			img->pixels,
-			static_cast<UINT>(img->rowPitch),
-			static_cast<UINT>(img->slicePitch));
-		ThrowIfFailed(ret);
-	}
-
-	m_resourceTable[texPath] = resource.Get();
-
-	return resource;
 }
 
 HRESULT PmdActor::createBlackTexture()

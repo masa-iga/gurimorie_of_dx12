@@ -22,6 +22,9 @@
     <Filter Include="リソース ファイル\Motion">
       <UniqueIdentifier>{277fb2b0-303d-46bd-a834-5f96e73831a2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="リソース ファイル\normal">
+      <UniqueIdentifier>{3f47d75e-40ba-46d2-b1ef-9ffd056d40d3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -231,6 +234,9 @@
     </Image>
     <Image Include="toon\toon10.bmp">
       <Filter>リソース ファイル\toon</Filter>
+    </Image>
+    <Image Include="normal\crack_n.png">
+      <Filter>リソース ファイル\normal</Filter>
     </Image>
   </ItemGroup>
 </Project>

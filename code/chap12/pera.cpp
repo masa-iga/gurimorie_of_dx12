@@ -7,6 +7,7 @@
 #include "config.h"
 #include "debug.h"
 #include "init.h"
+#include "loader.h"
 #include "util.h"
 
 using namespace Microsoft::WRL;
@@ -18,6 +19,7 @@ HRESULT Pera::createResources()
 	ThrowIfFailed(createVertexBufferResource());
 	ThrowIfFailed(createBokehResource());
 	ThrowIfFailed(createOffscreenResource());
+	ThrowIfFailed(createEffectBufferAndView());
 
 	return S_OK;
 }
@@ -560,6 +562,47 @@ HRESULT Pera::createOffscreenResource()
 			m_offscreenBuffer.Get(),
 			&viewDesc,
 			m_offscreenSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	return S_OK;
+}
+
+HRESULT Pera::createEffectBufferAndView()
+{
+	if (Loader::instance()->loadImageFromFile("normal/crack_n.png", m_effectTexBuffer) != S_OK)
+		return S_FALSE;
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_effectSrvHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC rsvDesc = { };
+		{
+			rsvDesc.Format = m_effectTexBuffer.Get()->GetDesc().Format;
+			rsvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			rsvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			rsvDesc.Texture2D.MostDetailedMip = 0;
+			rsvDesc.Texture2D.MipLevels = 1;
+			rsvDesc.Texture2D.PlaneSlice = 0;
+			rsvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		};
+
+		Resource::instance()->getDevice()->CreateShaderResourceView(
+			m_effectTexBuffer.Get(),
+			&rsvDesc,
+			m_effectSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	return S_OK;
