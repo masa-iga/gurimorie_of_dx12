@@ -21,13 +21,18 @@ private:
 	HRESULT createBokehResource();
 	HRESULT createOffscreenResource();
 	HRESULT createEffectBufferAndView();
+	HRESULT renderBokeh(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, ID3D12DescriptorHeap *pSrvDescHeap);
+	HRESULT renderEffect(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, ID3D12DescriptorHeap *pSrvDescHeap);
 
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState2 = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature_bokeh = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature_effect = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState_bokehH = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState_bokehV = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState_effect = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vs = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> m_ps = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> m_verticalBokehPs = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_ps_bokehH = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_ps_bokehV = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_ps_effect = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_peraVertexBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_bokehParamBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_offscreenBuffer = nullptr;

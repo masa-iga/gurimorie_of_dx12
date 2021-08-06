@@ -204,3 +204,11 @@ float4 verticalBokehPs(Output input) : SV_TARGET
 
 	return col;
 }
+
+float4 effectPs(Output input) : SV_TARGET
+{
+	float2 nmTex = effectTex.Sample(smp, input.uv).xy;
+	nmTex = nmTex * 2.0f - 1.0f;
+
+	return tex.Sample(smp, input.uv + nmTex * 0.1f);
+}
