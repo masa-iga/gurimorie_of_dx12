@@ -13,6 +13,7 @@
 using namespace Microsoft::WRL;
 
 static std::vector<float> getGaussianWeights(size_t count, float sigma);
+static const std::string kNormalMapImagePath = "normal/normalmap.jpg";
 
 HRESULT Pera::createResources()
 {
@@ -600,8 +601,8 @@ HRESULT Pera::createOffscreenResource()
 
 HRESULT Pera::createEffectBufferAndView()
 {
-	if (Loader::instance()->loadImageFromFile("normal/crack_n.png", m_effectTexBuffer) != S_OK)
-		return S_FALSE;
+	if (FAILED(Loader::instance()->loadImageFromFile(kNormalMapImagePath.c_str(), m_effectTexBuffer)))
+		return E_FAIL;
 
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };

@@ -33,7 +33,7 @@ HRESULT Loader::loadImageFromFile(const std::string& texPath, ComPtr<ID3D12Resou
 		scratchImg);
 
 	if (FAILED(ret))
-		return S_FALSE;
+		return E_FAIL;
 
 	const auto img = scratchImg.GetImage(0, 0, 0);
 

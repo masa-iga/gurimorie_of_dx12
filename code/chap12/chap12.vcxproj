@@ -259,6 +259,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="normal\crack_n.png" />
+    <Image Include="normal\normalmap.jpg" />
     <Image Include="toon\toon01.bmp" />
     <Image Include="toon\toon02.bmp" />
     <Image Include="toon\toon03.bmp" />

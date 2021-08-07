@@ -237,5 +237,8 @@
     <Image Include="normal\crack_n.png">
       <Filter>リソース ファイル\normal</Filter>
     </Image>
+    <Image Include="normal\normalmap.jpg">
+      <Filter>リソース ファイル\normal</Filter>
+    </Image>
   </ItemGroup>
 </Project>
