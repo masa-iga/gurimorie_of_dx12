@@ -40,12 +40,12 @@ HRESULT Render::init()
 		actor.enableAnimation(m_bAnimationEnabled);
 	}
 
-	createPeraView();
-	m_pera.createResources();
-	m_pera.compileShaders();
-	m_pera.createPipelineState();
+	ThrowIfFailed(createPeraView());
+	ThrowIfFailed(m_pera.createResources());
+	ThrowIfFailed(m_pera.compileShaders());
+	ThrowIfFailed(m_pera.createPipelineState());
 
-	m_timeStamp.init();
+	ThrowIfFailed(m_timeStamp.init());
 
 	return S_OK;
 }
