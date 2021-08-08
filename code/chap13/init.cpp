@@ -210,6 +210,7 @@ HRESULT Resource::createCommandBuffers()
 
 	[[maybe_unused]] const auto commandList = getCommandList();
 	assert(commandList != nullptr);
+	commandList->Close();
 
 	[[maybe_unused]] const auto commandQueue = getCommandQueue();
 	assert(commandQueue != nullptr);

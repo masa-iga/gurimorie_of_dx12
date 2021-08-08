@@ -30,9 +30,6 @@ public:
 	void toggleAnimationReverse();
 
 private:
-	HRESULT loadImage();
-	HRESULT createTextureBuffer();
-	HRESULT createTextureBuffer2();
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
 	HRESULT createPeraView();
@@ -46,9 +43,6 @@ private:
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_texResource = nullptr;
-	DirectX::TexMetadata m_metadata = { };
-	DirectX::ScratchImage m_scratchImage = { };
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_sceneDescHeap = nullptr;

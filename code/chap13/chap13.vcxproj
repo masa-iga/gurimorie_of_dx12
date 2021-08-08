@@ -270,7 +270,6 @@
     <Image Include="toon\toon08.bmp" />
     <Image Include="toon\toon09.bmp" />
     <Image Include="toon\toon10.bmp" />
-    <Image Include="img\textest.png" />
     <Image Include="Model\ao.bmp" />
     <Image Include="Model\eye2.bmp" />
     <Image Include="Model\eye3.bmp" />

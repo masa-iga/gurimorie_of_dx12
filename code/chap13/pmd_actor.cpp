@@ -963,7 +963,7 @@ HRESULT PmdActor::loadVmd()
 		ThrowIfFalse(fread(selfShadowData.data(), sizeof(VMDSelfShadow), selfShadowCount, fp) == selfShadowCount);
 
 		uint32_t ikSwitchCount = 0;
-		ThrowIfFalse(fread(&ikSwitchCount, sizeof(ikSwitchCount), 1, fp) == 1);
+		ThrowIfFalse(fread(&ikSwitchCount, sizeof(ikSwitchCount), 1, fp) <= 1);
 
 		m_ikEnableData.resize(ikSwitchCount);
 
@@ -1780,7 +1780,10 @@ static std::string getModelPath(PmdActor::Model model)
 
 std::string getMotionPath()
 {
-	return "Motion/squat.vmd";
+	//return "Motion/pose.vmd";
+	//return "Motion/swing.vmd";
+	return "Motion/motion.vmd";
+	//return "Motion/squat.vmd";
 }
 
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)

@@ -168,9 +168,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="img\textest.png">
-      <Filter>リソース ファイル</Filter>
-    </Image>
     <Image Include="Model\ao.bmp">
       <Filter>リソース ファイル\Model</Filter>
     </Image>
