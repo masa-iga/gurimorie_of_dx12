@@ -332,7 +332,7 @@ HRESULT Pera::createPipelineState()
 
 HRESULT Pera::render(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, ID3D12DescriptorHeap *pSrvDescHeap)
 {
-	constexpr bool bBokehMode = false;
+	constexpr bool bBokehMode = true;
 
 	if (bBokehMode)
 	{

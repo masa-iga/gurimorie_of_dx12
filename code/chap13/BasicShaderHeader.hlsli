@@ -12,6 +12,7 @@ cbuffer SceneBuffer : register(b0)
 {
 	matrix view;
 	matrix proj;
+	matrix shadow;
 	float3 eye;
 }
 

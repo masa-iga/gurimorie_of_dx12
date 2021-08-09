@@ -25,9 +25,13 @@ static HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12
 
 constexpr float kClearColorRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 constexpr float kClearColorPeraRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+constexpr DirectX::XMFLOAT4 kPlaneVec(0.0f, 1.0f, 0.0f, 0.0f);
+constexpr DirectX::XMFLOAT3 kParallelLightVec(1.0f, -1.0f, 1.0f);
 
 HRESULT Render::init()
 {
+	m_parallelLightVec = kParallelLightVec;
+
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
 	m_pmdActors.resize(1);
 	ThrowIfFailed(m_pmdActors[0].loadAsset(PmdActor::Model::kMiku));
@@ -431,6 +435,7 @@ HRESULT Render::updateMvpMatrix()
 	m_sceneMatrix->proj = projMat;
 	m_sceneMatrix->eye = eye;
 #endif // DISABLE_MATRIX
+	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
 
 	return S_OK;
 }

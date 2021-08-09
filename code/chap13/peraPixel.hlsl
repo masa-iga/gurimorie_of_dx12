@@ -1,12 +1,12 @@
 #include "peraHeader.hlsli"
 
-#define NO_EFFECT (0)
+#define NO_EFFECT (1)
 #define GREYSCALE (0)
 #define INVERSION (0)
 #define DOWNGRADE (0)
 #define BLUR (0)
 #define GAUSSIAN_BLUR (0)
-#define GAUSSIAN_BLUR2 (1)
+#define GAUSSIAN_BLUR2 (0)
 #define EMBOSS (0)
 #define SHARPNESS (0)
 #define EDGE (0)

@@ -12,7 +12,12 @@ Output BasicVs(
 		const float w = weight / 100.0f;
 		const matrix bm = boneMat[boneno[0]] * w + boneMat[boneno[1]] * (1 - w);
 		pos = mul(bm, pos);
+#if 1
+		float4 wpos = mul(world, pos);
+		wpos = mul(shadow, wpos);
+#else
 		const float4 wpos = mul(world, pos);
+#endif
 		output.svpos = mul(mul(proj, view), wpos);
 		output.pos = mul(view, wpos);
 

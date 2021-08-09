@@ -14,9 +14,10 @@
 
 struct SceneMatrix
 {
-	DirectX::XMMATRIX view;
-	DirectX::XMMATRIX proj;
-	DirectX::XMFLOAT3 eye;
+	DirectX::XMMATRIX view = { };
+	DirectX::XMMATRIX proj = { };
+	DirectX::XMMATRIX shadow = { };
+	DirectX::XMFLOAT3 eye = { };
 };
 
 class Render {
@@ -48,6 +49,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_sceneDescHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneMatrixResource = nullptr;
 	SceneMatrix* m_sceneMatrix = nullptr;
+	DirectX::XMFLOAT3 m_parallelLightVec = { };
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
