@@ -347,7 +347,8 @@ HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
 				2, // b2
 				materialH);
 
-			Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, 1, indexOffset, 0, 0);
+			constexpr UINT kInstanceCount = 2; // [0] mesh, [1] shadow
+			Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, kInstanceCount, indexOffset, 0, 0);
 
 			materialH.ptr += cbvSrvIncSize;
 			indexOffset += m.indicesNum;

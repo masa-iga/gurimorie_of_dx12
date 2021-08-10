@@ -9,6 +9,12 @@ SamplerState smpToon : register(s1);
 
 float4 BasicPs(Output input) : SV_TARGET
 {
+	if (input.instNo == 1)
+	{
+		// shadow
+		return float4(0, 0, 0, 1);
+	}
+
 	const float3 light = normalize(float3(1, -1, 1));
 	const float3 lightColor = float3(1, 1, 1);
 

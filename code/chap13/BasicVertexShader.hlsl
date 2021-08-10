@@ -5,19 +5,23 @@ Output BasicVs(
 	float4 normal : NORMAL,
 	float2 uv : TEXCOORD,
 	min16uint2 boneno : BONENO,
-	min16uint weight : WEIGHT)
+	min16uint weight : WEIGHT,
+	uint instNo : SV_InstanceID)
 {
 	Output output;
 	{
 		const float w = weight / 100.0f;
 		const matrix bm = boneMat[boneno[0]] * w + boneMat[boneno[1]] * (1 - w);
 		pos = mul(bm, pos);
-#if 1
+
 		float4 wpos = mul(world, pos);
-		wpos = mul(shadow, wpos);
-#else
-		const float4 wpos = mul(world, pos);
-#endif
+
+		if (instNo == 1)
+		{
+			// shadow
+			wpos = mul(shadow, wpos);
+		}
+
 		output.svpos = mul(mul(proj, view), wpos);
 		output.pos = mul(view, wpos);
 
@@ -27,6 +31,7 @@ Output BasicVs(
 
 		output.uv = uv;
 		output.ray = normalize(pos.xyz - eye);
+		output.instNo = instNo;
 	}
 
 	return output;
