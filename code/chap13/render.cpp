@@ -49,6 +49,8 @@ HRESULT Render::init()
 	ThrowIfFailed(m_pera.compileShaders());
 	ThrowIfFailed(m_pera.createPipelineState());
 
+	ThrowIfFailed(m_shadow.init());
+
 	ThrowIfFailed(m_timeStamp.init());
 
 	return S_OK;
@@ -104,8 +106,15 @@ HRESULT Render::render()
 	}
 	m_timeStamp.set(TimeStamp::Index::k1);
 
+	// render depth buffer
+	{
+		m_shadow.render(&rtvH, m_depthSrvHeap);
+	}
 
-	m_timeStamp.resolve();
+	// resolve time stamps
+	{
+		m_timeStamp.resolve();
+	}
 
 	D3D12_RESOURCE_BARRIER barrier = { };
 	{

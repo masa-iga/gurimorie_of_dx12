@@ -10,6 +10,7 @@
 #pragma warning(pop)
 #include "pmd_actor.h"
 #include "pera.h"
+#include "shadow.h"
 #include "timestamp.h"
 
 struct SceneMatrix
@@ -61,6 +62,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_peraResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraRtvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
+
+	Shadow m_shadow;
 
 	TimeStamp m_timeStamp;
 };
