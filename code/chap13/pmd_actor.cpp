@@ -274,12 +274,16 @@ HRESULT PmdActor::loadAsset(Model model)
 
 void PmdActor::enableAnimation(bool enable)
 {
+	static DWORD offset = 0;
 	m_bAnimation = enable;
 
 	if (!enable)
+	{
+		offset = timeGetTime() - m_animationStartTime;
 		return;
+	}
 
-	m_animationStartTime = timeGetTime();
+	m_animationStartTime = timeGetTime() - offset;
 }
 
 void PmdActor::update(bool animationReversed)
@@ -1585,7 +1589,7 @@ void PmdActor::solveCosineIK(const PmdIk& ik)
 {
 	using namespace DirectX;
 
-	// last bone
+	// offset bone
 	const BoneNode* endNode = m_boneNodeAddressArray[ik.targetIdx];
 
 	// intermidiate & root bones
@@ -1608,7 +1612,7 @@ void PmdActor::solveCosineIK(const PmdIk& ik)
 
 	positions[0] = DirectX::XMVector3Transform(positions[0], m_boneMatrices[ik.nodeIdxes[1]]); // root bone
 	// positions[1] will be automatically calculated
-	positions[2] = DirectX::XMVector3Transform(positions[2], m_boneMatrices[ik.boneIdx]); // last bone
+	positions[2] = DirectX::XMVector3Transform(positions[2], m_boneMatrices[ik.boneIdx]); // offset bone
 
 	XMVECTOR linearVec = DirectX::XMVectorSubtract(positions[2], positions[0]);
 	const float A = DirectX::XMVector3Length(linearVec).m128_f32[0];
