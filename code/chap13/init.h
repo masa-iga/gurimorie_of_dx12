@@ -1,10 +1,14 @@
 #pragma once
+#pragma warning(push, 0)
+#include <codeanalysis/warnings.h>
+#pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <Windows.h>
 #include <winerror.h>
 #include <vector>
 #include <wrl.h>
+#pragma warning(pop)
 #include "debug.h"
 
 class Resource
