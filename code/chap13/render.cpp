@@ -105,10 +105,12 @@ HRESULT Render::render()
 	}
 	m_timeStamp.set(TimeStamp::Index::k1);
 
+#if 0
 	// render depth buffer
 	{
 		m_shadow.render(&rtvH, m_depthSrvHeap);
 	}
+#endif
 
 	// resolve time stamps
 	{
