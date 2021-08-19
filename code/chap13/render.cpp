@@ -15,7 +15,6 @@
 
 #pragma comment(lib, "DirectXTex.lib")
 
-#define DISABLE_MATRIX (0)
 #define NO_UPDATE_TEXTURE_FROM_CPU (1)
 
 using namespace Microsoft::WRL;
@@ -435,16 +434,12 @@ HRESULT Render::updateMvpMatrix()
 		100.0f
 	);
 
-#if DISABLE_MATRIX
-	m_sceneMatrix->view = XMMatrixIdentity();
-	m_sceneMatrix->proj = XMMatrixIdentity();
-	m_sceneMatrix->eye = XMFLOAT3(0.0f, 0.0f, 0.0f);
-#else
 	m_sceneMatrix->view = viewMat;
 	m_sceneMatrix->proj = projMat;
 	m_sceneMatrix->eye = eye;
-#endif // DISABLE_MATRIX
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
+	m_sceneMatrix->lightCamera = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up))
+		* XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
 
 	return S_OK;
 }

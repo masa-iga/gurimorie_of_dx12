@@ -17,6 +17,7 @@ struct SceneMatrix
 {
 	DirectX::XMMATRIX view = { };
 	DirectX::XMMATRIX proj = { };
+	DirectX::XMMATRIX lightCamera = { };
 	DirectX::XMMATRIX shadow = { };
 	DirectX::XMFLOAT3 eye = { };
 };
