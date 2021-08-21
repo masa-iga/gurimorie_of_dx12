@@ -419,29 +419,36 @@ HRESULT Render::updateMvpMatrix()
 {
 	using namespace DirectX;
 
-	constexpr XMFLOAT3 eye(0, 15, -15);
-	constexpr XMFLOAT3 target(0, 15, 0);
+	constexpr XMFLOAT3 eye(0, 15, -25);
+	constexpr XMFLOAT3 target(0, 10, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
+	constexpr XMFLOAT4 light(-1, -1, -1, 0);
 
-	const auto viewMat = XMMatrixLookAtLH(
+	const XMMATRIX viewMat = XMMatrixLookAtLH(
 		XMLoadFloat3(&eye),
 		XMLoadFloat3(&target),
 		XMLoadFloat3(&up)
 	);
 
-	auto projMat = XMMatrixPerspectiveFovLH(
+	const XMMATRIX projMat = XMMatrixPerspectiveFovLH(
 		XM_PIDIV2,
 		static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
 		1.0f,
 		100.0f
 	);
 
+	const XMVECTOR lightVec = XMLoadFloat4(&light);
+
+	const XMVECTOR lightPos = XMLoadFloat3(&target) +
+		XMVector3Normalize(lightVec) *
+		XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
+
 	m_sceneMatrix->view = viewMat;
 	m_sceneMatrix->proj = projMat;
 	m_sceneMatrix->eye = eye;
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
-	m_sceneMatrix->lightCamera = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up))
-		* XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
+	m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
+		XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
 
 	return S_OK;
 }

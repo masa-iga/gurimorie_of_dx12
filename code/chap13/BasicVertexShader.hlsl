@@ -22,7 +22,11 @@ Output BasicVs(
 			wpos = mul(shadow, wpos);
 		}
 
+#if 1
 		output.svpos = mul(mul(proj, view), wpos);
+#else
+		output.svpos = mul(lightCamera, wpos); // to test light camera view
+#endif
 		output.pos = mul(view, wpos);
 
 		normal.w = 0;
