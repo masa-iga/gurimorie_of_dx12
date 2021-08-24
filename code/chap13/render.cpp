@@ -21,6 +21,7 @@ using namespace Microsoft::WRL;
 
 static HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
 static HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
+static HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
 
 constexpr float kClearColorRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 constexpr float kClearColorPeraRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -35,6 +36,7 @@ HRESULT Render::init()
 	m_pmdActors.resize(1);
 	ThrowIfFailed(m_pmdActors[0].loadAsset(PmdActor::Model::kMiku));
 	ThrowIfFailed(createDepthBuffer(&m_depthResource, &m_dsvHeap, &m_depthSrvHeap));
+	ThrowIfFailed(createLightDepthBuffer(&m_lightDepthResource, &m_lightDepthDsvHeap, &m_lightDepthSrvHeap));
 	ThrowIfFailed(createSceneMatrixBuffer());
 	ThrowIfFailed(createViews());
 
@@ -86,6 +88,15 @@ HRESULT Render::render()
 	clearRenderTarget(backBufferResource, rtvH);
 	clearDepthRenderTarget(dsvH);
 	clearPeraRenderTarget();
+
+#if 0 // TODO: implement
+	{
+		for (const auto& actor : m_pmdActors)
+		{
+			actor.renderShadow(m_sceneDescHeap.Get(), m_shadowBufferResource.Get());
+		}
+	}
+#endif
 
 	// render to off screen buffer
 	preRenderToPeraBuffer();
@@ -555,7 +566,7 @@ HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12Descrip
 			resourceDesc.Height = kWindowHeight;
 			resourceDesc.DepthOrArraySize = 1;
 			resourceDesc.MipLevels = 1;
-			resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS; // should be be DXGI_FORMAT_D32_FLOAT because the buffer will be read as a texture
+			resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS; // should be DXGI_FORMAT_D32_FLOAT because the buffer will be read as a texture
 			resourceDesc.SampleDesc = { 1, 0 };
 			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
@@ -655,6 +666,120 @@ HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12Descrip
 			resource->Get(),
 			&srvDesc,
 			srvDescHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	return S_OK;
+}
+
+HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap)
+{
+	constexpr uint32_t kShadowBufferWidth = 1024;
+	constexpr uint32_t kShadowBufferHeight = kShadowBufferWidth;
+
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = kShadowBufferWidth;
+			resourceDesc.Height = kShadowBufferHeight;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			nullptr,
+			IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = resource->Get()->SetName(Util::getWideStringFromString("lightDepthBuffer").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(dsvHeap->ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = dsvHeap->Get()->SetName(Util::getWideStringFromString("lightDepthBufferDsvHeap").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = { };
+		{
+			dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+			dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+			dsvDesc.Texture2D.MipSlice = 0;
+		}
+
+		Resource::instance()->getDevice()->CreateDepthStencilView(
+			resource->Get(),
+			&dsvDesc,
+			dsvHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(srvHeap->ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = srvHeap->Get()->SetName(Util::getWideStringFromString("lightDepthBufferSrvHeap").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
+		{
+			srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.PlaneSlice = 0;
+			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		}
+
+		Resource::instance()->getDevice()->CreateShaderResourceView(
+			resource->Get(),
+			&srvDesc,
+			srvHeap->Get()->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	return S_OK;
