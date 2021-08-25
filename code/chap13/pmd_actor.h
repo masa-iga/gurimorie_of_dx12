@@ -111,7 +111,6 @@ class PmdActor {
 public:
 	enum class Model;
 	static void release();
-	static std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> getInputElementDesc();
 	static ID3D12PipelineState* getPipelineState();
 	static ID3D12RootSignature* getRootSignature();
 	static D3D12_PRIMITIVE_TOPOLOGY getPrimitiveTopology();
