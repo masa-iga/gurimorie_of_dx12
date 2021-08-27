@@ -515,7 +515,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 	ThrowIfFalse(rootSignature != nullptr);
 	ThrowIfFalse(rootSignature->Get() == nullptr);
 
-	D3D12_DESCRIPTOR_RANGE descTblRange[4] = { };
+	D3D12_DESCRIPTOR_RANGE descTblRange[5] = { };
 	{
 		// view & proj matrix
 		descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
@@ -535,16 +535,22 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 		descTblRange[2].BaseShaderRegister = 2; // b2
 		descTblRange[2].RegisterSpace = 0;
 		descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		// texture
+		// textures
 		descTblRange[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		descTblRange[3].NumDescriptors = 4;
 		descTblRange[3].BaseShaderRegister = 0; // t0, t1, t2, t3
 		descTblRange[3].RegisterSpace = 0;
 		descTblRange[3].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		// texture to read shadow map
+		descTblRange[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		descTblRange[4].NumDescriptors = 1;
+		descTblRange[4].BaseShaderRegister = 4; // t4
+		descTblRange[4].RegisterSpace = 0;
+		descTblRange[4].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 	}
 
 	// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
-	D3D12_ROOT_PARAMETER rootParam[3] = { };
+	D3D12_ROOT_PARAMETER rootParam[4] = { };
 	{
 		// view & proj matrix
 		rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -561,6 +567,8 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 		rootParam[2].DescriptorTable.NumDescriptorRanges = 2;
 		rootParam[2].DescriptorTable.pDescriptorRanges = &descTblRange[2];
 		rootParam[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		// texture (shadow map)
+		CD3DX12_ROOT_PARAMETER::InitAsDescriptorTable(rootParam[3], 1, &descTblRange[4]);
 	}
 
 	D3D12_STATIC_SAMPLER_DESC samplerDesc[2] = { };
@@ -693,7 +701,6 @@ HRESULT PmdActor::createPipelineState()
 		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(ret);
 
-	// TODO: not use render target, need to modify root signature?
 	{
 
 		gpipeDesc.VS = { m_shadowVsBlob->GetBufferPointer(), m_shadowVsBlob->GetBufferSize() };
