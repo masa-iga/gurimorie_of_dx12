@@ -26,8 +26,10 @@ using namespace Microsoft::WRL;
 
 ComPtr<ID3D12RootSignature> PmdActor::m_rootSignature = nullptr;
 ComPtr<ID3D12PipelineState> PmdActor::m_pipelineState = nullptr;
+ComPtr<ID3D12PipelineState> PmdActor::m_shadowPipelineState = nullptr;
 ComPtr<ID3DBlob> PmdActor::m_vsBlob = nullptr;
 ComPtr<ID3DBlob> PmdActor::m_psBlob = nullptr;
+ComPtr<ID3DBlob> PmdActor::m_shadowVsBlob = nullptr;
 
 struct PMDHeader
 {
@@ -223,8 +225,10 @@ void PmdActor::release()
 {
 	m_rootSignature.Reset();
 	m_pipelineState.Reset();
+	m_shadowPipelineState.Reset();
 	m_vsBlob.Reset();
 	m_psBlob.Reset();
+	m_shadowVsBlob.Reset();
 }
 
 ID3D12PipelineState* PmdActor::getPipelineState()
@@ -444,6 +448,7 @@ HRESULT PmdActor::loadShaders()
 {
 	ThrowIfFalse(m_vsBlob == nullptr);
 	ThrowIfFalse(m_psBlob == nullptr);
+	ThrowIfFalse(m_shadowVsBlob == nullptr);
 
 	ComPtr<ID3DBlob> errorBlob = nullptr;
 
@@ -455,7 +460,7 @@ HRESULT PmdActor::loadShaders()
 		"vs_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
-		&m_vsBlob,
+		m_vsBlob.ReleaseAndGetAddressOf(),
 		errorBlob.ReleaseAndGetAddressOf()
 	);
 
@@ -474,9 +479,27 @@ HRESULT PmdActor::loadShaders()
 		"ps_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
-		&m_psBlob,
+		m_psBlob.ReleaseAndGetAddressOf(),
 		errorBlob.ReleaseAndGetAddressOf()
 	);
+
+	if (FAILED(ret))
+	{
+		outputDebugMessage(errorBlob.Get());
+	}
+	ThrowIfFailed(ret);
+
+
+	ret = D3DCompileFromFile(
+		L"BasicVertexShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"shadowVs",
+		"vs_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		m_shadowVsBlob.ReleaseAndGetAddressOf(),
+		errorBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(ret))
 	{
@@ -609,6 +632,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 HRESULT PmdActor::createPipelineState()
 {
 	ThrowIfFalse(m_pipelineState == nullptr);
+	ThrowIfFalse(m_shadowPipelineState == nullptr);
 
 	if (m_rootSignature == nullptr)
 	{
@@ -667,6 +691,20 @@ HRESULT PmdActor::createPipelineState()
 	auto ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 		&gpipeDesc,
 		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(ret);
+
+	// TODO: not use render target, need to modify root signature?
+	{
+
+		gpipeDesc.VS = { m_shadowVsBlob->GetBufferPointer(), m_shadowVsBlob->GetBufferSize() };
+		gpipeDesc.PS = { nullptr, 0 };
+		gpipeDesc.NumRenderTargets = 0;
+		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+	}
+
+	ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+		&gpipeDesc,
+		IID_PPV_ARGS(m_shadowPipelineState.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(ret);
 
 	return S_OK;

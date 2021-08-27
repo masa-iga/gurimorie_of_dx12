@@ -144,8 +144,10 @@ private:
 
 	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
 	static Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+	static Microsoft::WRL::ComPtr<ID3D12PipelineState> m_shadowPipelineState;
 	static Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob;
 	static Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob;
+	static Microsoft::WRL::ComPtr<ID3DBlob> m_shadowVsBlob;
 
 	bool m_bAnimation = false;
 	DWORD m_animationStartTime = 0;
