@@ -24,13 +24,6 @@
 
 using namespace Microsoft::WRL;
 
-ComPtr<ID3D12RootSignature> PmdActor::m_rootSignature = nullptr;
-ComPtr<ID3D12PipelineState> PmdActor::m_pipelineState = nullptr;
-ComPtr<ID3D12PipelineState> PmdActor::m_shadowPipelineState = nullptr;
-ComPtr<ID3DBlob> PmdActor::m_vsBlob = nullptr;
-ComPtr<ID3DBlob> PmdActor::m_psBlob = nullptr;
-ComPtr<ID3DBlob> PmdActor::m_shadowVsBlob = nullptr;
-
 struct PMDHeader
 {
 	FLOAT version = 0.0f;
@@ -221,39 +214,6 @@ static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const Direct
 static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right);
 static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right);
 
-void PmdActor::release()
-{
-	m_rootSignature.Reset();
-	m_pipelineState.Reset();
-	m_shadowPipelineState.Reset();
-	m_vsBlob.Reset();
-	m_psBlob.Reset();
-	m_shadowVsBlob.Reset();
-}
-
-ID3D12PipelineState* PmdActor::getPipelineState()
-{
-	if (m_pipelineState)
-		return m_pipelineState.Get();
-
-	ThrowIfFailed(createPipelineState());
-	return m_pipelineState.Get();
-}
-
-ID3D12RootSignature* PmdActor::getRootSignature()
-{
-	if (m_rootSignature)
-		return m_rootSignature.Get();
-
-	ThrowIfFailed(createRootSignature(&m_rootSignature));
-	return m_rootSignature.Get();
-}
-
-D3D12_PRIMITIVE_TOPOLOGY PmdActor::getPrimitiveTopology()
-{
-	return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-}
-
 PmdActor::PmdActor()
 {
 	auto ret = createWhiteTexture();
@@ -266,6 +226,12 @@ PmdActor::PmdActor()
 	ThrowIfFailed(ret);
 
 	ret = createDebugResources();
+	ThrowIfFailed(ret);
+
+	ret = createPipelineState();
+	ThrowIfFailed(ret);
+
+	ret = createRootSignature(&m_rootSignature);
 	ThrowIfFailed(ret);
 }
 
@@ -510,6 +476,86 @@ HRESULT PmdActor::loadShaders()
 	return S_OK;
 }
 
+HRESULT PmdActor::createPipelineState()
+{
+	ThrowIfFalse(m_pipelineState == nullptr);
+	ThrowIfFalse(m_shadowPipelineState == nullptr);
+
+	if (m_rootSignature == nullptr)
+	{
+		ThrowIfFailed(createRootSignature(&m_rootSignature));
+	}
+
+	if (m_vsBlob == nullptr || m_psBlob == nullptr)
+	{
+		ThrowIfFailed(loadShaders());
+	}
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
+	{
+		gpipeDesc.pRootSignature = m_rootSignature.Get();
+		gpipeDesc.VS = { m_vsBlob->GetBufferPointer(), m_vsBlob->GetBufferSize() };
+		gpipeDesc.PS = { m_psBlob->GetBufferPointer(), m_psBlob->GetBufferSize() };
+		// D3D12_SHADER_BYTECODE gpipeDesc.DS;
+		// D3D12_SHADER_BYTECODE gpipeDesc.HS;
+		// D3D12_SHADER_BYTECODE gpipeDesc.GS;
+		// D3D12_STREAM_OUTPUT_DESC StreamOutput;
+		gpipeDesc.BlendState.AlphaToCoverageEnable = false;
+		gpipeDesc.BlendState.IndependentBlendEnable = false;
+		gpipeDesc.BlendState.RenderTarget[0].BlendEnable = false;
+		gpipeDesc.BlendState.RenderTarget[0].LogicOpEnable = false;
+		gpipeDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+		gpipeDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+		gpipeDesc.RasterizerState = {
+			D3D12_FILL_MODE_SOLID,
+			D3D12_CULL_MODE_NONE,
+			true /* DepthClipEnable */,
+			false /* MultisampleEnable */
+		};
+		gpipeDesc.DepthStencilState.DepthEnable = true;
+		gpipeDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		gpipeDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		gpipeDesc.DepthStencilState.StencilEnable = false;
+		//gpipeDesc.DepthStencilState.StencilReadMask = 0;
+		//gpipeDesc.DepthStencilState.StencilWriteMask = 0;
+		//D3D12_DEPTH_STENCILOP_DESC FrontFace;
+		//D3D12_DEPTH_STENCILOP_DESC BackFace;
+		gpipeDesc.InputLayout = { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
+		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		gpipeDesc.NumRenderTargets = 1;
+		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		gpipeDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+		gpipeDesc.SampleDesc = {
+			1 /* count */,
+			0 /* quality */
+		};
+		// UINT NodeMask;
+		// D3D12_CACHED_PIPELINE_STATE CachedPSO;
+		// D3D12_PIPELINE_STATE_FLAGS Flags;
+	}
+
+	auto ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+		&gpipeDesc,
+		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(ret);
+
+	{
+
+		gpipeDesc.VS = { m_shadowVsBlob->GetBufferPointer(), m_shadowVsBlob->GetBufferSize() };
+		gpipeDesc.PS = { nullptr, 0 };
+		gpipeDesc.NumRenderTargets = 0;
+		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+	}
+
+	ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+		&gpipeDesc,
+		IID_PPV_ARGS(m_shadowPipelineState.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
 HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature)
 {
 	ThrowIfFalse(rootSignature != nullptr);
@@ -637,84 +683,21 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 	return S_OK;
 }
 
-HRESULT PmdActor::createPipelineState()
+ID3D12PipelineState* PmdActor::getPipelineState() const
 {
-	ThrowIfFalse(m_pipelineState == nullptr);
-	ThrowIfFalse(m_shadowPipelineState == nullptr);
+	ThrowIfFalse(m_pipelineState != nullptr);
+	return m_pipelineState.Get();
+}
 
-	if (m_rootSignature == nullptr)
-	{
-		ThrowIfFailed(createRootSignature(&m_rootSignature));
-	}
+ID3D12RootSignature* PmdActor::getRootSignature() const
+{
+	ThrowIfFalse(m_rootSignature != nullptr);
+	return m_rootSignature.Get();
+}
 
-	if (m_vsBlob == nullptr || m_psBlob == nullptr)
-	{
-		ThrowIfFailed(loadShaders());
-	}
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
-	{
-		gpipeDesc.pRootSignature = m_rootSignature.Get();
-		gpipeDesc.VS = { m_vsBlob->GetBufferPointer(), m_vsBlob->GetBufferSize() };
-		gpipeDesc.PS = { m_psBlob->GetBufferPointer(), m_psBlob->GetBufferSize() };
-		// D3D12_SHADER_BYTECODE gpipeDesc.DS;
-		// D3D12_SHADER_BYTECODE gpipeDesc.HS;
-		// D3D12_SHADER_BYTECODE gpipeDesc.GS;
-		// D3D12_STREAM_OUTPUT_DESC StreamOutput;
-		gpipeDesc.BlendState.AlphaToCoverageEnable = false;
-		gpipeDesc.BlendState.IndependentBlendEnable = false;
-		gpipeDesc.BlendState.RenderTarget[0].BlendEnable = false;
-		gpipeDesc.BlendState.RenderTarget[0].LogicOpEnable = false;
-		gpipeDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-		gpipeDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-		gpipeDesc.RasterizerState = {
-			D3D12_FILL_MODE_SOLID,
-			D3D12_CULL_MODE_NONE,
-			true /* DepthClipEnable */,
-			false /* MultisampleEnable */
-		};
-		gpipeDesc.DepthStencilState.DepthEnable = true;
-		gpipeDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		gpipeDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		gpipeDesc.DepthStencilState.StencilEnable = false;
-		//gpipeDesc.DepthStencilState.StencilReadMask = 0;
-		//gpipeDesc.DepthStencilState.StencilWriteMask = 0;
-		//D3D12_DEPTH_STENCILOP_DESC FrontFace;
-		//D3D12_DEPTH_STENCILOP_DESC BackFace;
-		gpipeDesc.InputLayout = { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
-		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
-		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		gpipeDesc.NumRenderTargets = 1;
-		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		gpipeDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-		gpipeDesc.SampleDesc = {
-			1 /* count */,
-			0 /* quality */
-		};
-		// UINT NodeMask;
-		// D3D12_CACHED_PIPELINE_STATE CachedPSO;
-		// D3D12_PIPELINE_STATE_FLAGS Flags;
-	}
-
-	auto ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
-		&gpipeDesc,
-		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
-	ThrowIfFailed(ret);
-
-	{
-
-		gpipeDesc.VS = { m_shadowVsBlob->GetBufferPointer(), m_shadowVsBlob->GetBufferSize() };
-		gpipeDesc.PS = { nullptr, 0 };
-		gpipeDesc.NumRenderTargets = 0;
-		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
-	}
-
-	ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
-		&gpipeDesc,
-		IID_PPV_ARGS(m_shadowPipelineState.ReleaseAndGetAddressOf()));
-	ThrowIfFailed(ret);
-
-	return S_OK;
+constexpr D3D12_PRIMITIVE_TOPOLOGY PmdActor::getPrimitiveTopology() const
+{
+	return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 }
 
 HRESULT PmdActor::loadPmd(Model model)

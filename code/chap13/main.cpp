@@ -163,7 +163,6 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 
 	// release resource
 	{
-		PmdActor::release();
 		ThrowIfFailed(Resource::instance()->release());
 		Loader::quit();
 		Resource::instance()->destroy();
