@@ -276,31 +276,25 @@ void PmdActor::update(bool animationReversed)
 	updateMotion();
 }
 
-// TODO: clean up the function
-HRESULT PmdActor::renderShadow(ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap) const
+HRESULT PmdActor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap) const
 {
+	ThrowIfFalse(list != nullptr);
 	ThrowIfFalse(sceneDescHeap != nullptr);
 	ThrowIfFalse(depthHeap != nullptr);
 
+	ThrowIfFailed(setCommonPipelineConfig(list));
+
 	ThrowIfFalse(m_shadowPipelineState != nullptr);
-	Resource::instance()->getCommandList()->SetPipelineState(m_shadowPipelineState.Get());
+	list->SetPipelineState(m_shadowPipelineState.Get());
 
 	ThrowIfFalse(getRootSignature() != nullptr);
-	Resource::instance()->getCommandList()->SetGraphicsRootSignature(getRootSignature());
+	list->SetGraphicsRootSignature(getRootSignature());
 
-	// common config
-	{
-		setViewportScissor();
-		Resource::instance()->getCommandList()->IASetPrimitiveTopology(getPrimitiveTopology());
-		Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
-		Resource::instance()->getCommandList()->IASetIndexBuffer(&m_ibView);
-	}
-
-	// specific config
+	// this is shadow map path. Unbind render target
 	{
 		const D3D12_CPU_DESCRIPTOR_HANDLE handle = depthHeap->GetCPUDescriptorHandleForHeapStart();
 
-		Resource::instance()->getCommandList()->OMSetRenderTargets(
+		list->OMSetRenderTargets(
 			0,
 			nullptr,
 			false,
@@ -310,57 +304,57 @@ HRESULT PmdActor::renderShadow(ID3D12DescriptorHeap* sceneDescHeap, ID3D12Descri
 	// bind to b0: view & proj matrix
 	{
 		ThrowIfFalse(sceneDescHeap != nullptr);
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &sceneDescHeap);
-		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+		list->SetDescriptorHeaps(1, &sceneDescHeap);
+		list->SetGraphicsRootDescriptorTable(
 			0, // b0
 			sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	// bind to b1: transform matrix
 	{
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
-		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+		list->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
+		list->SetGraphicsRootDescriptorTable(
 			1, // b1
 			m_transformDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	// bind to b2: material
-	// draw call
 	{
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
+		list->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
 	}
 
-	Resource::instance()->getCommandList()->DrawIndexedInstanced(m_indicesNum, 1, 0, 0, 0);
+	// draw call
+	list->DrawIndexedInstanced(m_indicesNum, 1, 0, 0, 0);
 
 	return S_OK;
 }
 
-HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
+HRESULT PmdActor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap) const
 {
+	ThrowIfFalse(list != nullptr);
+	ThrowIfFalse(sceneDescHeap != nullptr);
+
+	ThrowIfFailed(setCommonPipelineConfig(list));
+
 	ThrowIfFalse(getPipelineState() != nullptr);
-	Resource::instance()->getCommandList()->SetPipelineState(getPipelineState());
+	list->SetPipelineState(getPipelineState());
 
 	ThrowIfFalse(getRootSignature() != nullptr);
-	Resource::instance()->getCommandList()->SetGraphicsRootSignature(getRootSignature());
-
-	setViewportScissor();
-	Resource::instance()->getCommandList()->IASetPrimitiveTopology(getPrimitiveTopology());
-	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
-	Resource::instance()->getCommandList()->IASetIndexBuffer(&m_ibView);
+	list->SetGraphicsRootSignature(getRootSignature());
 
 	// bind to b0: view & proj matrix
 	{
 		ThrowIfFalse(sceneDescHeap != nullptr);
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &sceneDescHeap);
-		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+		list->SetDescriptorHeaps(1, &sceneDescHeap);
+		list->SetGraphicsRootDescriptorTable(
 			0, // b0
 			sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	// bind to b1: transform matrix
 	{
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
-		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+		list->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
+		list->SetGraphicsRootDescriptorTable(
 			1, // b1
 			m_transformDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
@@ -368,7 +362,7 @@ HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
 	// bind to b2: material
 	// draw call
 	{
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
+		list->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
 
 		const auto cbvSrvIncSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
 		auto materialH = m_materialDescHeap->GetGPUDescriptorHandleForHeapStart();
@@ -376,12 +370,12 @@ HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
 
 		for (const auto& m : m_materials)
 		{
-			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+			list->SetGraphicsRootDescriptorTable(
 				2, // b2
 				materialH);
 
 			constexpr UINT kInstanceCount = 2; // [0] mesh, [1] shadow
-			Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, kInstanceCount, indexOffset, 0, 0);
+			list->DrawIndexedInstanced(m.indicesNum, kInstanceCount, indexOffset, 0, 0);
 
 			materialH.ptr += cbvSrvIncSize;
 			indexOffset += m.indicesNum;
@@ -757,6 +751,16 @@ ID3D12RootSignature* PmdActor::getRootSignature() const
 constexpr D3D12_PRIMITIVE_TOPOLOGY PmdActor::getPrimitiveTopology() const
 {
 	return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+}
+
+HRESULT PmdActor::setCommonPipelineConfig(ID3D12GraphicsCommandList* list) const
+{
+	setViewportScissor();
+	list->IASetPrimitiveTopology(getPrimitiveTopology());
+	list->IASetVertexBuffers(0, 1, &m_vbView);
+	list->IASetIndexBuffer(&m_ibView);
+
+	return S_OK;
 }
 
 HRESULT PmdActor::loadPmd(Model model)

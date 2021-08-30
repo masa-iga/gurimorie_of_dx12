@@ -115,8 +115,8 @@ public:
 	HRESULT loadAsset(Model model);
 	void enableAnimation(bool enable);
 	void update(bool animationReversed);
-	HRESULT renderShadow(ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap) const;
-	HRESULT render(ID3D12DescriptorHeap* sceneDescHeap) const;
+	HRESULT renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap) const;
+	HRESULT render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap) const;
 
 private:
 	HRESULT loadShaders();
@@ -125,6 +125,7 @@ private:
 	ID3D12PipelineState* getPipelineState() const;
 	ID3D12RootSignature* getRootSignature() const;
 	constexpr D3D12_PRIMITIVE_TOPOLOGY getPrimitiveTopology() const;
+	HRESULT setCommonPipelineConfig(ID3D12GraphicsCommandList* list) const;
 
 	HRESULT loadPmd(Model model);
 	HRESULT loadVmd();

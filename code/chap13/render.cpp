@@ -93,7 +93,7 @@ HRESULT Render::render()
 	{
 		for (const auto& actor : m_pmdActors)
 		{
-			actor.renderShadow(m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
+			actor.renderShadow(Resource::instance()->getCommandList(), m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
 		}
 	}
 
@@ -102,7 +102,7 @@ HRESULT Render::render()
 	{
 		for (const auto& actor : m_pmdActors)
 		{
-			actor.render(m_sceneDescHeap.Get());
+			actor.render(Resource::instance()->getCommandList(), m_sceneDescHeap.Get());
 		}
 	}
 	postRenderToPeraBuffer();
