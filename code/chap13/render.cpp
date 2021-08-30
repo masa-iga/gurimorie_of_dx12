@@ -87,16 +87,15 @@ HRESULT Render::render()
 
 	clearRenderTarget(backBufferResource, rtvH);
 	clearDepthRenderTarget(dsvH);
+	clearDepthRenderTarget(m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 	clearPeraRenderTarget();
 
-#if 0 // TODO: implement
 	{
 		for (const auto& actor : m_pmdActors)
 		{
-			actor.renderShadow(m_sceneDescHeap.Get(), m_shadowBufferResource.Get());
+			actor.renderShadow(m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
 		}
 	}
-#endif
 
 	// render to off screen buffer
 	preRenderToPeraBuffer();
@@ -700,12 +699,19 @@ HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12De
 			resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 		}
 
+		D3D12_CLEAR_VALUE clearVal = { };
+		{
+			clearVal.Format = DXGI_FORMAT_D32_FLOAT;
+			clearVal.DepthStencil.Depth = 1.0f;
+			clearVal.DepthStencil.Stencil = 0;
+		}
+
 		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_DEPTH_WRITE,
-			nullptr,
+			&clearVal,
 			IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 

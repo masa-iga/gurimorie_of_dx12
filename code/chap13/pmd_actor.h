@@ -115,6 +115,7 @@ public:
 	HRESULT loadAsset(Model model);
 	void enableAnimation(bool enable);
 	void update(bool animationReversed);
+	HRESULT renderShadow(ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap) const;
 	HRESULT render(ID3D12DescriptorHeap* sceneDescHeap) const;
 
 private:

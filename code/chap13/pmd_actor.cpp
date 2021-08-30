@@ -276,6 +276,65 @@ void PmdActor::update(bool animationReversed)
 	updateMotion();
 }
 
+// TODO: clean up the function
+HRESULT PmdActor::renderShadow(ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap) const
+{
+	ThrowIfFalse(sceneDescHeap != nullptr);
+	ThrowIfFalse(depthHeap != nullptr);
+
+	ThrowIfFalse(m_shadowPipelineState != nullptr);
+	Resource::instance()->getCommandList()->SetPipelineState(m_shadowPipelineState.Get());
+
+	ThrowIfFalse(getRootSignature() != nullptr);
+	Resource::instance()->getCommandList()->SetGraphicsRootSignature(getRootSignature());
+
+	// common config
+	{
+		setViewportScissor();
+		Resource::instance()->getCommandList()->IASetPrimitiveTopology(getPrimitiveTopology());
+		Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
+		Resource::instance()->getCommandList()->IASetIndexBuffer(&m_ibView);
+	}
+
+	// specific config
+	{
+		const D3D12_CPU_DESCRIPTOR_HANDLE handle = depthHeap->GetCPUDescriptorHandleForHeapStart();
+
+		Resource::instance()->getCommandList()->OMSetRenderTargets(
+			0,
+			nullptr,
+			false,
+			&handle);
+	}
+
+	// bind to b0: view & proj matrix
+	{
+		ThrowIfFalse(sceneDescHeap != nullptr);
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &sceneDescHeap);
+		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+			0, // b0
+			sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
+	}
+
+	// bind to b1: transform matrix
+	{
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
+		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+			1, // b1
+			m_transformDescHeap->GetGPUDescriptorHandleForHeapStart());
+	}
+
+	// bind to b2: material
+	// draw call
+	{
+		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
+	}
+
+	Resource::instance()->getCommandList()->DrawIndexedInstanced(m_indicesNum, 1, 0, 0, 0);
+
+	return S_OK;
+}
+
 HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
 {
 	ThrowIfFalse(getPipelineState() != nullptr);
