@@ -24,11 +24,7 @@ Output BasicVs(
 		}
 #endif
 
-#if 1
 		output.svpos = mul(mul(proj, view), wpos);
-#else
-		output.svpos = mul(lightCamera, wpos); // to test light camera view
-#endif
 		output.pos = mul(view, wpos);
 
 		normal.w = 0;
@@ -37,6 +33,7 @@ Output BasicVs(
 
 		output.uv = uv;
 		output.ray = normalize(pos.xyz - eye);
+		output.tpos = mul(lightCamera, wpos);
 		output.instNo = instNo;
 	}
 

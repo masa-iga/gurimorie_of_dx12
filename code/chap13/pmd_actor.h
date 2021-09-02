@@ -116,7 +116,7 @@ public:
 	void enableAnimation(bool enable);
 	void update(bool animationReversed);
 	HRESULT renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap) const;
-	HRESULT render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap) const;
+	HRESULT render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthLightSrvHeap) const;
 
 private:
 	HRESULT loadShaders();

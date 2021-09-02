@@ -329,7 +329,7 @@ HRESULT PmdActor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12Descriptor
 	return S_OK;
 }
 
-HRESULT PmdActor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap) const
+HRESULT PmdActor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthLightSrvHeap) const
 {
 	ThrowIfFalse(list != nullptr);
 	ThrowIfFalse(sceneDescHeap != nullptr);
@@ -342,24 +342,32 @@ HRESULT PmdActor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* 
 	ThrowIfFalse(getRootSignature() != nullptr);
 	list->SetGraphicsRootSignature(getRootSignature());
 
-	// bind to b0: view & proj matrix
+	// bind to root param 0: view & proj matrix
 	{
 		ThrowIfFalse(sceneDescHeap != nullptr);
 		list->SetDescriptorHeaps(1, &sceneDescHeap);
 		list->SetGraphicsRootDescriptorTable(
-			0, // b0
+			0, // root param 0
 			sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
-	// bind to b1: transform matrix
+	// bind to root param 1: transform matrix
 	{
 		list->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
 		list->SetGraphicsRootDescriptorTable(
-			1, // b1
+			1, // root param 1
 			m_transformDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
-	// bind to b2: material
+	// bind to root param 3: depth map texture
+	{
+		list->SetDescriptorHeaps(1, &depthLightSrvHeap);
+		list->SetGraphicsRootDescriptorTable(
+			3, // root param 3
+			depthLightSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	}
+
+	// bind to root param 2: material
 	// draw call
 	{
 		list->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
@@ -371,7 +379,7 @@ HRESULT PmdActor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* 
 		for (const auto& m : m_materials)
 		{
 			list->SetGraphicsRootDescriptorTable(
-				2, // b2
+				2, // root param 2
 				materialH);
 
 			constexpr UINT kInstanceCount = 2; // [0] mesh, [1] shadow
@@ -703,7 +711,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
-		rootSignatureDesc.NumParameters = 3;
+		rootSignatureDesc.NumParameters = 4;
 		rootSignatureDesc.pParameters = &rootParam[0];
 		rootSignatureDesc.NumStaticSamplers = 2;
 		rootSignatureDesc.pStaticSamplers = &samplerDesc[0];

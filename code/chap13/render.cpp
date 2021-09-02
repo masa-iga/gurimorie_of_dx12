@@ -90,6 +90,7 @@ HRESULT Render::render()
 	clearDepthRenderTarget(m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 	clearPeraRenderTarget();
 
+	// light depth map
 	{
 		for (const auto& actor : m_pmdActors)
 		{
@@ -102,7 +103,7 @@ HRESULT Render::render()
 	{
 		for (const auto& actor : m_pmdActors)
 		{
-			actor.render(Resource::instance()->getCommandList(), m_sceneDescHeap.Get());
+			actor.render(Resource::instance()->getCommandList(), m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
 		}
 	}
 	postRenderToPeraBuffer();
