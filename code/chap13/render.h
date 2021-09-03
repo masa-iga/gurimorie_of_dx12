@@ -8,6 +8,7 @@
 #include <vector>
 #include <wrl.h>
 #pragma warning(pop)
+#include "floor.h"
 #include "pmd_actor.h"
 #include "pera.h"
 #include "shadow.h"
@@ -37,11 +38,11 @@ private:
 	HRESULT createViews();
 	HRESULT createPeraView();
 	HRESULT updateMvpMatrix();
-	HRESULT clearRenderTarget(ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH);
-	HRESULT clearDepthRenderTarget(D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
-	HRESULT clearPeraRenderTarget();
-	HRESULT preRenderToPeraBuffer();
-	HRESULT postRenderToPeraBuffer();
+	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH);
+	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
+	HRESULT clearPeraRenderTarget(ID3D12GraphicsCommandList* list);
+	HRESULT preRenderToPeraBuffer(ID3D12GraphicsCommandList* list);
+	HRESULT postRenderToPeraBuffer(ID3D12GraphicsCommandList* list);
 
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
@@ -59,6 +60,8 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
+
+	Floor m_floor;
 
 	std::vector<PmdActor> m_pmdActors;
 

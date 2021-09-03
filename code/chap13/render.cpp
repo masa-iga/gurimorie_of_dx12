@@ -31,14 +31,17 @@ constexpr DirectX::XMFLOAT3 kParallelLightVec(1.0f, -1.0f, 1.0f);
 HRESULT Render::init()
 {
 	m_parallelLightVec = kParallelLightVec;
-
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
-	m_pmdActors.resize(1);
-	ThrowIfFailed(m_pmdActors[0].loadAsset(PmdActor::Model::kMiku));
+
 	ThrowIfFailed(createDepthBuffer(&m_depthResource, &m_dsvHeap, &m_depthSrvHeap));
 	ThrowIfFailed(createLightDepthBuffer(&m_lightDepthResource, &m_lightDepthDsvHeap, &m_lightDepthSrvHeap));
 	ThrowIfFailed(createSceneMatrixBuffer());
 	ThrowIfFailed(createViews());
+
+	m_floor.init();
+
+	m_pmdActors.resize(1);
+	ThrowIfFailed(m_pmdActors[0].loadAsset(PmdActor::Model::kMiku));
 
 	for (auto& actor : m_pmdActors)
 	{
@@ -69,9 +72,9 @@ HRESULT Render::update()
 
 HRESULT Render::render()
 {
-	// reset command allocator & list
-	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
-	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), nullptr));
+	ID3D12CommandAllocator* const allocator = Resource::instance()->getCommandAllocator();
+	ID3D12GraphicsCommandList* const list = Resource::instance()->getCommandList();
+	ID3D12CommandQueue* const queue = Resource::instance()->getCommandQueue();
 
 	ID3D12Resource* backBufferResource = nullptr;
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = { };
@@ -85,36 +88,50 @@ HRESULT Render::render()
 		rtvH.ptr += bbIdx * static_cast<SIZE_T>(Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 	}
 
-	clearRenderTarget(backBufferResource, rtvH);
-	clearDepthRenderTarget(dsvH);
-	clearDepthRenderTarget(m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
-	clearPeraRenderTarget();
-
-	// light depth map
+	// reset command allocator & list
 	{
+		ThrowIfFailed(allocator->Reset());
+		ThrowIfFailed(list->Reset(allocator, nullptr));
+	}
+
+	// clear
+	{
+		clearRenderTarget(list, backBufferResource, rtvH);
+		clearDepthRenderTarget(list, dsvH);
+		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+		clearPeraRenderTarget(list);
+	}
+
+	// render light depth map
+	{
+		m_floor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
+
 		for (const auto& actor : m_pmdActors)
 		{
-			actor.renderShadow(Resource::instance()->getCommandList(), m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
+			actor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
 		}
 	}
 
 	// render to off screen buffer
-	preRenderToPeraBuffer();
+	preRenderToPeraBuffer(list);
 	{
+		m_floor.render(list, m_sceneDescHeap.Get());
+
 		for (const auto& actor : m_pmdActors)
 		{
-			actor.render(Resource::instance()->getCommandList(), m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
+			actor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
 		}
 	}
-	postRenderToPeraBuffer();
-
+	postRenderToPeraBuffer(list);
 
 	// render to display buffer
-	m_timeStamp.set(TimeStamp::Index::k0);
 	{
-		m_pera.render(&rtvH, m_peraSrvHeap.Get());
+		m_timeStamp.set(TimeStamp::Index::k0);
+		{
+			m_pera.render(&rtvH, m_peraSrvHeap.Get());
+		}
+		m_timeStamp.set(TimeStamp::Index::k1);
 	}
-	m_timeStamp.set(TimeStamp::Index::k1);
 
 #if 0
 	// render depth buffer
@@ -137,14 +154,14 @@ HRESULT Render::render()
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	}
-	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	list->ResourceBarrier(1, &barrier);
 
 
 	// execute command lists
-	ThrowIfFailed(Resource::instance()->getCommandList()->Close());
+	ThrowIfFailed(list->Close());
 
-	ID3D12CommandList* cmdLists[] = { Resource::instance()->getCommandList() };
-	Resource::instance()->getCommandQueue()->ExecuteCommandLists(1, cmdLists);
+	ID3D12CommandList* cmdLists[] = { list };
+	queue->ExecuteCommandLists(1, cmdLists);
 
 	return S_OK;
 }
@@ -464,7 +481,7 @@ HRESULT Render::updateMvpMatrix()
 	return S_OK;
 }
 
-HRESULT Render::clearRenderTarget(ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH)
+HRESULT Render::clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH)
 {
 	D3D12_RESOURCE_BARRIER barrier = { };
 	{
@@ -475,16 +492,16 @@ HRESULT Render::clearRenderTarget(ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	}
-	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	list->ResourceBarrier(1, &barrier);
 
-	Resource::instance()->getCommandList()->ClearRenderTargetView(rtvH, kClearColorRenderTarget, 0, nullptr);
+	list->ClearRenderTargetView(rtvH, kClearColorRenderTarget, 0, nullptr);
 
 	return S_OK;
 }
 
-HRESULT Render::clearDepthRenderTarget(D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
+HRESULT Render::clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
 {
-	Resource::instance()->getCommandList()->ClearDepthStencilView(
+	list->ClearDepthStencilView(
 		dsvH,
 		D3D12_CLEAR_FLAG_DEPTH,
 		1.0f,
@@ -495,7 +512,7 @@ HRESULT Render::clearDepthRenderTarget(D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
 	return S_OK;
 }
 
-HRESULT Render::clearPeraRenderTarget()
+HRESULT Render::clearPeraRenderTarget(ID3D12GraphicsCommandList* list)
 {
 	D3D12_RESOURCE_BARRIER barrier = { };
 	{
@@ -506,21 +523,21 @@ HRESULT Render::clearPeraRenderTarget()
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	}
-	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	list->ResourceBarrier(1, &barrier);
 
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
-	Resource::instance()->getCommandList()->ClearRenderTargetView(rtvH, kClearColorPeraRenderTarget, 0, nullptr);
+	list->ClearRenderTargetView(rtvH, kClearColorPeraRenderTarget, 0, nullptr);
 
 	return S_OK;
 }
 
-HRESULT Render::preRenderToPeraBuffer()
+HRESULT Render::preRenderToPeraBuffer(ID3D12GraphicsCommandList* list)
 {
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 	const D3D12_CPU_DESCRIPTOR_HANDLE dsvH = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
-	Resource::instance()->getCommandList()->OMSetRenderTargets(
+	list->OMSetRenderTargets(
 		1,
 		&rtvH,
 		false,
@@ -529,7 +546,7 @@ HRESULT Render::preRenderToPeraBuffer()
 	return S_OK;
 }
 
-HRESULT Render::postRenderToPeraBuffer()
+HRESULT Render::postRenderToPeraBuffer(ID3D12GraphicsCommandList* list)
 {
 	ID3D12Resource* resource = m_peraResource.Get();
 
@@ -542,7 +559,7 @@ HRESULT Render::postRenderToPeraBuffer()
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	}
-	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	list->ResourceBarrier(1, &barrier);
 
 	return S_OK;
 }

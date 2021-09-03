@@ -85,6 +85,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="debug.cpp" />
+    <ClCompile Include="floor.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="loader.cpp" />
     <ClCompile Include="main.cpp" />
@@ -98,6 +99,7 @@
   <ItemGroup>
     <ClInclude Include="config.h" />
     <ClInclude Include="debug.h" />
+    <ClInclude Include="floor.h" />
     <ClInclude Include="init.h" />
     <ClInclude Include="loader.h" />
     <ClInclude Include="pera.h" />
