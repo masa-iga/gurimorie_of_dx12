@@ -25,6 +25,9 @@
     <Filter Include="リソース ファイル\normal">
       <UniqueIdentifier>{3f47d75e-40ba-46d2-b1ef-9ffd056d40d3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="シェーダ ファイル">
+      <UniqueIdentifier>{ec1c9d6e-c952-4eb1-a3fa-534e444542d0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -97,12 +100,24 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="BasicVertexShader.hlsl" />
-    <FxCompile Include="BasicPixelShader.hlsl" />
-    <FxCompile Include="peraVertex.hlsl" />
-    <FxCompile Include="peraPixel.hlsl" />
-    <FxCompile Include="shadowVertex.hlsl" />
-    <FxCompile Include="shadowPixel.hlsl" />
+    <FxCompile Include="BasicPixelShader.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="BasicVertexShader.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="peraPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="peraVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shadowPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shadowVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="BasicShaderHeader.hlsli">
