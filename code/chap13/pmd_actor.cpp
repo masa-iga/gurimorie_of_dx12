@@ -256,6 +256,7 @@ void PmdActor::enableAnimation(bool enable)
 	m_animationStartTime = timeGetTime() - offset;
 }
 
+// TODO: angleÇÕviewÇ≈çsÇ§ÇÊÇ§Ç…Ç∑ÇÈ
 void PmdActor::update(bool animationReversed)
 {
 	using namespace DirectX;

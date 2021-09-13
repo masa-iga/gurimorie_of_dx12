@@ -118,6 +118,12 @@
     <FxCompile Include="shadowVertex.hlsl">
       <Filter>シェーダ ファイル</Filter>
     </FxCompile>
+    <FxCompile Include="floorVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="floorPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="BasicShaderHeader.hlsli">
