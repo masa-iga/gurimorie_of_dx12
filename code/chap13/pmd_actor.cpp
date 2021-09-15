@@ -256,7 +256,6 @@ void PmdActor::enableAnimation(bool enable)
 	m_animationStartTime = timeGetTime() - offset;
 }
 
-// TODO: angleÇÕviewÇ≈çsÇ§ÇÊÇ§Ç…Ç∑ÇÈ
 void PmdActor::update(bool animationReversed)
 {
 	using namespace DirectX;
@@ -265,14 +264,6 @@ void PmdActor::update(bool animationReversed)
 	const auto worldMat = DirectX::XMMatrixRotationY(angle);
 
 	*m_worldMatrixPointer = worldMat;
-
-	if (!m_bAnimation)
-		return;
-
-	if (!animationReversed)
-		angle += 0.02f;
-	else
-		angle -= 0.02f;
 
 	updateMotion();
 }

@@ -37,7 +37,7 @@ private:
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
 	HRESULT createPeraView();
-	HRESULT updateMvpMatrix();
+	HRESULT updateMvpMatrix(bool animationReversed);
 	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH);
 	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
 	HRESULT clearPeraRenderTarget(ID3D12GraphicsCommandList* list);

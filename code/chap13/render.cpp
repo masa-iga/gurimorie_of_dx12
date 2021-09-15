@@ -62,7 +62,7 @@ HRESULT Render::init()
 
 HRESULT Render::update()
 {
-	updateMvpMatrix();
+	updateMvpMatrix(m_bAnimationReversed);
 
 	for (auto& actor : m_pmdActors)
 		actor.update(m_bAnimationReversed);
@@ -443,40 +443,66 @@ HRESULT Render::createPeraView()
 	return S_OK;
 }
 
-HRESULT Render::updateMvpMatrix()
+HRESULT Render::updateMvpMatrix(bool animationReversed)
 {
 	using namespace DirectX;
 
-	constexpr XMFLOAT3 eye(0, 15, -25);
-	constexpr XMFLOAT3 target(0, 10, 0);
+	XMFLOAT3 eye(0, 0, 0);
+	constexpr XMFLOAT3 target(0, 0, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
 	constexpr XMFLOAT4 light(-1, -1, -1, 0);
 
-	const XMMATRIX viewMat = XMMatrixLookAtLH(
-		XMLoadFloat3(&eye),
-		XMLoadFloat3(&target),
-		XMLoadFloat3(&up)
-	);
+	{
+		static float angle = 0.0f;
+		constexpr float kRadius = 30.0f;
 
-	const XMMATRIX projMat = XMMatrixPerspectiveFovLH(
-		XM_PIDIV2,
-		static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
-		1.0f,
-		100.0f
-	);
+		const float z = kRadius * std::sin(angle);
+		const float x = kRadius * std::cos(angle);
 
-	const XMVECTOR lightVec = XMLoadFloat4(&light);
+		eye = XMFLOAT3(x, 20.0f, z);
 
-	const XMVECTOR lightPos = XMLoadFloat3(&target) +
-		XMVector3Normalize(lightVec) *
-		XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
+		if (!m_bAnimationEnabled)
+			;
+		else if (!animationReversed)
+			angle += 0.01f;
+		else
+			angle -= 0.01f;
+	}
 
-	m_sceneMatrix->view = viewMat;
-	m_sceneMatrix->proj = projMat;
-	m_sceneMatrix->eye = eye;
+	{
+		const XMMATRIX viewMat = XMMatrixLookAtLH(
+			XMLoadFloat3(&eye),
+			XMLoadFloat3(&target),
+			XMLoadFloat3(&up)
+		);
+
+		m_sceneMatrix->view = viewMat;
+	}
+
+	{
+		const XMMATRIX projMat = XMMatrixPerspectiveFovLH(
+			XM_PIDIV2,
+			static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
+			1.0f,
+			100.0f
+		);
+
+		m_sceneMatrix->proj = projMat;
+	}
+
+	{
+		const XMVECTOR lightVec = XMLoadFloat4(&light);
+
+		const XMVECTOR lightPos = XMLoadFloat3(&target) +
+			XMVector3Normalize(lightVec) *
+			XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
+
+		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
+			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
+	}
+
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
-	m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
-		XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
+	m_sceneMatrix->eye = eye;
 
 	return S_OK;
 }
