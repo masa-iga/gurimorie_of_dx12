@@ -565,14 +565,7 @@ HRESULT PmdActor::createPipelineState()
 			true /* DepthClipEnable */,
 			false /* MultisampleEnable */
 		};
-		gpipeDesc.DepthStencilState.DepthEnable = true;
-		gpipeDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		gpipeDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		gpipeDesc.DepthStencilState.StencilEnable = false;
-		//gpipeDesc.DepthStencilState.StencilReadMask = 0;
-		//gpipeDesc.DepthStencilState.StencilWriteMask = 0;
-		//D3D12_DEPTH_STENCILOP_DESC FrontFace;
-		//D3D12_DEPTH_STENCILOP_DESC BackFace;
+		gpipeDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		gpipeDesc.InputLayout = { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
 		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;

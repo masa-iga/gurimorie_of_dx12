@@ -126,9 +126,6 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="BasicShaderHeader.hlsli">
-      <Filter>ヘッダー ファイル</Filter>
-    </None>
     <None Include="Model\a1.sph">
       <Filter>リソース ファイル\Model</Filter>
     </None>
@@ -198,8 +195,11 @@
     <None Include="Motion\squat.vmd">
       <Filter>リソース ファイル\Motion</Filter>
     </None>
+    <None Include="BasicShaderHeader.hlsli">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
     <None Include="peraHeader.hlsli">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>シェーダ ファイル</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

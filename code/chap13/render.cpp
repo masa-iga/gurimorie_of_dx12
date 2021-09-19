@@ -445,28 +445,41 @@ HRESULT Render::createPeraView()
 
 HRESULT Render::updateMvpMatrix(bool animationReversed)
 {
+#define MODIFY_LIGHT_POS (1)
+
 	using namespace DirectX;
 
 	XMFLOAT3 eye(0, 0, 0);
 	constexpr XMFLOAT3 target(0, 0, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
+#if MODIFY_LIGHT_POS
+	constexpr XMFLOAT4 light(-10, 10, -10, 0);
+#else
 	constexpr XMFLOAT4 light(-1, -1, -1, 0);
+#endif // MODIFY_LIGHT_POS
+
 
 	{
 		static float angle = 0.0f;
 		constexpr float kRadius = 30.0f;
 
-		const float z = kRadius * std::sin(angle);
 		const float x = kRadius * std::cos(angle);
+		const float z = kRadius * std::sin(angle);
 
 		eye = XMFLOAT3(x, 20.0f, z);
 
 		if (!m_bAnimationEnabled)
+		{
 			;
+		}
 		else if (!animationReversed)
+		{
 			angle += 0.01f;
+		}
 		else
+		{
 			angle -= 0.01f;
+		}
 	}
 
 	{
@@ -491,6 +504,12 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	}
 
 	{
+#if MODIFY_LIGHT_POS
+		const XMVECTOR lightPos = XMLoadFloat4(&light);
+
+		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
+			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
+#else
 		const XMVECTOR lightVec = XMLoadFloat4(&light);
 
 		const XMVECTOR lightPos = XMLoadFloat3(&target) +
@@ -499,6 +518,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 
 		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
 			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
+#endif // MODIFY_LIGHT_POS
 	}
 
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));

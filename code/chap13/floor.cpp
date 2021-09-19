@@ -23,7 +23,26 @@ HRESULT Floor::init()
 
 HRESULT Floor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap)
 {
-	// TODO: imple
+	ThrowIfFalse(list != nullptr);
+	ThrowIfFalse(sceneDescHeap != nullptr);
+	ThrowIfFalse(depthHeap != nullptr);
+
+	setInputAssembler(list);
+	setRasterizer(list);
+
+	{
+		auto depthHandle = depthHeap->GetCPUDescriptorHandleForHeapStart();
+		list->OMSetRenderTargets(0, nullptr, false, &depthHandle);
+	}
+
+	list->SetPipelineState(m_shadowPipelineState.Get());
+	list->SetGraphicsRootSignature(m_rootSignature.Get());
+
+	list->SetDescriptorHeaps(1, &sceneDescHeap);
+	list->SetGraphicsRootDescriptorTable(0, sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+	list->DrawInstanced(6, 1, 0, 0);
+
 	return S_OK;
 }
 
@@ -54,7 +73,7 @@ HRESULT Floor::loadShaders()
 		kVsFile,
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main",
+		"basicVs",
 		"vs_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
@@ -71,11 +90,28 @@ HRESULT Floor::loadShaders()
 		kPsFile,
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main",
+		"basicPs",
 		"ps_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
 		m_ps.ReleaseAndGetAddressOf(),
+		errorBlob.ReleaseAndGetAddressOf());
+
+	if (FAILED(result))
+	{
+		outputDebugMessage(errorBlob.Get());
+		return E_FAIL;
+	}
+
+	result = D3DCompileFromFile(
+		kVsFile,
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"shadowVs",
+		"vs_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		m_shadowVs.ReleaseAndGetAddressOf(),
 		errorBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -259,13 +295,33 @@ HRESULT Floor::createGraphicsPipeline()
 		//D3D12_PIPELINE_STATE_FLAGS Flags;
 	}
 
-	auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
-		&pipelineStateDesc,
-		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
-	ThrowIfFailed(result);
+	{
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&pipelineStateDesc,
+			IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
 
-	result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("FloorGraphicsPipeline").c_str());
-	ThrowIfFailed(result);
+		result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("FloorGraphicsPipeline").c_str());
+		ThrowIfFailed(result);
+	}
+
+	// for shadow
+	{
+		pipelineStateDesc.VS = { m_shadowVs.Get()->GetBufferPointer(), m_shadowVs.Get()->GetBufferSize() };
+		pipelineStateDesc.PS = { nullptr, 0 };
+		pipelineStateDesc.NumRenderTargets = 0;
+		pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+	}
+
+	{
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&pipelineStateDesc,
+			IID_PPV_ARGS(m_shadowPipelineState.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_shadowPipelineState.Get()->SetName(Util::getWideStringFromString("FloorGraphicsShadowPipeline").c_str());
+		ThrowIfFailed(result);
+	}
 
 	return S_OK;
 }

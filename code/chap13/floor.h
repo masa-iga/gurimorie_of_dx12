@@ -15,6 +15,7 @@ public:
 	HRESULT render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap);
 
 private:
+	// TODO: world matrix‚ðŽg‚¤
 	static constexpr float kLength = 30.0f;
 	static constexpr float kHeight = -5.0f;
 	static constexpr LPCWSTR kVsFile = L"floorVertex.hlsl";
@@ -31,8 +32,10 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vs = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_ps = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_shadowVs = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertResource = { };
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_shadowPipelineState = nullptr;
 };
