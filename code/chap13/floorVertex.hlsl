@@ -1,3 +1,5 @@
+#include "floorHeader.hlsli"
+
 cbuffer SceneBuffer : register(b0)
 {
 	matrix view;
@@ -7,9 +9,13 @@ cbuffer SceneBuffer : register(b0)
 	float3 eye;
 }
 
-float4 basicVs(float4 pos : POSITION) : SV_POSITION
+Output basicVs(float4 pos : POSITION)
 {
-	return mul(mul(proj, view), pos);
+	Output output;
+	output.svpos = mul(mul(proj, view), pos);
+	output.tpos = mul(lightCamera, pos);
+
+	return output;
 }
 
 float4 shadowVs(float4 pos : POSITION) : SV_POSITION

@@ -115,7 +115,7 @@ HRESULT Render::render()
 	// render to off screen buffer
 	preRenderToPeraBuffer(list);
 	{
-		m_floor.render(list, m_sceneDescHeap.Get());
+		m_floor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
 
 		for (const auto& actor : m_pmdActors)
 		{

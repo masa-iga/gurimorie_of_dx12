@@ -12,7 +12,7 @@ class Floor
 public:
 	HRESULT init();
 	HRESULT renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap);
-	HRESULT render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap);
+	HRESULT render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthLightSrvHeap);
 
 private:
 	// TODO: world matrix‚ðŽg‚¤
@@ -20,6 +20,9 @@ private:
 	static constexpr float kHeight = -5.0f;
 	static constexpr LPCWSTR kVsFile = L"floorVertex.hlsl";
 	static constexpr LPCWSTR kPsFile = L"floorPixel.hlsl";
+	static constexpr LPCSTR kVsBasicEntryPoint = "basicVs";
+	static constexpr LPCSTR kPsBasicEntryPoint = "basicWithShadowMapPs";
+	static constexpr LPCSTR kVsShadowEntryPoint = "shadowVs";
 	static constexpr D3D12_PRIMITIVE_TOPOLOGY kPrimTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	static constexpr size_t kNumOfVertices = 6;
 

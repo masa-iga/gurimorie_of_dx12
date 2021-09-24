@@ -46,7 +46,7 @@ HRESULT Floor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHea
 	return S_OK;
 }
 
-HRESULT Floor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap)
+HRESULT Floor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthLightSrvHeap)
 {
 	ThrowIfFalse(list != nullptr);
 	ThrowIfFalse(sceneDescHeap != nullptr);
@@ -58,7 +58,10 @@ HRESULT Floor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sce
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 
 	list->SetDescriptorHeaps(1, &sceneDescHeap);
-	list->SetGraphicsRootDescriptorTable(0, sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
+	list->SetGraphicsRootDescriptorTable(0 /* root param 0 */, sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+	list->SetDescriptorHeaps(1, &depthLightSrvHeap);
+	list->SetGraphicsRootDescriptorTable(1 /* root param 1 */, depthLightSrvHeap->GetGPUDescriptorHandleForHeapStart());
 
 	list->DrawInstanced(6, 1, 0, 0);
 
@@ -73,7 +76,7 @@ HRESULT Floor::loadShaders()
 		kVsFile,
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"basicVs",
+		kVsBasicEntryPoint,
 		"vs_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
@@ -90,7 +93,7 @@ HRESULT Floor::loadShaders()
 		kPsFile,
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"basicPs",
+		kPsBasicEntryPoint,
 		"ps_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
@@ -107,7 +110,7 @@ HRESULT Floor::loadShaders()
 		kVsFile,
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"shadowVs",
+		kVsShadowEntryPoint,
 		"vs_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
@@ -202,27 +205,57 @@ HRESULT Floor::createVertexResource()
 
 HRESULT Floor::createRootSignature()
 {
-	D3D12_DESCRIPTOR_RANGE descRange = { };
+	D3D12_DESCRIPTOR_RANGE descRange[2] = { };
 	{
-		descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV; // b0: scene matrix
-		descRange.NumDescriptors = 1;
-		descRange.BaseShaderRegister = 0;
+		descRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV; // b0: scene matrix
+		descRange[0].NumDescriptors = 1;
+		descRange[0].BaseShaderRegister = 0;
+		descRange[0].RegisterSpace = 0;
+	    descRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+		descRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // t0: depth light map
+		descRange[1].NumDescriptors = 1;
+		descRange[1].BaseShaderRegister = 0;
+		descRange[1].RegisterSpace = 0;
+	    descRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 	}
 
-	D3D12_ROOT_PARAMETER rootParam = { };
+	D3D12_ROOT_PARAMETER rootParam[2] = { };
 	{
-		rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParam.DescriptorTable.NumDescriptorRanges = 1;
-		rootParam.DescriptorTable.pDescriptorRanges = &descRange;
-		rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
+		rootParam[0].DescriptorTable.pDescriptorRanges = &descRange[0];
+		rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+		rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParam[1].DescriptorTable.NumDescriptorRanges = 1;
+		rootParam[1].DescriptorTable.pDescriptorRanges = &descRange[1];
+		rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	}
+
+	D3D12_STATIC_SAMPLER_DESC samplerDesc = CD3DX12_STATIC_SAMPLER_DESC(0);
+	{
+		//D3D12_FILTER Filter;
+		samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		//FLOAT MipLODBias;
+		//UINT MaxAnisotropy;
+		//D3D12_COMPARISON_FUNC ComparisonFunc;
+		//D3D12_STATIC_BORDER_COLOR BorderColor;
+		//FLOAT MinLOD;
+		//FLOAT MaxLOD;
+		//UINT ShaderRegister;
+		//UINT RegisterSpace;
+		//D3D12_SHADER_VISIBILITY ShaderVisibility;
 	}
 
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
-		rootSignatureDesc.NumParameters = 1;
-		rootSignatureDesc.pParameters = &rootParam;
-		rootSignatureDesc.NumStaticSamplers = 0;
-		rootSignatureDesc.pStaticSamplers = nullptr;
+		rootSignatureDesc.NumParameters = 2;
+		rootSignatureDesc.pParameters = &rootParam[0];
+		rootSignatureDesc.NumStaticSamplers = 1;
+		rootSignatureDesc.pStaticSamplers = &samplerDesc;
 		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 	}
 

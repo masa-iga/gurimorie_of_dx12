@@ -173,6 +173,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="BasicShaderHeader.hlsli" />
+    <None Include="floorHeader.hlsli" />
     <None Include="Model\a1.sph" />
     <None Include="Model\a2.spa" />
     <None Include="Model\a3.spa" />
