@@ -20,47 +20,31 @@ HRESULT Shadow::init()
     return S_OK;
 }
 
-HRESULT Shadow::render(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap)
+HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap)
 {
-    ID3D12GraphicsCommandList* commandList = Resource::instance()->getCommandList();
+    const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.f, 0.f, kWindowWidth, kWindowHeight);
+    const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, kWindowWidth, kWindowHeight);
+    return render(pCommandList, pRtvHeap, texDescHeap, viewport, scissorRect);
+}
 
-    commandList->OMSetRenderTargets(1, pRtvHeap, false, nullptr);
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    commandList->IASetVertexBuffers(0, 1, &m_vbView);
+HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
+{
+	pCommandList->OMSetRenderTargets(1, pRtvHeap, false, nullptr);
+	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	pCommandList->IASetVertexBuffers(0, 1, &m_vbView);
 
+	pCommandList->RSSetViewports(1, &viewport);
+	pCommandList->RSSetScissorRects(1, &scissorRect);
+
+	pCommandList->SetGraphicsRootSignature(m_rootSignature.Get());
+	pCommandList->SetPipelineState(m_pipelineState.Get());
+
+	pCommandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
 	{
-		D3D12_VIEWPORT viewport = { };
-		{
-			viewport.Width = kWindowWidth;
-			viewport.Height = kWindowHeight;
-			viewport.TopLeftX = 0;
-			viewport.TopLeftY = 0;
-			viewport.MaxDepth = 1.0f;
-			viewport.MinDepth = 0.0f;
-		}
-		commandList->RSSetViewports(1, &viewport);
+		pCommandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	}
 
-	{
-		D3D12_RECT scissorRect = { };
-		{
-			scissorRect.top = 0;
-			scissorRect.left = 0;
-			scissorRect.right = scissorRect.left + kWindowWidth;
-			scissorRect.bottom = scissorRect.top + kWindowHeight;
-		}
-		commandList->RSSetScissorRects(1, &scissorRect);
-	}
-
-    commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-    commandList->SetPipelineState(m_pipelineState.Get());
-
-    commandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
-    {
-        commandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
-    }
-
-    commandList->DrawInstanced(4, 1, 0, 0);
+	pCommandList->DrawInstanced(4, 1, 0, 0);
 
 	return S_OK;
 }

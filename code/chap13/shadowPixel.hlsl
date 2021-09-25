@@ -9,6 +9,6 @@ SamplerState smp : register(s0);
 
 float4 main(Output input) : SV_TARGET
 {
-	const float dep = pow(tex.Sample(smp, input.uv), 20);
+	const float dep = tex.Sample(smp, input.uv);
 	return float4(dep, dep, dep, 1);
 }

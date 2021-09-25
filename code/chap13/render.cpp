@@ -133,12 +133,22 @@ HRESULT Render::render()
 		m_timeStamp.set(TimeStamp::Index::k1);
 	}
 
-#if 0
-	// render depth buffer
+	constexpr bool bDebugRenderShadowMap = true;
+	constexpr bool bDebugRenderDepth = true;
+
+	if (bDebugRenderShadowMap)
 	{
-		m_shadow.render(&rtvH, m_depthSrvHeap);
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.f, 0.f, kWindowWidth / 4, kWindowHeight / 4);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, kWindowWidth, kWindowHeight);
+		m_shadow.render(list, &rtvH, m_lightDepthSrvHeap, viewport, scissorRect);
 	}
-#endif
+
+	if (bDebugRenderDepth)
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(kWindowWidth * 3 / 4, 0, kWindowWidth / 4, kWindowHeight / 4);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, kWindowWidth, kWindowHeight / 4);
+		m_shadow.render(list, &rtvH, m_depthSrvHeap, viewport, scissorRect);
+	}
 
 	// resolve time stamps
 	{

@@ -34,7 +34,6 @@ public:
 	void toggleAnimationReverse();
 
 private:
-	// TODO: shadow map‚Ì•`‰æ
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
 	HRESULT createPeraView();
