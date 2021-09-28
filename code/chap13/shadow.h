@@ -18,11 +18,15 @@ private:
 	HRESULT createVertexBuffer();
 	HRESULT createPipelineState();
 
-	Microsoft::WRL::ComPtr<ID3DBlob> m_vs = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> m_ps = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_triangleVs = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_trianglePs = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_linePs = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_vbResource = nullptr;
-	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_trianglePipelineState = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_linePipelineState = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_vbTriangleResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_vbLineResource = nullptr;
+	D3D12_VERTEX_BUFFER_VIEW m_vbTriangleView = { };
+	D3D12_VERTEX_BUFFER_VIEW m_vbLineView = { };
 };
 

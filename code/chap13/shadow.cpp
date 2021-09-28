@@ -30,21 +30,27 @@ HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_
 HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
 {
 	pCommandList->OMSetRenderTargets(1, pRtvHeap, false, nullptr);
-	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	pCommandList->IASetVertexBuffers(0, 1, &m_vbView);
 
 	pCommandList->RSSetViewports(1, &viewport);
 	pCommandList->RSSetScissorRects(1, &scissorRect);
 
 	pCommandList->SetGraphicsRootSignature(m_rootSignature.Get());
-	pCommandList->SetPipelineState(m_pipelineState.Get());
-
 	pCommandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
 	{
 		pCommandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	}
 
+	pCommandList->SetPipelineState(m_trianglePipelineState.Get());
+	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	pCommandList->IASetVertexBuffers(0, 1, &m_vbTriangleView);
+
 	pCommandList->DrawInstanced(4, 1, 0, 0);
+
+	pCommandList->SetPipelineState(m_linePipelineState.Get());
+    pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
+    pCommandList->IASetVertexBuffers(0, 1, &m_vbLineView);
+
+	pCommandList->DrawInstanced(5, 1, 0, 0);
 
 	return S_OK;
 }
@@ -61,7 +67,7 @@ HRESULT Shadow::compileShaders()
         "vs_5_0",
         0,
         0,
-        m_vs.ReleaseAndGetAddressOf(),
+        m_triangleVs.ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -78,7 +84,7 @@ HRESULT Shadow::compileShaders()
         "ps_5_0",
         0,
         0,
-        m_ps.ReleaseAndGetAddressOf(),
+        m_trianglePs.ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -86,6 +92,23 @@ HRESULT Shadow::compileShaders()
 		outputDebugMessage(errBlob.Get());
         ThrowIfFalse(false);
 	}
+
+    result = D3DCompileFromFile(
+        L"shadowPixel.hlsl",
+        nullptr,
+        D3D_COMPILE_STANDARD_FILE_INCLUDE,
+        "black",
+        "ps_5_0",
+        0,
+        0,
+        m_linePs.ReleaseAndGetAddressOf(),
+        errBlob.ReleaseAndGetAddressOf());
+
+    if (FAILED(result))
+    {
+        outputDebugMessage(errBlob.Get());
+        ThrowIfFalse(false);
+    }
 
 	return S_OK;
 }
@@ -98,11 +121,19 @@ HRESULT Shadow::createVertexBuffer()
         DirectX::XMFLOAT2 uv = { };
     };
 
-    constexpr Vertex vertex[4] = {
+    constexpr Vertex triangleVertex[4] = {
 		{{-1.0f, -1.0f, 0.1f }, { 0.0f , 1.0f}}, // lower-left
 		{{-1.0f,  1.0f, 0.1f }, { 0.0f , 0.0f}}, // upper-left
 		{{ 1.0f, -1.0f, 0.1f }, { 1.0f , 1.0f}}, // lower-right
 		{{ 1.0f,  1.0f, 0.1f }, { 1.0f , 0.0f}}, // upper-right
+    };
+
+    constexpr Vertex lineVertecies[] = {
+        {{-0.999f, -0.999f, 0.0f }, { 0.0f , 1.0f}}, // lower-left
+        {{-0.999f,  0.999f, 0.0f }, { 0.0f , 0.0f}}, // upper-left
+        {{ 0.999f,  0.999f, 0.0f }, { 1.0f , 0.0f}}, // upper-right
+        {{ 0.999f, -0.999f, 0.0f }, { 1.0f , 1.0f}}, // lower-right
+        {{-0.999f, -0.999f, 0.0f }, { 0.0f , 1.0f}}, // lower-left
     };
 
     {
@@ -119,7 +150,7 @@ HRESULT Shadow::createVertexBuffer()
         {
             resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
             resourceDesc.Alignment = 0;
-            resourceDesc.Width = sizeof(vertex);
+            resourceDesc.Width = sizeof(triangleVertex);
             resourceDesc.Height = 1;
             resourceDesc.DepthOrArraySize = 1;
             resourceDesc.MipLevels = 1;
@@ -129,34 +160,70 @@ HRESULT Shadow::createVertexBuffer()
             resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
         }
 
-        auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-            &heapProp,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(m_vbResource.ReleaseAndGetAddressOf()));
-        ThrowIfFailed(result);
+        {
+            auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+                &heapProp,
+                D3D12_HEAP_FLAG_NONE,
+                &resourceDesc,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(m_vbTriangleResource.ReleaseAndGetAddressOf()));
+            ThrowIfFailed(result);
 
-        result = m_vbResource.Get()->SetName(Util::getWideStringFromString("peraVertexBuffer").c_str());
-        ThrowIfFailed(result);
+            result = m_vbTriangleResource.Get()->SetName(Util::getWideStringFromString("shadowVertexTriangleBuffer").c_str());
+            ThrowIfFailed(result);
+        }
+
+        {
+            resourceDesc.Width = sizeof(lineVertecies);
+        }
+
+        {
+            auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+                &heapProp,
+                D3D12_HEAP_FLAG_NONE,
+                &resourceDesc,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(m_vbLineResource.ReleaseAndGetAddressOf()));
+            ThrowIfFailed(result);
+
+            result = m_vbLineResource.Get()->SetName(Util::getWideStringFromString("shadowVertexLineBuffer").c_str());
+            ThrowIfFailed(result);
+        }
     }
 
     {
         Vertex* pVertex = nullptr;
 
-        auto result = m_vbResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
+        auto result = m_vbTriangleResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
         ThrowIfFailed(result);
 
-        std::copy(std::begin(vertex), std::end(vertex), pVertex);
+        std::copy(std::begin(triangleVertex), std::end(triangleVertex), pVertex);
 
-        m_vbResource.Get()->Unmap(0, nullptr);
+        m_vbTriangleResource.Get()->Unmap(0, nullptr);
+    }
+    {
+		m_vbTriangleView.BufferLocation = m_vbTriangleResource.Get()->GetGPUVirtualAddress();
+		m_vbTriangleView.SizeInBytes = sizeof(triangleVertex);
+		m_vbTriangleView.StrideInBytes = sizeof(Vertex);
     }
 
+
     {
-		m_vbView.BufferLocation = m_vbResource.Get()->GetGPUVirtualAddress();
-		m_vbView.SizeInBytes = sizeof(vertex);
-		m_vbView.StrideInBytes = sizeof(Vertex);
+		Vertex* pVertex = nullptr;
+
+        auto result = m_vbLineResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
+        ThrowIfFailed(result);
+
+        std::copy(std::begin(lineVertecies), std::end(lineVertecies), pVertex);
+
+        m_vbLineResource.Get()->Unmap(0, nullptr);
+    }
+    {
+        m_vbLineView.BufferLocation = m_vbLineResource.Get()->GetGPUVirtualAddress();
+        m_vbLineView.SizeInBytes = sizeof(lineVertecies);
+        m_vbLineView.StrideInBytes = sizeof(Vertex);
     }
 
     return S_OK;
@@ -258,8 +325,8 @@ HRESULT Shadow::createPipelineState()
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc = { };
     {
         pipelineDesc.pRootSignature = m_rootSignature.Get();
-        pipelineDesc.VS = { m_vs.Get()->GetBufferPointer(), m_vs.Get()->GetBufferSize() };
-        pipelineDesc.PS = { m_ps.Get()->GetBufferPointer(), m_ps.Get()->GetBufferSize() };
+        pipelineDesc.VS = { m_triangleVs.Get()->GetBufferPointer(), m_triangleVs.Get()->GetBufferSize() };
+        pipelineDesc.PS = { m_trianglePs.Get()->GetBufferPointer(), m_trianglePs.Get()->GetBufferSize() };
         //D3D12_SHADER_BYTECODE DS;
         //D3D12_SHADER_BYTECODE HS;
         //D3D12_SHADER_BYTECODE GS;
@@ -306,14 +373,29 @@ HRESULT Shadow::createPipelineState()
         //D3D12_CACHED_PIPELINE_STATE CachedPSO;
         //D3D12_PIPELINE_STATE_FLAGS Flags;
     }
+    {
+        auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+            &pipelineDesc,
+            IID_PPV_ARGS(m_trianglePipelineState.ReleaseAndGetAddressOf()));
+        ThrowIfFailed(result);
 
-    auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
-        &pipelineDesc,
-        IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
-    ThrowIfFailed(result);
+        result = m_trianglePipelineState.Get()->SetName(Util::getWideStringFromString("shadowPipelineState").c_str());
+        ThrowIfFailed(result);
+    }
 
-    result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("shadowPipelineState").c_str());
-    ThrowIfFailed(result);
+    {
+		pipelineDesc.PS = { m_linePs.Get()->GetBufferPointer(), m_linePs.Get()->GetBufferSize() };
+        pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+    }
+    {
+        auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+            &pipelineDesc,
+            IID_PPV_ARGS(m_linePipelineState.ReleaseAndGetAddressOf()));
+        ThrowIfFailed(result);
+
+        result = m_linePipelineState.Get()->SetName(Util::getWideStringFromString("shadowLinePipelineState").c_str());
+        ThrowIfFailed(result);
+    }
 
     return S_OK;
 }
