@@ -17,7 +17,7 @@ public:
 private:
 	// TODO: world matrix‚ðŽg‚¤
 	static constexpr float kLength = 30.0f;
-	static constexpr float kHeight = -5.0f;
+	static constexpr float kHeight = -1.0f;
 	static constexpr LPCWSTR kVsFile = L"floorVertex.hlsl";
 	static constexpr LPCWSTR kPsFile = L"floorPixel.hlsl";
 	static constexpr LPCSTR kVsBasicEntryPoint = "basicVs";

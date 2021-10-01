@@ -40,15 +40,15 @@ HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_
 		pCommandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	}
 
-	pCommandList->SetPipelineState(m_trianglePipelineState.Get());
+	pCommandList->SetPipelineState(m_pipelineStates.at(Type::kQuadTriangle).Get());
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	pCommandList->IASetVertexBuffers(0, 1, &m_vbTriangleView);
+	pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(Type::kQuadTriangle));
 
 	pCommandList->DrawInstanced(4, 1, 0, 0);
 
-	pCommandList->SetPipelineState(m_linePipelineState.Get());
+	pCommandList->SetPipelineState(m_pipelineStates.at(Type::kFrameLine).Get());
     pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
-    pCommandList->IASetVertexBuffers(0, 1, &m_vbLineView);
+    pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(Type::kFrameLine));
 
 	pCommandList->DrawInstanced(5, 1, 0, 0);
 
@@ -67,7 +67,7 @@ HRESULT Shadow::compileShaders()
         "vs_5_0",
         0,
         0,
-        m_triangleVs.ReleaseAndGetAddressOf(),
+        m_commonVs.ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -84,7 +84,7 @@ HRESULT Shadow::compileShaders()
         "ps_5_0",
         0,
         0,
-        m_trianglePs.ReleaseAndGetAddressOf(),
+        m_psArray.at(Type::kQuadTriangle).ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -101,7 +101,7 @@ HRESULT Shadow::compileShaders()
         "ps_5_0",
         0,
         0,
-        m_linePs.ReleaseAndGetAddressOf(),
+        m_psArray.at(Type::kFrameLine).ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
     if (FAILED(result))
@@ -121,14 +121,14 @@ HRESULT Shadow::createVertexBuffer()
         DirectX::XMFLOAT2 uv = { };
     };
 
-    constexpr Vertex triangleVertex[4] = {
+    constexpr Vertex quadTriangleVertecies[4] = {
 		{{-1.0f, -1.0f, 0.1f }, { 0.0f , 1.0f}}, // lower-left
 		{{-1.0f,  1.0f, 0.1f }, { 0.0f , 0.0f}}, // upper-left
 		{{ 1.0f, -1.0f, 0.1f }, { 1.0f , 1.0f}}, // lower-right
 		{{ 1.0f,  1.0f, 0.1f }, { 1.0f , 0.0f}}, // upper-right
     };
 
-    constexpr Vertex lineVertecies[] = {
+    constexpr Vertex frameLineVertecies[] = {
         {{-0.999f, -0.999f, 0.0f }, { 0.0f , 1.0f}}, // lower-left
         {{-0.999f,  0.999f, 0.0f }, { 0.0f , 0.0f}}, // upper-left
         {{ 0.999f,  0.999f, 0.0f }, { 1.0f , 0.0f}}, // upper-right
@@ -150,7 +150,7 @@ HRESULT Shadow::createVertexBuffer()
         {
             resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
             resourceDesc.Alignment = 0;
-            resourceDesc.Width = sizeof(triangleVertex);
+            resourceDesc.Width = sizeof(quadTriangleVertecies);
             resourceDesc.Height = 1;
             resourceDesc.DepthOrArraySize = 1;
             resourceDesc.MipLevels = 1;
@@ -160,23 +160,7 @@ HRESULT Shadow::createVertexBuffer()
             resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
         }
 
-        {
-            auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-                &heapProp,
-                D3D12_HEAP_FLAG_NONE,
-                &resourceDesc,
-                D3D12_RESOURCE_STATE_GENERIC_READ,
-                nullptr,
-                IID_PPV_ARGS(m_vbTriangleResource.ReleaseAndGetAddressOf()));
-            ThrowIfFailed(result);
-
-            result = m_vbTriangleResource.Get()->SetName(Util::getWideStringFromString("shadowVertexTriangleBuffer").c_str());
-            ThrowIfFailed(result);
-        }
-
-        {
-            resourceDesc.Width = sizeof(lineVertecies);
-        }
+		auto& resource = m_vbResources.at(Type::kQuadTriangle);
 
         {
             auto result = Resource::instance()->getDevice()->CreateCommittedResource(
@@ -185,45 +169,77 @@ HRESULT Shadow::createVertexBuffer()
                 &resourceDesc,
                 D3D12_RESOURCE_STATE_GENERIC_READ,
                 nullptr,
-                IID_PPV_ARGS(m_vbLineResource.ReleaseAndGetAddressOf()));
+                IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
             ThrowIfFailed(result);
 
-            result = m_vbLineResource.Get()->SetName(Util::getWideStringFromString("shadowVertexLineBuffer").c_str());
+            result = resource.Get()->SetName(Util::getWideStringFromString("shadowVertexQuadTriangleBuffer").c_str());
             ThrowIfFailed(result);
         }
+
+		{
+			Vertex* pVertex = nullptr;
+
+			auto result = resource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
+			ThrowIfFailed(result);
+
+			std::copy(std::begin(quadTriangleVertecies), std::end(quadTriangleVertecies), pVertex);
+
+			resource.Get()->Unmap(0, nullptr);
+		}
+		{
+			D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(Type::kQuadTriangle);
+
+			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
+			vbView.SizeInBytes = sizeof(quadTriangleVertecies);
+			vbView.StrideInBytes = sizeof(Vertex);
+		}
     }
 
-    {
-        Vertex* pVertex = nullptr;
-
-        auto result = m_vbTriangleResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
-        ThrowIfFailed(result);
-
-        std::copy(std::begin(triangleVertex), std::end(triangleVertex), pVertex);
-
-        m_vbTriangleResource.Get()->Unmap(0, nullptr);
-    }
-    {
-		m_vbTriangleView.BufferLocation = m_vbTriangleResource.Get()->GetGPUVirtualAddress();
-		m_vbTriangleView.SizeInBytes = sizeof(triangleVertex);
-		m_vbTriangleView.StrideInBytes = sizeof(Vertex);
-    }
-
 
     {
-		Vertex* pVertex = nullptr;
+        D3D12_RESOURCE_DESC resourceDesc = m_vbResources.at(Type::kQuadTriangle).Get()->GetDesc();
+        D3D12_HEAP_PROPERTIES heapProp = { };
 
-        auto result = m_vbLineResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
-        ThrowIfFailed(result);
+        {
+            auto result = m_vbResources.at(Type::kQuadTriangle).Get()->GetHeapProperties(&heapProp, nullptr);
+            ThrowIfFailed(result);
 
-        std::copy(std::begin(lineVertecies), std::end(lineVertecies), pVertex);
+            resourceDesc.Width = sizeof(frameLineVertecies);
+        }
 
-        m_vbLineResource.Get()->Unmap(0, nullptr);
-    }
-    {
-        m_vbLineView.BufferLocation = m_vbLineResource.Get()->GetGPUVirtualAddress();
-        m_vbLineView.SizeInBytes = sizeof(lineVertecies);
-        m_vbLineView.StrideInBytes = sizeof(Vertex);
+		auto& resource = m_vbResources.at(Type::kFrameLine);
+
+        {
+            auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+                &heapProp,
+                D3D12_HEAP_FLAG_NONE,
+                &resourceDesc,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
+            ThrowIfFailed(result);
+
+            result = resource.Get()->SetName(Util::getWideStringFromString("shadowVertexFrameLineBuffer").c_str());
+            ThrowIfFailed(result);
+        }
+
+		{
+			Vertex* pVertex = nullptr;
+
+			auto result = resource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
+			ThrowIfFailed(result);
+
+			std::copy(std::begin(frameLineVertecies), std::end(frameLineVertecies), pVertex);
+
+			resource.Get()->Unmap(0, nullptr);
+		}
+		{
+            D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(Type::kFrameLine);
+
+			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
+			vbView.SizeInBytes = sizeof(frameLineVertecies);
+			vbView.StrideInBytes = sizeof(Vertex);
+		}
     }
 
     return S_OK;
@@ -325,8 +341,8 @@ HRESULT Shadow::createPipelineState()
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc = { };
     {
         pipelineDesc.pRootSignature = m_rootSignature.Get();
-        pipelineDesc.VS = { m_triangleVs.Get()->GetBufferPointer(), m_triangleVs.Get()->GetBufferSize() };
-        pipelineDesc.PS = { m_trianglePs.Get()->GetBufferPointer(), m_trianglePs.Get()->GetBufferSize() };
+        pipelineDesc.VS = { m_commonVs.Get()->GetBufferPointer(), m_commonVs.Get()->GetBufferSize() };
+        pipelineDesc.PS = { m_psArray.at(Type::kQuadTriangle).Get()->GetBufferPointer(), m_psArray.at(Type::kQuadTriangle).Get()->GetBufferSize() };
         //D3D12_SHADER_BYTECODE DS;
         //D3D12_SHADER_BYTECODE HS;
         //D3D12_SHADER_BYTECODE GS;
@@ -374,26 +390,30 @@ HRESULT Shadow::createPipelineState()
         //D3D12_PIPELINE_STATE_FLAGS Flags;
     }
     {
+        auto& pipelineState = m_pipelineStates.at(Type::kQuadTriangle);
+
         auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
             &pipelineDesc,
-            IID_PPV_ARGS(m_trianglePipelineState.ReleaseAndGetAddressOf()));
+            IID_PPV_ARGS(pipelineState.ReleaseAndGetAddressOf()));
         ThrowIfFailed(result);
 
-        result = m_trianglePipelineState.Get()->SetName(Util::getWideStringFromString("shadowPipelineState").c_str());
+        result = pipelineState.Get()->SetName(Util::getWideStringFromString("shadowPipelineState").c_str());
         ThrowIfFailed(result);
     }
 
     {
-		pipelineDesc.PS = { m_linePs.Get()->GetBufferPointer(), m_linePs.Get()->GetBufferSize() };
+		pipelineDesc.PS = { m_psArray.at(Type::kFrameLine).Get()->GetBufferPointer(), m_psArray.at(Type::kFrameLine).Get()->GetBufferSize() };
         pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     }
     {
+        auto& pipelineState = m_pipelineStates.at(Type::kFrameLine);
+
         auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
             &pipelineDesc,
-            IID_PPV_ARGS(m_linePipelineState.ReleaseAndGetAddressOf()));
+            IID_PPV_ARGS(pipelineState.ReleaseAndGetAddressOf()));
         ThrowIfFailed(result);
 
-        result = m_linePipelineState.Get()->SetName(Util::getWideStringFromString("shadowLinePipelineState").c_str());
+        result = pipelineState.Get()->SetName(Util::getWideStringFromString("shadowLinePipelineState").c_str());
         ThrowIfFailed(result);
     }
 
