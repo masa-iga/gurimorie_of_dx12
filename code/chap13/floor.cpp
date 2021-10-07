@@ -2,7 +2,6 @@
 #pragma warning(push, 0)
 #include <codeanalysis/warnings.h>
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
-#include <DirectXMath.h>
 #include <d3dcompiler.h>
 #pragma warning(pop)
 #include "config.h"
@@ -16,9 +15,17 @@ HRESULT Floor::init()
 {
 	ThrowIfFailed(loadShaders());
 	ThrowIfFailed(createVertexResource());
+	ThrowIfFailed(createTransformResource());
 	ThrowIfFailed(createRootSignature());
 	ThrowIfFailed(createGraphicsPipeline());
+	setWorldMatrix();
 	return S_OK;
+}
+
+void Floor::setWorldMatrix()
+{
+	ThrowIfFalse(m_pWorldMatrix != nullptr);
+	*m_pWorldMatrix = kDefaultTransMat * kDefaultScaleMat;
 }
 
 HRESULT Floor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap)
@@ -39,7 +46,10 @@ HRESULT Floor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHea
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 
 	list->SetDescriptorHeaps(1, &sceneDescHeap);
-	list->SetGraphicsRootDescriptorTable(0, sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
+	list->SetGraphicsRootDescriptorTable(0 /* root param 0 */, sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+	list->SetDescriptorHeaps(1, m_transDescHeap.GetAddressOf());
+	list->SetGraphicsRootDescriptorTable(1 /* root param 1 */, m_transDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 
 	list->DrawInstanced(6, 1, 0, 0);
 
@@ -60,8 +70,11 @@ HRESULT Floor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sce
 	list->SetDescriptorHeaps(1, &sceneDescHeap);
 	list->SetGraphicsRootDescriptorTable(0 /* root param 0 */, sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
 
+	list->SetDescriptorHeaps(1, m_transDescHeap.GetAddressOf());
+	list->SetGraphicsRootDescriptorTable(1 /* root param 1 */, m_transDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+
 	list->SetDescriptorHeaps(1, &depthLightSrvHeap);
-	list->SetGraphicsRootDescriptorTable(1 /* root param 1 */, depthLightSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	list->SetGraphicsRootDescriptorTable(2 /* root param 1 */, depthLightSrvHeap->GetGPUDescriptorHandleForHeapStart());
 
 	list->DrawInstanced(6, 1, 0, 0);
 
@@ -135,12 +148,12 @@ HRESULT Floor::createVertexResource()
 
 	constexpr Vertex kVertices[] =
 	{
-		DirectX::XMFLOAT3(-kLength, kHeight, -kLength),
-		DirectX::XMFLOAT3(-kLength, kHeight,  kLength),
-		DirectX::XMFLOAT3( kLength, kHeight,  kLength),
-		DirectX::XMFLOAT3(-kLength, kHeight, -kLength),
-		DirectX::XMFLOAT3( kLength, kHeight,  kLength),
-		DirectX::XMFLOAT3( kLength, kHeight, -kLength),
+		DirectX::XMFLOAT3(-1.0f, 0.0f, -1.0f),
+		DirectX::XMFLOAT3(-1.0f, 0.0f,  1.0f),
+		DirectX::XMFLOAT3( 1.0f, 0.0f,  1.0f),
+		DirectX::XMFLOAT3(-1.0f, 0.0f, -1.0f),
+		DirectX::XMFLOAT3( 1.0f, 0.0f,  1.0f),
+		DirectX::XMFLOAT3( 1.0f, 0.0f, -1.0f),
 	};
 
 	constexpr size_t bufferSize = sizeof(Vertex) * kNumOfVertices;
@@ -203,9 +216,65 @@ HRESULT Floor::createVertexResource()
 	return S_OK;
 }
 
+HRESULT Floor::createTransformResource()
+{
+	const auto bufferSize = Util::alignmentedSize(sizeof(*m_pWorldMatrix), 256);
+
+	{
+		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC().Buffer(bufferSize);
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_transResource.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_transResource.Get()->SetName(Util::getWideStringFromString("FloorTransBuffer").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		auto result = m_transResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&m_pWorldMatrix));
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 1;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_transDescHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_transDescHeap.Get()->SetName(Util::getWideStringFromString("FloorTransDescHeap").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		const D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {
+			m_transResource.Get()->GetGPUVirtualAddress(),
+			static_cast<UINT>(m_transResource.Get()->GetDesc().Width) };
+		const auto handle = m_transDescHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+		Resource::instance()->getDevice()->CreateConstantBufferView(&viewDesc, handle);
+	}
+
+	return S_OK;
+}
+
 HRESULT Floor::createRootSignature()
 {
-	D3D12_DESCRIPTOR_RANGE descRange[2] = { };
+	D3D12_DESCRIPTOR_RANGE descRange[3] = { };
 	{
 		descRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV; // b0: scene matrix
 		descRange[0].NumDescriptors = 1;
@@ -213,14 +282,16 @@ HRESULT Floor::createRootSignature()
 		descRange[0].RegisterSpace = 0;
 	    descRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-		descRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // t0: depth light map
-		descRange[1].NumDescriptors = 1;
-		descRange[1].BaseShaderRegister = 0;
-		descRange[1].RegisterSpace = 0;
-	    descRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		descRange[1] = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
+
+		descRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // t0: depth light map
+		descRange[2].NumDescriptors = 1;
+		descRange[2].BaseShaderRegister = 0;
+		descRange[2].RegisterSpace = 0;
+	    descRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 	}
 
-	D3D12_ROOT_PARAMETER rootParam[2] = { };
+	D3D12_ROOT_PARAMETER rootParam[3] = { };
 	{
 		rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
@@ -230,7 +301,12 @@ HRESULT Floor::createRootSignature()
 		rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		rootParam[1].DescriptorTable.NumDescriptorRanges = 1;
 		rootParam[1].DescriptorTable.pDescriptorRanges = &descRange[1];
-		rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+		rootParam[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		rootParam[2].DescriptorTable.NumDescriptorRanges = 1;
+		rootParam[2].DescriptorTable.pDescriptorRanges = &descRange[2];
+		rootParam[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	}
 
 	D3D12_STATIC_SAMPLER_DESC samplerDesc = CD3DX12_STATIC_SAMPLER_DESC(0);
@@ -252,7 +328,7 @@ HRESULT Floor::createRootSignature()
 
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
-		rootSignatureDesc.NumParameters = 2;
+		rootSignatureDesc.NumParameters = 3;
 		rootSignatureDesc.pParameters = &rootParam[0];
 		rootSignatureDesc.NumStaticSamplers = 1;
 		rootSignatureDesc.pStaticSamplers = &samplerDesc;

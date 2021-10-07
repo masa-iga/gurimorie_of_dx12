@@ -9,10 +9,15 @@ cbuffer SceneBuffer : register(b0)
 	float3 eye;
 }
 
+cbuffer Transform : register(b1)
+{
+	matrix world;
+}
+
 Output basicVs(float4 pos : POSITION)
 {
 	Output output;
-	output.svpos = mul(mul(proj, view), pos);
+	output.svpos = mul(mul(mul(proj, view), world), pos);
 	output.tpos = mul(lightCamera, pos);
 
 	return output;
@@ -20,5 +25,5 @@ Output basicVs(float4 pos : POSITION)
 
 float4 shadowVs(float4 pos : POSITION) : SV_POSITION
 {
-	return mul(lightCamera, pos);
+	return mul(mul(lightCamera, world), pos);
 }
