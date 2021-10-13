@@ -19,7 +19,7 @@ Output basicVs(float4 pos : POSITION)
 {
 	Output output;
 	output.svpos = mul(mul(mul(proj, view), meshWorld), pos);
-	output.tpos = mul(lightCamera, pos);
+	output.tpos = mul(mul(lightCamera, meshWorld), pos);
 
 	return output;
 }
