@@ -5,11 +5,43 @@
 #include <d3dcompiler.h>
 #pragma warning(pop)
 #include "config.h"
+#include "constant.h"
 #include "debug.h"
 #include "init.h"
 #include "util.h"
 
 using namespace Microsoft::WRL;
+
+struct Vertex
+{
+	DirectX::XMFLOAT3 pos = { };
+};
+
+constexpr Vertex kFloorVertices[] =
+{
+	DirectX::XMFLOAT3(-1.0f, 0.0f, -1.0f),
+	DirectX::XMFLOAT3(-1.0f, 0.0f,  1.0f),
+	DirectX::XMFLOAT3( 1.0f, 0.0f,  1.0f),
+	DirectX::XMFLOAT3(-1.0f, 0.0f, -1.0f),
+	DirectX::XMFLOAT3( 1.0f, 0.0f,  1.0f),
+	DirectX::XMFLOAT3( 1.0f, 0.0f, -1.0f),
+};
+
+constexpr Vertex kAxisVertices[] =
+{
+	DirectX::XMFLOAT3(-1.0f,  0.0f,  0.0f),
+	DirectX::XMFLOAT3( 1.0f,  0.0f,  0.0f),
+	DirectX::XMFLOAT3( 0.0f,  0.0f, -1.0f),
+	DirectX::XMFLOAT3( 0.0f,  0.0f,  1.0f),
+	DirectX::XMFLOAT3( 0.95f, 0.0f,  0.05f),
+	DirectX::XMFLOAT3( 1.0f,  0.0f,  0.0f),
+	DirectX::XMFLOAT3( 0.95f, 0.0f, -0.05f),
+	DirectX::XMFLOAT3( 1.0f,  0.0f,  0.0f),
+	DirectX::XMFLOAT3( 0.0f, -0.05f, 0.95f),
+	DirectX::XMFLOAT3( 0.0f,  0.0f,  1.0f),
+	DirectX::XMFLOAT3( 0.0f,  0.05f, 0.95f),
+	DirectX::XMFLOAT3( 0.0f,  0.0f,  1.0f),
+};
 
 HRESULT Floor::init()
 {
@@ -18,14 +50,8 @@ HRESULT Floor::init()
 	ThrowIfFailed(createTransformResource());
 	ThrowIfFailed(createRootSignature());
 	ThrowIfFailed(createGraphicsPipeline());
-	setWorldMatrix();
+	initMatrix();
 	return S_OK;
-}
-
-void Floor::setWorldMatrix()
-{
-	ThrowIfFalse(m_pWorldMatrix != nullptr);
-	*m_pWorldMatrix = kDefaultTransMat * kDefaultScaleMat;
 }
 
 HRESULT Floor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap)
@@ -42,7 +68,7 @@ HRESULT Floor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHea
 		list->OMSetRenderTargets(0, nullptr, false, &depthHandle);
 	}
 
-	list->SetPipelineState(m_shadowPipelineState.Get());
+	list->SetPipelineState(m_pipelineStates.at(PipelineType::kShadow).Get());
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 
 	list->SetDescriptorHeaps(1, &sceneDescHeap);
@@ -51,7 +77,7 @@ HRESULT Floor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHea
 	list->SetDescriptorHeaps(1, m_transDescHeap.GetAddressOf());
 	list->SetGraphicsRootDescriptorTable(1 /* root param 1 */, m_transDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 
-	list->DrawInstanced(6, 1, 0, 0);
+	list->DrawInstanced(_countof(kFloorVertices), 1, 0, 0);
 
 	return S_OK;
 }
@@ -64,7 +90,7 @@ HRESULT Floor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sce
 	setInputAssembler(list);
 	setRasterizer(list);
 
-	list->SetPipelineState(m_pipelineState.Get());
+	list->SetPipelineState(m_pipelineStates.at(PipelineType::kMesh).Get());
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 
 	list->SetDescriptorHeaps(1, &sceneDescHeap);
@@ -76,9 +102,50 @@ HRESULT Floor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sce
 	list->SetDescriptorHeaps(1, &depthLightSrvHeap);
 	list->SetGraphicsRootDescriptorTable(2 /* root param 1 */, depthLightSrvHeap->GetGPUDescriptorHandleForHeapStart());
 
-	list->DrawInstanced(6, 1, 0, 0);
+	list->DrawInstanced(_countof(kFloorVertices), 1, 0, 0);
 
 	return S_OK;
+}
+
+HRESULT Floor::renderAxis(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap)
+{
+	ThrowIfFalse(list != nullptr);
+	ThrowIfFalse(sceneDescHeap != nullptr);
+
+	{
+		list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+		list->IASetVertexBuffers(0, 1, &m_vbViews.at(VbType::kAxis));
+	}
+	setRasterizer(list);
+
+	list->SetPipelineState(m_pipelineStates.at(PipelineType::kAxis).Get());
+	list->SetGraphicsRootSignature(m_rootSignature.Get());
+
+	list->SetDescriptorHeaps(1, &sceneDescHeap);
+	list->SetGraphicsRootDescriptorTable(0 /* root param 0 */, sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+	list->SetDescriptorHeaps(1, m_transDescHeap.GetAddressOf());
+	list->SetGraphicsRootDescriptorTable(1 /* root param 1 */, m_transDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+
+	list->DrawInstanced(_countof(kAxisVertices), 1, 0, 0);
+
+	return S_OK;
+}
+
+void Floor::initMatrix()
+{
+	{
+		ThrowIfFalse(m_transResource != nullptr);
+		auto result = m_transResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&m_pTransMatrix));
+		ThrowIfFailed(result);
+	}
+
+	m_pTransMatrix->meshMatrix = kDefaultTransMat * kDefaultScaleMat;
+	m_pTransMatrix->axisMatrix = DirectX::XMMatrixScaling(30.0f, 30.0f, 30.0f);
+
+	{
+		m_transResource.Get()->Unmap(0, nullptr);
+	}
 }
 
 HRESULT Floor::loadShaders()
@@ -89,11 +156,45 @@ HRESULT Floor::loadShaders()
 		kVsFile,
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		kVsBasicEntryPoint,
-		"vs_5_0",
+		kVsEntryPoints.at(VsType::kBasic),
+		Constant::kVsShaderModel,
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
-		m_vs.ReleaseAndGetAddressOf(),
+		m_vsArray.at(VsType::kBasic).ReleaseAndGetAddressOf(),
+		errorBlob.ReleaseAndGetAddressOf());
+
+	if (FAILED(result))
+	{
+		outputDebugMessage(errorBlob.Get());
+		return E_FAIL;
+	}
+
+	result = D3DCompileFromFile(
+		kVsFile,
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		kVsEntryPoints.at(VsType::kShadow),
+		Constant::kVsShaderModel,
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		m_vsArray.at(VsType::kShadow).ReleaseAndGetAddressOf(),
+		errorBlob.ReleaseAndGetAddressOf());
+
+	if (FAILED(result))
+	{
+		outputDebugMessage(errorBlob.Get());
+		return E_FAIL;
+	}
+
+	result = D3DCompileFromFile(
+		kVsFile,
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		kVsEntryPoints.at(VsType::kAxis),
+		Constant::kVsShaderModel,
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		m_vsArray.at(VsType::kAxis).ReleaseAndGetAddressOf(),
 		errorBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -106,11 +207,11 @@ HRESULT Floor::loadShaders()
 		kPsFile,
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		kPsBasicEntryPoint,
-		"ps_5_0",
+		kPsEntryPoints.at(PsType::kBasic),
+		Constant::kPsShaderModel,
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
-		m_ps.ReleaseAndGetAddressOf(),
+		m_psArray.at(PsType::kBasic).ReleaseAndGetAddressOf(),
 		errorBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -120,14 +221,14 @@ HRESULT Floor::loadShaders()
 	}
 
 	result = D3DCompileFromFile(
-		kVsFile,
+		kPsFile,
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		kVsShadowEntryPoint,
-		"vs_5_0",
+		kPsEntryPoints.at(PsType::kAxis),
+		Constant::kPsShaderModel,
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
-		m_shadowVs.ReleaseAndGetAddressOf(),
+		m_psArray.at(PsType::kAxis).ReleaseAndGetAddressOf(),
 		errorBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -141,76 +242,108 @@ HRESULT Floor::loadShaders()
 
 HRESULT Floor::createVertexResource()
 {
-	struct Vertex
 	{
-		DirectX::XMFLOAT3 pos;
-	};
+		constexpr size_t bufferSize = sizeof(kFloorVertices);
+		const auto w = static_cast<uint32_t>(Util::alignmentedSize(bufferSize, Constant::kD3D12ConstantBufferAlignment));
 
-	constexpr Vertex kVertices[] =
-	{
-		DirectX::XMFLOAT3(-1.0f, 0.0f, -1.0f),
-		DirectX::XMFLOAT3(-1.0f, 0.0f,  1.0f),
-		DirectX::XMFLOAT3( 1.0f, 0.0f,  1.0f),
-		DirectX::XMFLOAT3(-1.0f, 0.0f, -1.0f),
-		DirectX::XMFLOAT3( 1.0f, 0.0f,  1.0f),
-		DirectX::XMFLOAT3( 1.0f, 0.0f, -1.0f),
-	};
+		auto& resource = m_vertResources.at(VbType::kMesh);
 
-	constexpr size_t bufferSize = sizeof(Vertex) * kNumOfVertices;
-	const auto w = static_cast<uint32_t>(Util::alignmentedSize(bufferSize, 256));
-
-	{
-		D3D12_HEAP_PROPERTIES heapProp = { };
 		{
-			heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
-			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			heapProp.CreationNodeMask = 0;
-			heapProp.VisibleNodeMask = 0;
+			D3D12_HEAP_PROPERTIES heapProp = { };
+			{
+				heapProp.Type = D3D12_HEAP_TYPE_UPLOAD;
+				heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+				heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+				heapProp.CreationNodeMask = 0;
+				heapProp.VisibleNodeMask = 0;
+			}
+
+			D3D12_RESOURCE_DESC resourceDesc = { };
+			{
+				resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+				resourceDesc.Alignment = 0;
+				resourceDesc.Width = bufferSize;
+				resourceDesc.Height = 1;
+				resourceDesc.DepthOrArraySize = 1;
+				resourceDesc.MipLevels = 1;
+				resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+				resourceDesc.SampleDesc = { 1 , 0 };
+				resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+				resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+			}
+
+			auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+				&heapProp,
+				D3D12_HEAP_FLAG_NONE,
+				&resourceDesc,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(m_vertResources.at(VbType::kMesh).ReleaseAndGetAddressOf()));
+			ThrowIfFailed(result);
+
+			result = resource.Get()->SetName(Util::getWideStringFromString("FloorMeshVertexBuffer").c_str());
+			ThrowIfFailed(result);
 		}
 
-		D3D12_RESOURCE_DESC resourceDesc = { };
 		{
-			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-			resourceDesc.Alignment = 0;
-			resourceDesc.Width = 256;
-			resourceDesc.Height = 1;
-			resourceDesc.DepthOrArraySize = 1;
-			resourceDesc.MipLevels = 1;
-			resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-			resourceDesc.SampleDesc = { 1 , 0 };
-			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+			auto& vbView = m_vbViews.at(VbType::kMesh);
+			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
+			vbView.SizeInBytes = w;
+			vbView.StrideInBytes = sizeof(Vertex);
 		}
 
-		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(m_vertResource.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
+		{
+			Vertex* pVertices = nullptr;
 
-		result = m_vertResource.Get()->SetName(Util::getWideStringFromString("FloorVertexBuffer").c_str());
-		ThrowIfFailed(result);
+			auto result = resource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertices));
+			ThrowIfFailed(result);
+
+			std::copy(std::begin(kFloorVertices), std::end(kFloorVertices), pVertices);
+
+			resource.Get()->Unmap(0, nullptr);
+		}
 	}
 
 	{
-		m_vbView.BufferLocation = m_vertResource.Get()->GetGPUVirtualAddress();
-		m_vbView.SizeInBytes = w;
-		m_vbView.StrideInBytes = sizeof(Vertex);
-	}
+		constexpr size_t bufferSize = sizeof(kAxisVertices);
+		const auto w = static_cast<uint32_t>(Util::alignmentedSize(bufferSize, Constant::kD3D12ConstantBufferAlignment));
 
-	{
-		Vertex* pVertices = nullptr;
+		D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+		D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer({ w, 0 });
 
-		auto result = m_vertResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertices));
-		ThrowIfFailed(result);
+		auto& resource = m_vertResources.at(VbType::kAxis);
 
-		std::copy(std::begin(kVertices), std::end(kVertices), pVertices);
+		{
+			auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+				&heapProp,
+				D3D12_HEAP_FLAG_NONE,
+				&resourceDesc,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
+			ThrowIfFailed(result);
 
-		m_vertResource.Get()->Unmap(0, nullptr);
+			result = resource.Get()->SetName(Util::getWideStringFromString("FloorAxisVertexBuffer").c_str());
+			ThrowIfFailed(result);
+		}
+
+		{
+			auto& vbView = m_vbViews.at(VbType::kAxis);
+			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
+			vbView.SizeInBytes = w;
+			vbView.StrideInBytes = sizeof(Vertex);
+		}
+
+		{
+			Vertex* pVertices = nullptr;
+
+			auto result = resource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertices));
+			ThrowIfFailed(result);
+
+			std::copy(std::begin(kAxisVertices), std::end(kAxisVertices), pVertices);
+
+			resource.Get()->Unmap(0, nullptr);
+		}
 	}
 
 	return S_OK;
@@ -218,7 +351,7 @@ HRESULT Floor::createVertexResource()
 
 HRESULT Floor::createTransformResource()
 {
-	const auto bufferSize = Util::alignmentedSize(sizeof(*m_pWorldMatrix), 256);
+	const auto bufferSize = Util::alignmentedSize(sizeof(*m_pTransMatrix), Constant::kD3D12ConstantBufferAlignment);
 
 	{
 		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
@@ -234,11 +367,6 @@ HRESULT Floor::createTransformResource()
 		ThrowIfFailed(result);
 
 		result = m_transResource.Get()->SetName(Util::getWideStringFromString("FloorTransBuffer").c_str());
-		ThrowIfFailed(result);
-	}
-
-	{
-		auto result = m_transResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&m_pWorldMatrix));
 		ThrowIfFailed(result);
 	}
 
@@ -276,19 +404,9 @@ HRESULT Floor::createRootSignature()
 {
 	D3D12_DESCRIPTOR_RANGE descRange[3] = { };
 	{
-		descRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV; // b0: scene matrix
-		descRange[0].NumDescriptors = 1;
-		descRange[0].BaseShaderRegister = 0;
-		descRange[0].RegisterSpace = 0;
-	    descRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-		descRange[1] = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
-
-		descRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; // t0: depth light map
-		descRange[2].NumDescriptors = 1;
-		descRange[2].BaseShaderRegister = 0;
-		descRange[2].RegisterSpace = 0;
-	    descRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		descRange[0] = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0); // b0: scene matrix
+		descRange[1] = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1); // b1: world matrix
+		descRange[2] = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); // t0: depth light map
 	}
 
 	D3D12_ROOT_PARAMETER rootParam[3] = { };
@@ -377,8 +495,8 @@ HRESULT Floor::createGraphicsPipeline()
 	{
 		ThrowIfFalse(m_rootSignature != nullptr);
 		pipelineStateDesc.pRootSignature = m_rootSignature.Get();
-		pipelineStateDesc.VS = { m_vs.Get()->GetBufferPointer(), m_vs.Get()->GetBufferSize() };
-		pipelineStateDesc.PS = { m_ps.Get()->GetBufferPointer(), m_ps.Get()->GetBufferSize() };
+		pipelineStateDesc.VS = { m_vsArray.at(VsType::kBasic).Get()->GetBufferPointer(), m_vsArray.at(VsType::kBasic).Get()->GetBufferSize() };
+		pipelineStateDesc.PS = { m_psArray.at(PsType::kBasic).Get()->GetBufferPointer(), m_psArray.at(PsType::kBasic).Get()->GetBufferSize() };
 		//D3D12_SHADER_BYTECODE DS;
 		//D3D12_SHADER_BYTECODE HS;
 		//D3D12_SHADER_BYTECODE GS;
@@ -407,16 +525,16 @@ HRESULT Floor::createGraphicsPipeline()
 	{
 		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 			&pipelineStateDesc,
-			IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_pipelineStates.at(PipelineType::kMesh).ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("FloorGraphicsPipeline").c_str());
+		result = m_pipelineStates.at(PipelineType::kMesh).Get()->SetName(Util::getWideStringFromString("FloorGraphicsPipeline").c_str());
 		ThrowIfFailed(result);
 	}
 
 	// for shadow
 	{
-		pipelineStateDesc.VS = { m_shadowVs.Get()->GetBufferPointer(), m_shadowVs.Get()->GetBufferSize() };
+		pipelineStateDesc.VS = { m_vsArray.at(VsType::kShadow).Get()->GetBufferPointer(), m_vsArray.at(VsType::kShadow).Get()->GetBufferSize() };
 		pipelineStateDesc.PS = { nullptr, 0 };
 		pipelineStateDesc.NumRenderTargets = 0;
 		pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
@@ -425,10 +543,28 @@ HRESULT Floor::createGraphicsPipeline()
 	{
 		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 			&pipelineStateDesc,
-			IID_PPV_ARGS(m_shadowPipelineState.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_pipelineStates.at(PipelineType::kShadow).ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_shadowPipelineState.Get()->SetName(Util::getWideStringFromString("FloorGraphicsShadowPipeline").c_str());
+		result = m_pipelineStates.at(PipelineType::kShadow)->SetName(Util::getWideStringFromString("FloorGraphicsShadowPipeline").c_str());
+		ThrowIfFailed(result);
+	}
+
+	// for axis
+	{
+		pipelineStateDesc.VS = { m_vsArray.at(VsType::kAxis).Get()->GetBufferPointer(), m_vsArray.at(VsType::kAxis).Get()->GetBufferSize() };
+		pipelineStateDesc.PS = { m_psArray.at(PsType::kAxis).Get()->GetBufferPointer(), m_psArray.at(PsType::kAxis).Get()->GetBufferSize() };
+		pipelineStateDesc.NumRenderTargets = 1;
+		pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	}
+
+	{
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&pipelineStateDesc,
+			IID_PPV_ARGS(m_pipelineStates.at(PipelineType::kAxis).ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_pipelineStates.at(PipelineType::kAxis)->SetName(Util::getWideStringFromString("FloorGraphicsAxisPipeline").c_str());
 		ThrowIfFailed(result);
 	}
 
@@ -440,7 +576,7 @@ void Floor::setInputAssembler(ID3D12GraphicsCommandList* list) const
 	ThrowIfFalse(list != nullptr);
 
 	list->IASetPrimitiveTopology(kPrimTopology);
-	list->IASetVertexBuffers(0, 1, &m_vbView);
+	list->IASetVertexBuffers(0, 1, &m_vbViews.at(VbType::kMesh));
 }
 
 void Floor::setRasterizer(ID3D12GraphicsCommandList* list) const

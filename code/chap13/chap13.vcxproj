@@ -98,6 +98,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h" />
+    <ClInclude Include="constant.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="floor.h" />
     <ClInclude Include="init.h" />

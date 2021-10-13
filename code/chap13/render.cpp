@@ -116,6 +116,7 @@ HRESULT Render::render()
 	preRenderToPeraBuffer(list);
 	{
 		m_floor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
+		m_floor.renderAxis(list, m_sceneDescHeap.Get());
 
 		for (const auto& actor : m_pmdActors)
 		{
