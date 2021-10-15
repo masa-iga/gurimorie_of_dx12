@@ -11,9 +11,8 @@ Output BasicVs(
 	{
 		const float w = weight / 100.0f;
 		const matrix bm = boneMat[boneno[0]] * w + boneMat[boneno[1]] * (1 - w);
-		pos = mul(bm, pos);
+		const float4 wpos = mul(mul(world, bm), pos);
 
-		float4 wpos = mul(world, pos);
 		output.svpos = mul(mul(proj, view), wpos);
 		output.pos = mul(view, wpos);
 
@@ -42,9 +41,7 @@ Output BasicWithShadowVs(
 	{
 		const float w = weight / 100.0f;
 		const matrix bm = boneMat[boneno[0]] * w + boneMat[boneno[1]] * (1 - w);
-		pos = mul(bm, pos);
-
-		float4 wpos = mul(world, pos);
+		float4 wpos = mul(mul(world, bm), pos);
 
 		if (instNo == 1)
 		{
@@ -77,7 +74,7 @@ float4 shadowVs(
 {
 	const float fWeight = float(weight) / 100.0f;
 	const matrix conBone = boneMat[boneno.x] * fWeight + boneMat[boneno.y] * (1.0f - fWeight);
-	pos = mul(world, mul(conBone, pos));
+	const float4 wpos = mul(mul(world, conBone), pos);
 
-	return mul(lightCamera, pos);
+	return mul(lightCamera, wpos);
 }
