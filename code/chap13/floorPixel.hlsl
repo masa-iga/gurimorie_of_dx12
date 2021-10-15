@@ -15,7 +15,7 @@ float4 basicPs(Output input) : SV_TARGET
 float4 basicWithShadowMapPs(Output input) : SV_TARGET
 {
 	const float3 posFromLightVP = input.tpos.xyz / input.tpos.w;
-	const float2 shadowUV = (posFromLightVP.xy + float2(1, -1)) * float2(0.5, -0.5); // TODO: debug
+	const float2 shadowUV = (posFromLightVP.xy + float2(1, -1)) * float2(0.5, -0.5);
 	const float depthFromLight = lightDepthTex.Sample(smp, shadowUV);
 
 	float shadowWeight = 1.0f;
