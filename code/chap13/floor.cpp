@@ -12,6 +12,8 @@
 
 using namespace Microsoft::WRL;
 
+constexpr float kScalingFactor = 30.0f;
+
 struct Vertex
 {
 	DirectX::XMFLOAT3 pos = { };
@@ -29,18 +31,26 @@ constexpr Vertex kFloorVertices[] =
 
 constexpr Vertex kAxisVertices[] =
 {
-	DirectX::XMFLOAT3(-1.0f,  0.0f,  0.0f),
+	DirectX::XMFLOAT3(-1.0f,  0.0f,  0.0f), // X axis
 	DirectX::XMFLOAT3( 1.0f,  0.0f,  0.0f),
-	DirectX::XMFLOAT3( 0.0f,  0.0f, -1.0f),
+	DirectX::XMFLOAT3( 0.0f,  0.0f, -1.0f), // Z axis
 	DirectX::XMFLOAT3( 0.0f,  0.0f,  1.0f),
-	DirectX::XMFLOAT3( 0.95f, 0.0f,  0.05f),
+	DirectX::XMFLOAT3( 0.95f, 0.0f,  0.05f), // Arrow on X axis
 	DirectX::XMFLOAT3( 1.0f,  0.0f,  0.0f),
 	DirectX::XMFLOAT3( 0.95f, 0.0f, -0.05f),
 	DirectX::XMFLOAT3( 1.0f,  0.0f,  0.0f),
-	DirectX::XMFLOAT3( 0.0f, -0.05f, 0.95f),
+	DirectX::XMFLOAT3( 0.0f, -0.05f, 0.95f), // Arror on Z axis
 	DirectX::XMFLOAT3( 0.0f,  0.0f,  1.0f),
 	DirectX::XMFLOAT3( 0.0f,  0.05f, 0.95f),
 	DirectX::XMFLOAT3( 0.0f,  0.0f,  1.0f),
+	DirectX::XMFLOAT3(-1.0f / kScalingFactor,  0.0f, -1.0f / kScalingFactor), // Unit line on X axis
+	DirectX::XMFLOAT3(-1.0f / kScalingFactor,  0.0f,  1.0f / kScalingFactor),
+	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f, -1.0f / kScalingFactor),
+	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f,  1.0f / kScalingFactor),
+	DirectX::XMFLOAT3(-1.0f / kScalingFactor,  0.0f, -1.0f / kScalingFactor), // Unit line on Z axis
+	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f, -1.0f / kScalingFactor), // Unit line on Z axis
+	DirectX::XMFLOAT3(-1.0f / kScalingFactor,  0.0f,  1.0f / kScalingFactor), // Unit line on Z axis
+	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f,  1.0f / kScalingFactor), // Unit line on Z axis
 };
 
 HRESULT Floor::init()
@@ -141,7 +151,7 @@ void Floor::initMatrix()
 	}
 
 	m_pTransMatrix->meshMatrix = kDefaultTransMat * kDefaultScaleMat;
-	m_pTransMatrix->axisMatrix = DirectX::XMMatrixScaling(30.0f, 30.0f, 30.0f);
+	m_pTransMatrix->axisMatrix = DirectX::XMMatrixScaling(kScalingFactor, kScalingFactor, kScalingFactor);
 
 	{
 		m_transResource.Get()->Unmap(0, nullptr);
