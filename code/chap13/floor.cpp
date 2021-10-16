@@ -48,9 +48,9 @@ constexpr Vertex kAxisVertices[] =
 	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f, -1.0f / kScalingFactor),
 	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f,  1.0f / kScalingFactor),
 	DirectX::XMFLOAT3(-1.0f / kScalingFactor,  0.0f, -1.0f / kScalingFactor), // Unit line on Z axis
-	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f, -1.0f / kScalingFactor), // Unit line on Z axis
-	DirectX::XMFLOAT3(-1.0f / kScalingFactor,  0.0f,  1.0f / kScalingFactor), // Unit line on Z axis
-	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f,  1.0f / kScalingFactor), // Unit line on Z axis
+	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f, -1.0f / kScalingFactor),
+	DirectX::XMFLOAT3(-1.0f / kScalingFactor,  0.0f,  1.0f / kScalingFactor),
+	DirectX::XMFLOAT3( 1.0f / kScalingFactor,  0.0f,  1.0f / kScalingFactor),
 };
 
 HRESULT Floor::init()
@@ -272,7 +272,7 @@ HRESULT Floor::createVertexResource()
 			{
 				resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 				resourceDesc.Alignment = 0;
-				resourceDesc.Width = bufferSize;
+				resourceDesc.Width = w;
 				resourceDesc.Height = 1;
 				resourceDesc.DepthOrArraySize = 1;
 				resourceDesc.MipLevels = 1;
@@ -288,7 +288,7 @@ HRESULT Floor::createVertexResource()
 				&resourceDesc,
 				D3D12_RESOURCE_STATE_GENERIC_READ,
 				nullptr,
-				IID_PPV_ARGS(m_vertResources.at(VbType::kMesh).ReleaseAndGetAddressOf()));
+				IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
 			ThrowIfFailed(result);
 
 			result = resource.Get()->SetName(Util::getWideStringFromString("FloorMeshVertexBuffer").c_str());
@@ -564,6 +564,7 @@ HRESULT Floor::createGraphicsPipeline()
 	{
 		pipelineStateDesc.VS = { m_vsArray.at(VsType::kAxis).Get()->GetBufferPointer(), m_vsArray.at(VsType::kAxis).Get()->GetBufferSize() };
 		pipelineStateDesc.PS = { m_psArray.at(PsType::kAxis).Get()->GetBufferPointer(), m_psArray.at(PsType::kAxis).Get()->GetBufferSize() };
+		pipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 		pipelineStateDesc.NumRenderTargets = 1;
 		pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	}
