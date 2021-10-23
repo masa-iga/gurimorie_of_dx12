@@ -139,15 +139,15 @@ HRESULT Render::render()
 
 	if (bDebugRenderShadowMap)
 	{
-		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.f, 0.f, kWindowWidth / 4, kWindowHeight / 4);
-		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, kWindowWidth, kWindowHeight);
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.f, 0.f, Config::kWindowWidth / 4, Config::kWindowHeight / 4);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
 		m_shadow.render(list, &rtvH, m_lightDepthSrvHeap, viewport, scissorRect);
 	}
 
 	if (bDebugRenderDepth)
 	{
-		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(kWindowWidth * 3 / 4, 0, kWindowWidth / 4, kWindowHeight / 4);
-		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, kWindowWidth, kWindowHeight / 4);
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(Config::kWindowWidth * 3 / 4, 0, Config::kWindowWidth / 4, Config::kWindowHeight / 4);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight / 4);
 		m_shadow.render(list, &rtvH, m_depthSrvHeap, viewport, scissorRect);
 	}
 
@@ -464,7 +464,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	constexpr XMFLOAT3 target(0, 0, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
 #if MODIFY_LIGHT_POS
-	constexpr XMFLOAT4 light(-10, 10, -10, 0);
+	constexpr XMFLOAT4 light(0, 50, -10, 0);
 #else
 	constexpr XMFLOAT4 light(-1, -1, -1, 0);
 #endif // MODIFY_LIGHT_POS
@@ -474,8 +474,8 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 		static float angle = 0.0f;
 		constexpr float kRadius = 30.0f;
 
-		const float x = kRadius * std::cos(angle);
-		const float z = kRadius * std::sin(angle);
+		const float x = kRadius * std::sin(angle);
+		const float z = -1 * kRadius * std::cos(angle);
 
 		eye = XMFLOAT3(x, 20.0f, z);
 
@@ -506,7 +506,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	{
 		const XMMATRIX projMat = XMMatrixPerspectiveFovLH(
 			XM_PIDIV2,
-			static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
+			static_cast<float>(Config::kWindowWidth) / static_cast<float>(Config::kWindowHeight),
 			1.0f,
 			100.0f
 		);
@@ -636,8 +636,8 @@ HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12Descrip
 		{
 			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 			resourceDesc.Alignment = 0;
-			resourceDesc.Width = kWindowWidth;
-			resourceDesc.Height = kWindowHeight;
+			resourceDesc.Width = Config::kWindowWidth;
+			resourceDesc.Height = Config::kWindowHeight;
 			resourceDesc.DepthOrArraySize = 1;
 			resourceDesc.MipLevels = 1;
 			resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS; // should be DXGI_FORMAT_D32_FLOAT because the buffer will be read as a texture

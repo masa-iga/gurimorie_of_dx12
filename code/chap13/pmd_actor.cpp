@@ -201,7 +201,7 @@ static constexpr size_t kNumSignature = 3;
 static constexpr size_t kPmdVertexSize = sizeof(PMDVertex);
 const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
 
-static HRESULT setViewportScissor();
+static HRESULT setViewportScissor(int32_t width, int32_t height);
 static std::string getModelPath(PmdActor::Model model);
 static std::string getMotionPath();
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
@@ -275,6 +275,8 @@ HRESULT PmdActor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12Descriptor
 	ThrowIfFalse(depthHeap != nullptr);
 
 	ThrowIfFailed(setCommonPipelineConfig(list));
+
+	setViewportScissor(Config::kShadowBufferWidth, Config::kShadowBufferHeight);
 
 	ThrowIfFalse(m_shadowPipelineState != nullptr);
 	list->SetPipelineState(m_shadowPipelineState.Get());
@@ -748,7 +750,7 @@ constexpr D3D12_PRIMITIVE_TOPOLOGY PmdActor::getPrimitiveTopology() const
 
 HRESULT PmdActor::setCommonPipelineConfig(ID3D12GraphicsCommandList* list) const
 {
-	setViewportScissor();
+	setViewportScissor(Config::kWindowWidth, Config::kWindowHeight);
 	list->IASetPrimitiveTopology(getPrimitiveTopology());
 	list->IASetVertexBuffers(0, 1, &m_vbView);
 	list->IASetIndexBuffer(&m_ibView);
@@ -1822,28 +1824,12 @@ void PmdActor::solveCCDIK(const PmdIk& ik)
 	}
 }
 
-static HRESULT setViewportScissor()
+static HRESULT setViewportScissor(int32_t width, int32_t height)
 {
-	D3D12_VIEWPORT viewport = { };
-	{
-		viewport.Width = kWindowWidth;
-		viewport.Height = kWindowHeight;
-		viewport.TopLeftX = 0;
-		viewport.TopLeftY = 0;
-		viewport.MaxDepth = 1.0f;
-		viewport.MinDepth = 0.0f;
-	}
-
+	const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
 	Resource::instance()->getCommandList()->RSSetViewports(1, &viewport);
 
-	D3D12_RECT scissorRect = { };
-	{
-		scissorRect.top = 0;
-		scissorRect.left = 0;
-		scissorRect.right = scissorRect.left + kWindowWidth;
-		scissorRect.bottom = scissorRect.top + kWindowHeight;
-	}
-
+	const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, width, height);
 	Resource::instance()->getCommandList()->RSSetScissorRects(1, &scissorRect);
 
 	return S_OK;

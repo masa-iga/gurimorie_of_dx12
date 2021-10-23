@@ -71,7 +71,7 @@ HRESULT Floor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHea
 	ThrowIfFalse(depthHeap != nullptr);
 
 	setInputAssembler(list);
-	setRasterizer(list);
+	setRasterizer(list, Config::kShadowBufferWidth, Config::kShadowBufferHeight);
 
 	{
 		auto depthHandle = depthHeap->GetCPUDescriptorHandleForHeapStart();
@@ -98,7 +98,7 @@ HRESULT Floor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sce
 	ThrowIfFalse(sceneDescHeap != nullptr);
 
 	setInputAssembler(list);
-	setRasterizer(list);
+	setRasterizer(list, Config::kWindowWidth, Config::kWindowHeight);
 
 	list->SetPipelineState(m_pipelineStates.at(PipelineType::kMesh).Get());
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
@@ -126,7 +126,7 @@ HRESULT Floor::renderAxis(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap*
 		list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 		list->IASetVertexBuffers(0, 1, &m_vbViews.at(VbType::kAxis));
 	}
-	setRasterizer(list);
+	setRasterizer(list, Config::kWindowWidth, Config::kWindowHeight);
 
 	list->SetPipelineState(m_pipelineStates.at(PipelineType::kAxis).Get());
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
@@ -590,29 +590,11 @@ void Floor::setInputAssembler(ID3D12GraphicsCommandList* list) const
 	list->IASetVertexBuffers(0, 1, &m_vbViews.at(VbType::kMesh));
 }
 
-void Floor::setRasterizer(ID3D12GraphicsCommandList* list) const
+void Floor::setRasterizer(ID3D12GraphicsCommandList* list, int32_t width, int32_t height) const
 {
-	{
-		D3D12_VIEWPORT viewport = { };
-		{
-			viewport.TopLeftX = 0.0f;
-			viewport.TopLeftY = 0.0f;
-			viewport.Width = static_cast<float>(kWindowWidth);
-			viewport.Height = static_cast<float>(kWindowHeight);
-			viewport.MinDepth = 0.0f;
-			viewport.MaxDepth = 1.0f;
-		}
-		list->RSSetViewports(1, &viewport);
-	}
+	const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
+	list->RSSetViewports(1, &viewport);
 
-	{
-		D3D12_RECT scissorRect = { };
-		{
-			scissorRect.left = 0;
-			scissorRect.top = 0;
-			scissorRect.right = scissorRect.left + kWindowWidth;
-			scissorRect.bottom = scissorRect.top + kWindowHeight;
-		}
-		list->RSSetScissorRects(1, &scissorRect);
-	}
+	const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, width, height);
+	list->RSSetScissorRects(1, &scissorRect);
 }

@@ -22,8 +22,8 @@ HRESULT Shadow::init()
 
 HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap)
 {
-    const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.f, 0.f, kWindowWidth, kWindowHeight);
-    const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, kWindowWidth, kWindowHeight);
+    const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.f, 0.f, Config::kWindowWidth, Config::kWindowHeight);
+    const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
     return render(pCommandList, pRtvHeap, texDescHeap, viewport, scissorRect);
 }
 

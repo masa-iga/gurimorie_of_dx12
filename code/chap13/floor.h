@@ -81,7 +81,7 @@ private:
 	HRESULT createRootSignature();
 	HRESULT createGraphicsPipeline();
 	void setInputAssembler(ID3D12GraphicsCommandList* list) const;
-	void setRasterizer(ID3D12GraphicsCommandList* list) const;
+	void setRasterizer(ID3D12GraphicsCommandList* list, int32_t width, int32_t height) const;
 
 	std::array<Microsoft::WRL::ComPtr<ID3DBlob>, VsType::kEnd> m_vsArray = { };
 	std::array<Microsoft::WRL::ComPtr<ID3DBlob>, PsType::kEnd> m_psArray = { };
