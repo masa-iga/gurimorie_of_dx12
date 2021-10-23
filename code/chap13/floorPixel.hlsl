@@ -3,6 +3,7 @@
 SamplerState smp : register(s0);
 Texture2D<float> lightDepthTex : register(t0);
 
+static const float kBias = 0.001f;
 static const float3 baseColor = float3(0.9f, 0.9f, 0.9f);
 
 // TODO: imple lighting
@@ -20,7 +21,7 @@ float4 basicWithShadowMapPs(Output input) : SV_TARGET
 
 	float shadowWeight = 1.0f;
 
-	if (depthFromLight < posFromLightVP.z)
+	if (depthFromLight < posFromLightVP.z - kBias)
 	{
 		shadowWeight = 0.5f;
 	}

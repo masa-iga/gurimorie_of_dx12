@@ -8,6 +8,8 @@ Texture2D<float> lightDepthTex : register(t4);
 SamplerState smp : register(s0);
 SamplerState smpToon : register(s1);
 
+static const float kBias = 0.001f;
+
 float4 BasicPs(Output input) : SV_TARGET
 {
 	const float3 light = normalize(float3(1, -1, 1));
@@ -86,7 +88,7 @@ float4 BasicWithShadowMapPs(Output input) : SV_TARGET
 
 	float shadowWeight = 1.0f;
 
-	if (depthFromLight < posFromLightVP.z)
+	if (depthFromLight < posFromLightVP.z - kBias)
 	{
 		shadowWeight = 0.5f;
 	}
