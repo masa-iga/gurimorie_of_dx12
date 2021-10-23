@@ -670,26 +670,12 @@ HRESULT Pera::renderBokeh(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12Des
 	}
 
 	{
-		D3D12_VIEWPORT viewport = { };
-		{
-			viewport.Width = Config::kWindowWidth;
-			viewport.Height = Config::kWindowHeight;
-			viewport.TopLeftX = 0;
-			viewport.TopLeftY = 0;
-			viewport.MaxDepth = 1.0f;
-			viewport.MinDepth = 0.0f;
-		}
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
 		commandList->RSSetViewports(1, &viewport);
 	}
 
 	{
-		D3D12_RECT scissorRect = { };
-		{
-			scissorRect.top = 0;
-			scissorRect.left = 0;
-			scissorRect.right = scissorRect.left + Config::kWindowWidth;
-			scissorRect.bottom = scissorRect.top + Config::kWindowHeight;
-		}
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
 		commandList->RSSetScissorRects(1, &scissorRect);
 	}
 
@@ -738,26 +724,12 @@ HRESULT Pera::renderEffect(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12De
 	commandList->OMSetRenderTargets(1, pRtvHeap, false, nullptr);
 
 	{
-		D3D12_VIEWPORT viewport = { };
-		{
-			viewport.Width = Config::kWindowWidth;
-			viewport.Height = Config::kWindowHeight;
-			viewport.TopLeftX = 0;
-			viewport.TopLeftY = 0;
-			viewport.MaxDepth = 1.0f;
-			viewport.MinDepth = 0.0f;
-		}
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
 		commandList->RSSetViewports(1, &viewport);
 	}
 
 	{
-		D3D12_RECT scissorRect = { };
-		{
-			scissorRect.top = 0;
-			scissorRect.left = 0;
-			scissorRect.right = scissorRect.left + Config::kWindowWidth;
-			scissorRect.bottom = scissorRect.top + Config::kWindowHeight;
-		}
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
 		commandList->RSSetScissorRects(1, &scissorRect);
 	}
 
