@@ -6,6 +6,7 @@ struct Output
 	float4 vnormal : NORMAL1;
 	float2 uv : TEXCOORD;
 	float3 ray : VECTOR;
+	float4 tpos : TPOS;
 	uint instNo : SV_InstanceID;
 };
 
@@ -13,6 +14,7 @@ cbuffer SceneBuffer : register(b0)
 {
 	matrix view;
 	matrix proj;
+	matrix lightCamera;
 	matrix shadow;
 	float3 eye;
 }

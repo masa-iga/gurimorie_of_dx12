@@ -110,22 +110,22 @@ struct PmdIk
 class PmdActor {
 public:
 	enum class Model;
-	static void release();
-	static std::pair<const D3D12_INPUT_ELEMENT_DESC*, UINT> getInputElementDesc();
-	static ID3D12PipelineState* getPipelineState();
-	static ID3D12RootSignature* getRootSignature();
-	static D3D12_PRIMITIVE_TOPOLOGY getPrimitiveTopology();
 
 	PmdActor();
 	HRESULT loadAsset(Model model);
 	void enableAnimation(bool enable);
 	void update(bool animationReversed);
-	HRESULT render(ID3D12DescriptorHeap* sceneDescHeap) const;
+	HRESULT renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap) const;
+	HRESULT render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthLightSrvHeap) const;
 
 private:
-	static HRESULT loadShaders();
-	static HRESULT createRootSignature(Microsoft::WRL::ComPtr<ID3D12RootSignature>* rootSignature);
-	static HRESULT createPipelineState();
+	HRESULT loadShaders();
+	HRESULT createPipelineState();
+	HRESULT createRootSignature(Microsoft::WRL::ComPtr<ID3D12RootSignature>* rootSignature);
+	ID3D12PipelineState* getPipelineState() const;
+	ID3D12RootSignature* getRootSignature() const;
+	constexpr D3D12_PRIMITIVE_TOPOLOGY getPrimitiveTopology() const;
+	HRESULT setCommonPipelineConfig(ID3D12GraphicsCommandList* list) const;
 
 	HRESULT loadPmd(Model model);
 	HRESULT loadVmd();
@@ -143,10 +143,12 @@ private:
 	void solveCosineIK(const PmdIk& ik);
 	void solveCCDIK(const PmdIk& ik);
 
-	static Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
-	static Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
-	static Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob;
-	static Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob;
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_shadowPipelineState = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_shadowVsBlob = nullptr;
 
 	bool m_bAnimation = false;
 	DWORD m_animationStartTime = 0;

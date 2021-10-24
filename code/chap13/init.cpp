@@ -222,8 +222,8 @@ HRESULT Resource::createSwapChain(IDXGISwapChain4** ppSwapChain, IDXGIFactory6* 
 {
 	DXGI_SWAP_CHAIN_DESC1 swapchainDesc = { };
 	{
-		swapchainDesc.Width = kWindowWidth;
-		swapchainDesc.Height = kWindowHeight;
+		swapchainDesc.Width = Config::kWindowWidth;
+		swapchainDesc.Height = Config::kWindowHeight;
 		swapchainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		swapchainDesc.Stereo = false;
 		swapchainDesc.SampleDesc.Count = 1;

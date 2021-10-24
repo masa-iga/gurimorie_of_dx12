@@ -15,13 +15,13 @@
 
 #pragma comment(lib, "DirectXTex.lib")
 
-#define DISABLE_MATRIX (0)
 #define NO_UPDATE_TEXTURE_FROM_CPU (1)
 
 using namespace Microsoft::WRL;
 
 static HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
 static HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
+static HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
 
 constexpr float kClearColorRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 constexpr float kClearColorPeraRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -31,13 +31,17 @@ constexpr DirectX::XMFLOAT3 kParallelLightVec(1.0f, -1.0f, 1.0f);
 HRESULT Render::init()
 {
 	m_parallelLightVec = kParallelLightVec;
-
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
-	m_pmdActors.resize(1);
-	ThrowIfFailed(m_pmdActors[0].loadAsset(PmdActor::Model::kMiku));
+
 	ThrowIfFailed(createDepthBuffer(&m_depthResource, &m_dsvHeap, &m_depthSrvHeap));
+	ThrowIfFailed(createLightDepthBuffer(&m_lightDepthResource, &m_lightDepthDsvHeap, &m_lightDepthSrvHeap));
 	ThrowIfFailed(createSceneMatrixBuffer());
 	ThrowIfFailed(createViews());
+
+	m_floor.init();
+
+	m_pmdActors.resize(1);
+	ThrowIfFailed(m_pmdActors[0].loadAsset(PmdActor::Model::kMiku));
 
 	for (auto& actor : m_pmdActors)
 	{
@@ -58,7 +62,7 @@ HRESULT Render::init()
 
 HRESULT Render::update()
 {
-	updateMvpMatrix();
+	updateMvpMatrix(m_bAnimationReversed);
 
 	for (auto& actor : m_pmdActors)
 		actor.update(m_bAnimationReversed);
@@ -68,9 +72,9 @@ HRESULT Render::update()
 
 HRESULT Render::render()
 {
-	// reset command allocator & list
-	ThrowIfFailed(Resource::instance()->getCommandAllocator()->Reset());
-	ThrowIfFailed(Resource::instance()->getCommandList()->Reset(Resource::instance()->getCommandAllocator(), nullptr));
+	ID3D12CommandAllocator* const allocator = Resource::instance()->getCommandAllocator();
+	ID3D12GraphicsCommandList* const list = Resource::instance()->getCommandList();
+	ID3D12CommandQueue* const queue = Resource::instance()->getCommandQueue();
 
 	ID3D12Resource* backBufferResource = nullptr;
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvH = { };
@@ -84,31 +88,67 @@ HRESULT Render::render()
 		rtvH.ptr += bbIdx * static_cast<SIZE_T>(Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 	}
 
-	clearRenderTarget(backBufferResource, rtvH);
-	clearDepthRenderTarget(dsvH);
-	clearPeraRenderTarget();
-
-	// render to off screen buffer
-	preRenderToPeraBuffer();
+	// reset command allocator & list
 	{
+		ThrowIfFailed(allocator->Reset());
+		ThrowIfFailed(list->Reset(allocator, nullptr));
+	}
+
+	// clear
+	{
+		clearRenderTarget(list, backBufferResource, rtvH);
+		clearDepthRenderTarget(list, dsvH);
+		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+		clearPeraRenderTarget(list);
+	}
+
+	// render light depth map
+	{
+		m_floor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
+
 		for (const auto& actor : m_pmdActors)
 		{
-			actor.render(m_sceneDescHeap.Get());
+			actor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
 		}
 	}
-	postRenderToPeraBuffer();
 
+	// render to off screen buffer
+	preRenderToPeraBuffer(list);
+	{
+		m_floor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
+		m_floor.renderAxis(list, m_sceneDescHeap.Get());
+
+		for (const auto& actor : m_pmdActors)
+		{
+			actor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
+		}
+	}
+	postRenderToPeraBuffer(list);
 
 	// render to display buffer
-	m_timeStamp.set(TimeStamp::Index::k0);
 	{
-		m_pera.render(&rtvH, m_peraSrvHeap.Get());
+		m_timeStamp.set(TimeStamp::Index::k0);
+		{
+			m_pera.render(&rtvH, m_peraSrvHeap.Get());
+		}
+		m_timeStamp.set(TimeStamp::Index::k1);
 	}
-	m_timeStamp.set(TimeStamp::Index::k1);
 
-	// render depth buffer
+	constexpr bool bDebugRenderShadowMap = true;
+	constexpr bool bDebugRenderDepth = true;
+
+	if (bDebugRenderShadowMap)
 	{
-		m_shadow.render(&rtvH, m_depthSrvHeap);
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.f, 0.f, Config::kWindowWidth / 4, Config::kWindowHeight / 4);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+		m_shadow.render(list, &rtvH, m_lightDepthSrvHeap, viewport, scissorRect);
+	}
+
+	if (bDebugRenderDepth)
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(Config::kWindowWidth * 3 / 4, 0, Config::kWindowWidth / 4, Config::kWindowHeight / 4);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight / 4);
+		m_shadow.render(list, &rtvH, m_depthSrvHeap, viewport, scissorRect);
 	}
 
 	// resolve time stamps
@@ -125,14 +165,14 @@ HRESULT Render::render()
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	}
-	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	list->ResourceBarrier(1, &barrier);
 
 
 	// execute command lists
-	ThrowIfFailed(Resource::instance()->getCommandList()->Close());
+	ThrowIfFailed(list->Close());
 
-	ID3D12CommandList* cmdLists[] = { Resource::instance()->getCommandList() };
-	Resource::instance()->getCommandQueue()->ExecuteCommandLists(1, cmdLists);
+	ID3D12CommandList* cmdLists[] = { list };
+	queue->ExecuteCommandLists(1, cmdLists);
 
 	return S_OK;
 }
@@ -414,42 +454,91 @@ HRESULT Render::createPeraView()
 	return S_OK;
 }
 
-HRESULT Render::updateMvpMatrix()
+HRESULT Render::updateMvpMatrix(bool animationReversed)
 {
+#define MODIFY_LIGHT_POS (1)
+
 	using namespace DirectX;
 
-	constexpr XMFLOAT3 eye(0, 15, -15);
-	constexpr XMFLOAT3 target(0, 15, 0);
+	XMFLOAT3 eye(0, 0, 0);
+	constexpr XMFLOAT3 target(0, 0, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
-
-	const auto viewMat = XMMatrixLookAtLH(
-		XMLoadFloat3(&eye),
-		XMLoadFloat3(&target),
-		XMLoadFloat3(&up)
-	);
-
-	auto projMat = XMMatrixPerspectiveFovLH(
-		XM_PIDIV2,
-		static_cast<float>(kWindowWidth) / static_cast<float>(kWindowHeight),
-		1.0f,
-		100.0f
-	);
-
-#if DISABLE_MATRIX
-	m_sceneMatrix->view = XMMatrixIdentity();
-	m_sceneMatrix->proj = XMMatrixIdentity();
-	m_sceneMatrix->eye = XMFLOAT3(0.0f, 0.0f, 0.0f);
+#if MODIFY_LIGHT_POS
+	constexpr XMFLOAT4 light(0, 50, -10, 0);
 #else
-	m_sceneMatrix->view = viewMat;
-	m_sceneMatrix->proj = projMat;
-	m_sceneMatrix->eye = eye;
-#endif // DISABLE_MATRIX
+	constexpr XMFLOAT4 light(-1, -1, -1, 0);
+#endif // MODIFY_LIGHT_POS
+
+
+	{
+		static float angle = 0.0f;
+		constexpr float kRadius = 30.0f;
+
+		const float x = kRadius * std::sin(angle);
+		const float z = -1 * kRadius * std::cos(angle);
+
+		eye = XMFLOAT3(x, 20.0f, z);
+
+		if (!m_bAnimationEnabled)
+		{
+			;
+		}
+		else if (!animationReversed)
+		{
+			angle += 0.01f;
+		}
+		else
+		{
+			angle -= 0.01f;
+		}
+	}
+
+	{
+		const XMMATRIX viewMat = XMMatrixLookAtLH(
+			XMLoadFloat3(&eye),
+			XMLoadFloat3(&target),
+			XMLoadFloat3(&up)
+		);
+
+		m_sceneMatrix->view = viewMat;
+	}
+
+	{
+		const XMMATRIX projMat = XMMatrixPerspectiveFovLH(
+			XM_PIDIV2,
+			static_cast<float>(Config::kWindowWidth) / static_cast<float>(Config::kWindowHeight),
+			1.0f,
+			100.0f
+		);
+
+		m_sceneMatrix->proj = projMat;
+	}
+
+	{
+#if MODIFY_LIGHT_POS
+		const XMVECTOR lightPos = XMLoadFloat4(&light);
+
+		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
+			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
+#else
+		const XMVECTOR lightVec = XMLoadFloat4(&light);
+
+		const XMVECTOR lightPos = XMLoadFloat3(&target) +
+			XMVector3Normalize(lightVec) *
+			XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
+
+		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
+			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
+#endif // MODIFY_LIGHT_POS
+	}
+
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
+	m_sceneMatrix->eye = eye;
 
 	return S_OK;
 }
 
-HRESULT Render::clearRenderTarget(ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH)
+HRESULT Render::clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH)
 {
 	D3D12_RESOURCE_BARRIER barrier = { };
 	{
@@ -460,16 +549,16 @@ HRESULT Render::clearRenderTarget(ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	}
-	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	list->ResourceBarrier(1, &barrier);
 
-	Resource::instance()->getCommandList()->ClearRenderTargetView(rtvH, kClearColorRenderTarget, 0, nullptr);
+	list->ClearRenderTargetView(rtvH, kClearColorRenderTarget, 0, nullptr);
 
 	return S_OK;
 }
 
-HRESULT Render::clearDepthRenderTarget(D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
+HRESULT Render::clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
 {
-	Resource::instance()->getCommandList()->ClearDepthStencilView(
+	list->ClearDepthStencilView(
 		dsvH,
 		D3D12_CLEAR_FLAG_DEPTH,
 		1.0f,
@@ -480,7 +569,7 @@ HRESULT Render::clearDepthRenderTarget(D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
 	return S_OK;
 }
 
-HRESULT Render::clearPeraRenderTarget()
+HRESULT Render::clearPeraRenderTarget(ID3D12GraphicsCommandList* list)
 {
 	D3D12_RESOURCE_BARRIER barrier = { };
 	{
@@ -491,21 +580,21 @@ HRESULT Render::clearPeraRenderTarget()
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	}
-	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	list->ResourceBarrier(1, &barrier);
 
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
-	Resource::instance()->getCommandList()->ClearRenderTargetView(rtvH, kClearColorPeraRenderTarget, 0, nullptr);
+	list->ClearRenderTargetView(rtvH, kClearColorPeraRenderTarget, 0, nullptr);
 
 	return S_OK;
 }
 
-HRESULT Render::preRenderToPeraBuffer()
+HRESULT Render::preRenderToPeraBuffer(ID3D12GraphicsCommandList* list)
 {
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 	const D3D12_CPU_DESCRIPTOR_HANDLE dsvH = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
-	Resource::instance()->getCommandList()->OMSetRenderTargets(
+	list->OMSetRenderTargets(
 		1,
 		&rtvH,
 		false,
@@ -514,7 +603,7 @@ HRESULT Render::preRenderToPeraBuffer()
 	return S_OK;
 }
 
-HRESULT Render::postRenderToPeraBuffer()
+HRESULT Render::postRenderToPeraBuffer(ID3D12GraphicsCommandList* list)
 {
 	ID3D12Resource* resource = m_peraResource.Get();
 
@@ -527,7 +616,7 @@ HRESULT Render::postRenderToPeraBuffer()
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	}
-	Resource::instance()->getCommandList()->ResourceBarrier(1, &barrier);
+	list->ResourceBarrier(1, &barrier);
 
 	return S_OK;
 }
@@ -547,11 +636,11 @@ HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12Descrip
 		{
 			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 			resourceDesc.Alignment = 0;
-			resourceDesc.Width = kWindowWidth;
-			resourceDesc.Height = kWindowHeight;
+			resourceDesc.Width = Config::kWindowWidth;
+			resourceDesc.Height = Config::kWindowHeight;
 			resourceDesc.DepthOrArraySize = 1;
 			resourceDesc.MipLevels = 1;
-			resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS; // should be be DXGI_FORMAT_D32_FLOAT because the buffer will be read as a texture
+			resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS; // should be DXGI_FORMAT_D32_FLOAT because the buffer will be read as a texture
 			resourceDesc.SampleDesc = { 1, 0 };
 			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
@@ -651,6 +740,127 @@ HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12Descrip
 			resource->Get(),
 			&srvDesc,
 			srvDescHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	return S_OK;
+}
+
+HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap)
+{
+	constexpr uint32_t kShadowBufferWidth = 1024;
+	constexpr uint32_t kShadowBufferHeight = kShadowBufferWidth;
+
+	{
+		D3D12_HEAP_PROPERTIES heapProp = { };
+		{
+			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapProp.CreationNodeMask = 0;
+			heapProp.VisibleNodeMask = 0;
+		}
+
+		D3D12_RESOURCE_DESC resourceDesc = { };
+		{
+			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			resourceDesc.Alignment = 0;
+			resourceDesc.Width = kShadowBufferWidth;
+			resourceDesc.Height = kShadowBufferHeight;
+			resourceDesc.DepthOrArraySize = 1;
+			resourceDesc.MipLevels = 1;
+			resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			resourceDesc.SampleDesc = { 1, 0 };
+			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		}
+
+		D3D12_CLEAR_VALUE clearVal = { };
+		{
+			clearVal.Format = DXGI_FORMAT_D32_FLOAT;
+			clearVal.DepthStencil.Depth = 1.0f;
+			clearVal.DepthStencil.Stencil = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			&clearVal,
+			IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = resource->Get()->SetName(Util::getWideStringFromString("lightDepthBuffer").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(dsvHeap->ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = dsvHeap->Get()->SetName(Util::getWideStringFromString("lightDepthBufferDsvHeap").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = { };
+		{
+			dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+			dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+			dsvDesc.Texture2D.MipSlice = 0;
+		}
+
+		Resource::instance()->getDevice()->CreateDepthStencilView(
+			resource->Get(),
+			&dsvDesc,
+			dsvHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		{
+			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heapDesc.NumDescriptors = 1;
+			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			heapDesc.NodeMask = 0;
+		}
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(srvHeap->ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = srvHeap->Get()->SetName(Util::getWideStringFromString("lightDepthBufferSrvHeap").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
+		{
+			srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Texture2D.MostDetailedMip = 0;
+			srvDesc.Texture2D.MipLevels = 1;
+			srvDesc.Texture2D.PlaneSlice = 0;
+			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+		}
+
+		Resource::instance()->getDevice()->CreateShaderResourceView(
+			resource->Get(),
+			&srvDesc,
+			srvHeap->Get()->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	return S_OK;

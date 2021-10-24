@@ -24,11 +24,6 @@
 
 using namespace Microsoft::WRL;
 
-ComPtr<ID3D12RootSignature> PmdActor::m_rootSignature = nullptr;
-ComPtr<ID3D12PipelineState> PmdActor::m_pipelineState = nullptr;
-ComPtr<ID3DBlob> PmdActor::m_vsBlob = nullptr;
-ComPtr<ID3DBlob> PmdActor::m_psBlob = nullptr;
-
 struct PMDHeader
 {
 	FLOAT version = 0.0f;
@@ -206,7 +201,7 @@ static constexpr size_t kNumSignature = 3;
 static constexpr size_t kPmdVertexSize = sizeof(PMDVertex);
 const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
 
-static HRESULT setViewportScissor();
+static HRESULT setViewportScissor(int32_t width, int32_t height);
 static std::string getModelPath(PmdActor::Model model);
 static std::string getMotionPath();
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath);
@@ -218,37 +213,6 @@ static HRESULT createBufferResource(ComPtr<ID3D12Resource>* vertResource, size_t
 static float getYfromXOnBezier(float x, const DirectX::XMFLOAT2& a, const DirectX::XMFLOAT2& b, uint8_t n);
 static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& origin, const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right);
 static DirectX::XMMATRIX lookAtMatrix(const DirectX::XMVECTOR& lookat, const DirectX::XMFLOAT3& up, const DirectX::XMFLOAT3& right);
-
-void PmdActor::release()
-{
-	m_rootSignature.Reset();
-	m_pipelineState.Reset();
-	m_vsBlob.Reset();
-	m_psBlob.Reset();
-}
-
-ID3D12PipelineState* PmdActor::getPipelineState()
-{
-	if (m_pipelineState)
-		return m_pipelineState.Get();
-
-	ThrowIfFailed(createPipelineState());
-	return m_pipelineState.Get();
-}
-
-ID3D12RootSignature* PmdActor::getRootSignature()
-{
-	if (m_rootSignature)
-		return m_rootSignature.Get();
-
-	ThrowIfFailed(createRootSignature(&m_rootSignature));
-	return m_rootSignature.Get();
-}
-
-D3D12_PRIMITIVE_TOPOLOGY PmdActor::getPrimitiveTopology()
-{
-	return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-}
 
 PmdActor::PmdActor()
 {
@@ -262,6 +226,12 @@ PmdActor::PmdActor()
 	ThrowIfFailed(ret);
 
 	ret = createDebugResources();
+	ThrowIfFailed(ret);
+
+	ret = createPipelineState();
+	ThrowIfFailed(ret);
+
+	ret = createRootSignature(&m_rootSignature);
 	ThrowIfFailed(ret);
 }
 
@@ -295,51 +265,106 @@ void PmdActor::update(bool animationReversed)
 
 	*m_worldMatrixPointer = worldMat;
 
-	if (!m_bAnimation)
-		return;
-
-	if (!animationReversed)
-		angle += 0.02f;
-	else
-		angle -= 0.02f;
-
 	updateMotion();
 }
 
-HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
+HRESULT PmdActor::renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap) const
 {
-	ThrowIfFalse(getPipelineState() != nullptr);
-	Resource::instance()->getCommandList()->SetPipelineState(getPipelineState());
+	ThrowIfFalse(list != nullptr);
+	ThrowIfFalse(sceneDescHeap != nullptr);
+	ThrowIfFalse(depthHeap != nullptr);
+
+	ThrowIfFailed(setCommonPipelineConfig(list));
+
+	setViewportScissor(Config::kShadowBufferWidth, Config::kShadowBufferHeight);
+
+	ThrowIfFalse(m_shadowPipelineState != nullptr);
+	list->SetPipelineState(m_shadowPipelineState.Get());
 
 	ThrowIfFalse(getRootSignature() != nullptr);
-	Resource::instance()->getCommandList()->SetGraphicsRootSignature(getRootSignature());
+	list->SetGraphicsRootSignature(getRootSignature());
 
-	setViewportScissor();
-	Resource::instance()->getCommandList()->IASetPrimitiveTopology(getPrimitiveTopology());
-	Resource::instance()->getCommandList()->IASetVertexBuffers(0, 1, &m_vbView);
-	Resource::instance()->getCommandList()->IASetIndexBuffer(&m_ibView);
+	// this is shadow map path. Unbind render target
+	{
+		const D3D12_CPU_DESCRIPTOR_HANDLE handle = depthHeap->GetCPUDescriptorHandleForHeapStart();
+
+		list->OMSetRenderTargets(
+			0,
+			nullptr,
+			false,
+			&handle);
+	}
 
 	// bind to b0: view & proj matrix
 	{
 		ThrowIfFalse(sceneDescHeap != nullptr);
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, &sceneDescHeap);
-		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+		list->SetDescriptorHeaps(1, &sceneDescHeap);
+		list->SetGraphicsRootDescriptorTable(
 			0, // b0
 			sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	// bind to b1: transform matrix
 	{
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
-		Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
+		list->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
+		list->SetGraphicsRootDescriptorTable(
 			1, // b1
 			m_transformDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	// bind to b2: material
+	{
+		list->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
+	}
+
+	// draw call
+	list->DrawIndexedInstanced(m_indicesNum, 1, 0, 0, 0);
+
+	return S_OK;
+}
+
+HRESULT PmdActor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthLightSrvHeap) const
+{
+	ThrowIfFalse(list != nullptr);
+	ThrowIfFalse(sceneDescHeap != nullptr);
+
+	ThrowIfFailed(setCommonPipelineConfig(list));
+
+	ThrowIfFalse(getPipelineState() != nullptr);
+	list->SetPipelineState(getPipelineState());
+
+	ThrowIfFalse(getRootSignature() != nullptr);
+	list->SetGraphicsRootSignature(getRootSignature());
+
+	// bind to root param 0: view & proj matrix
+	{
+		ThrowIfFalse(sceneDescHeap != nullptr);
+		list->SetDescriptorHeaps(1, &sceneDescHeap);
+		list->SetGraphicsRootDescriptorTable(
+			0, // root param 0
+			sceneDescHeap->GetGPUDescriptorHandleForHeapStart());
+	}
+
+	// bind to root param 1: transform matrix
+	{
+		list->SetDescriptorHeaps(1, m_transformDescHeap.GetAddressOf());
+		list->SetGraphicsRootDescriptorTable(
+			1, // root param 1
+			m_transformDescHeap->GetGPUDescriptorHandleForHeapStart());
+	}
+
+	// bind to root param 3: depth map texture
+	{
+		list->SetDescriptorHeaps(1, &depthLightSrvHeap);
+		list->SetGraphicsRootDescriptorTable(
+			3, // root param 3
+			depthLightSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	}
+
+	// bind to root param 2: material
 	// draw call
 	{
-		Resource::instance()->getCommandList()->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
+		list->SetDescriptorHeaps(1, m_materialDescHeap.GetAddressOf());
 
 		const auto cbvSrvIncSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 5;
 		auto materialH = m_materialDescHeap->GetGPUDescriptorHandleForHeapStart();
@@ -347,12 +372,12 @@ HRESULT PmdActor::render(ID3D12DescriptorHeap* sceneDescHeap) const
 
 		for (const auto& m : m_materials)
 		{
-			Resource::instance()->getCommandList()->SetGraphicsRootDescriptorTable(
-				2, // b2
+			list->SetGraphicsRootDescriptorTable(
+				2, // root param 2
 				materialH);
 
 			constexpr UINT kInstanceCount = 2; // [0] mesh, [1] shadow
-			Resource::instance()->getCommandList()->DrawIndexedInstanced(m.indicesNum, kInstanceCount, indexOffset, 0, 0);
+			list->DrawIndexedInstanced(m.indicesNum, kInstanceCount, indexOffset, 0, 0);
 
 			materialH.ptr += cbvSrvIncSize;
 			indexOffset += m.indicesNum;
@@ -444,6 +469,7 @@ HRESULT PmdActor::loadShaders()
 {
 	ThrowIfFalse(m_vsBlob == nullptr);
 	ThrowIfFalse(m_psBlob == nullptr);
+	ThrowIfFalse(m_shadowVsBlob == nullptr);
 
 	ComPtr<ID3DBlob> errorBlob = nullptr;
 
@@ -455,7 +481,7 @@ HRESULT PmdActor::loadShaders()
 		"vs_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
-		&m_vsBlob,
+		m_vsBlob.ReleaseAndGetAddressOf(),
 		errorBlob.ReleaseAndGetAddressOf()
 	);
 
@@ -470,13 +496,31 @@ HRESULT PmdActor::loadShaders()
 		L"BasicPixelShader.hlsl",
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"BasicPs",
+		"BasicWithShadowMapPs",
 		"ps_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
-		&m_psBlob,
+		m_psBlob.ReleaseAndGetAddressOf(),
 		errorBlob.ReleaseAndGetAddressOf()
 	);
+
+	if (FAILED(ret))
+	{
+		outputDebugMessage(errorBlob.Get());
+	}
+	ThrowIfFailed(ret);
+
+
+	ret = D3DCompileFromFile(
+		L"BasicVertexShader.hlsl",
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,
+		"shadowVs",
+		"vs_5_0",
+		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+		0,
+		m_shadowVsBlob.ReleaseAndGetAddressOf(),
+		errorBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(ret))
 	{
@@ -487,12 +531,85 @@ HRESULT PmdActor::loadShaders()
 	return S_OK;
 }
 
+HRESULT PmdActor::createPipelineState()
+{
+	ThrowIfFalse(m_pipelineState == nullptr);
+	ThrowIfFalse(m_shadowPipelineState == nullptr);
+
+	if (m_rootSignature == nullptr)
+	{
+		ThrowIfFailed(createRootSignature(&m_rootSignature));
+	}
+
+	if (m_vsBlob == nullptr || m_psBlob == nullptr)
+	{
+		ThrowIfFailed(loadShaders());
+	}
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
+	{
+		gpipeDesc.pRootSignature = m_rootSignature.Get();
+		gpipeDesc.VS = { m_vsBlob->GetBufferPointer(), m_vsBlob->GetBufferSize() };
+		gpipeDesc.PS = { m_psBlob->GetBufferPointer(), m_psBlob->GetBufferSize() };
+		// D3D12_SHADER_BYTECODE gpipeDesc.DS;
+		// D3D12_SHADER_BYTECODE gpipeDesc.HS;
+		// D3D12_SHADER_BYTECODE gpipeDesc.GS;
+		// D3D12_STREAM_OUTPUT_DESC StreamOutput;
+		gpipeDesc.BlendState.AlphaToCoverageEnable = false;
+		gpipeDesc.BlendState.IndependentBlendEnable = false;
+		gpipeDesc.BlendState.RenderTarget[0].BlendEnable = false;
+		gpipeDesc.BlendState.RenderTarget[0].LogicOpEnable = false;
+		gpipeDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+		gpipeDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+		gpipeDesc.RasterizerState = {
+			D3D12_FILL_MODE_SOLID,
+			D3D12_CULL_MODE_NONE,
+			true /* DepthClipEnable */,
+			false /* MultisampleEnable */
+		};
+		gpipeDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		gpipeDesc.InputLayout = { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
+		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		gpipeDesc.NumRenderTargets = 1;
+		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		gpipeDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+		gpipeDesc.SampleDesc = {
+			1 /* count */,
+			0 /* quality */
+		};
+		// UINT NodeMask;
+		// D3D12_CACHED_PIPELINE_STATE CachedPSO;
+		// D3D12_PIPELINE_STATE_FLAGS Flags;
+	}
+
+	auto ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+		&gpipeDesc,
+		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(ret);
+
+	{
+
+		gpipeDesc.VS = { m_shadowVsBlob->GetBufferPointer(), m_shadowVsBlob->GetBufferSize() };
+		gpipeDesc.PS = { nullptr, 0 };
+		gpipeDesc.NumRenderTargets = 0;
+		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+	}
+
+	ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+		&gpipeDesc,
+		IID_PPV_ARGS(m_shadowPipelineState.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(ret);
+
+	return S_OK;
+}
+
 HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature)
 {
 	ThrowIfFalse(rootSignature != nullptr);
 	ThrowIfFalse(rootSignature->Get() == nullptr);
 
-	D3D12_DESCRIPTOR_RANGE descTblRange[4] = { };
+	D3D12_DESCRIPTOR_RANGE descTblRange[5] = { };
 	{
 		// view & proj matrix
 		descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
@@ -512,16 +629,22 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 		descTblRange[2].BaseShaderRegister = 2; // b2
 		descTblRange[2].RegisterSpace = 0;
 		descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		// texture
+		// textures
 		descTblRange[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		descTblRange[3].NumDescriptors = 4;
 		descTblRange[3].BaseShaderRegister = 0; // t0, t1, t2, t3
 		descTblRange[3].RegisterSpace = 0;
 		descTblRange[3].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		// texture to read shadow map
+		descTblRange[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		descTblRange[4].NumDescriptors = 1;
+		descTblRange[4].BaseShaderRegister = 4; // t4
+		descTblRange[4].RegisterSpace = 0;
+		descTblRange[4].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 	}
 
 	// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
-	D3D12_ROOT_PARAMETER rootParam[3] = { };
+	D3D12_ROOT_PARAMETER rootParam[4] = { };
 	{
 		// view & proj matrix
 		rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -538,6 +661,8 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 		rootParam[2].DescriptorTable.NumDescriptorRanges = 2;
 		rootParam[2].DescriptorTable.pDescriptorRanges = &descTblRange[2];
 		rootParam[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		// texture (shadow map)
+		CD3DX12_ROOT_PARAMETER::InitAsDescriptorTable(rootParam[3], 1, &descTblRange[4]);
 	}
 
 	D3D12_STATIC_SAMPLER_DESC samplerDesc[2] = { };
@@ -573,7 +698,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
-		rootSignatureDesc.NumParameters = 3;
+		rootSignatureDesc.NumParameters = 4;
 		rootSignatureDesc.pParameters = &rootParam[0];
 		rootSignatureDesc.NumStaticSamplers = 2;
 		rootSignatureDesc.pStaticSamplers = &samplerDesc[0];
@@ -606,68 +731,29 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 	return S_OK;
 }
 
-HRESULT PmdActor::createPipelineState()
+ID3D12PipelineState* PmdActor::getPipelineState() const
 {
-	ThrowIfFalse(m_pipelineState == nullptr);
+	ThrowIfFalse(m_pipelineState != nullptr);
+	return m_pipelineState.Get();
+}
 
-	if (m_rootSignature == nullptr)
-	{
-		ThrowIfFailed(createRootSignature(&m_rootSignature));
-	}
+ID3D12RootSignature* PmdActor::getRootSignature() const
+{
+	ThrowIfFalse(m_rootSignature != nullptr);
+	return m_rootSignature.Get();
+}
 
-	if (m_vsBlob == nullptr || m_psBlob == nullptr)
-	{
-		ThrowIfFailed(loadShaders());
-	}
+constexpr D3D12_PRIMITIVE_TOPOLOGY PmdActor::getPrimitiveTopology() const
+{
+	return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+}
 
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpipeDesc = { };
-	{
-		gpipeDesc.pRootSignature = m_rootSignature.Get();
-		gpipeDesc.VS = { m_vsBlob->GetBufferPointer(), m_vsBlob->GetBufferSize() };
-		gpipeDesc.PS = { m_psBlob->GetBufferPointer(), m_psBlob->GetBufferSize() };
-		// D3D12_SHADER_BYTECODE gpipeDesc.DS;
-		// D3D12_SHADER_BYTECODE gpipeDesc.HS;
-		// D3D12_SHADER_BYTECODE gpipeDesc.GS;
-		// D3D12_STREAM_OUTPUT_DESC StreamOutput;
-		gpipeDesc.BlendState.AlphaToCoverageEnable = false;
-		gpipeDesc.BlendState.IndependentBlendEnable = false;
-		gpipeDesc.BlendState.RenderTarget[0].BlendEnable = false;
-		gpipeDesc.BlendState.RenderTarget[0].LogicOpEnable = false;
-		gpipeDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-		gpipeDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-		gpipeDesc.RasterizerState = {
-			D3D12_FILL_MODE_SOLID,
-			D3D12_CULL_MODE_NONE,
-			true /* DepthClipEnable */,
-			false /* MultisampleEnable */
-		};
-		gpipeDesc.DepthStencilState.DepthEnable = true;
-		gpipeDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-		gpipeDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
-		gpipeDesc.DepthStencilState.StencilEnable = false;
-		//gpipeDesc.DepthStencilState.StencilReadMask = 0;
-		//gpipeDesc.DepthStencilState.StencilWriteMask = 0;
-		//D3D12_DEPTH_STENCILOP_DESC FrontFace;
-		//D3D12_DEPTH_STENCILOP_DESC BackFace;
-		gpipeDesc.InputLayout = { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
-		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
-		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		gpipeDesc.NumRenderTargets = 1;
-		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		gpipeDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-		gpipeDesc.SampleDesc = {
-			1 /* count */,
-			0 /* quality */
-		};
-		// UINT NodeMask;
-		// D3D12_CACHED_PIPELINE_STATE CachedPSO;
-		// D3D12_PIPELINE_STATE_FLAGS Flags;
-	}
-
-	auto ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
-		&gpipeDesc,
-		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
-	ThrowIfFailed(ret);
+HRESULT PmdActor::setCommonPipelineConfig(ID3D12GraphicsCommandList* list) const
+{
+	setViewportScissor(Config::kWindowWidth, Config::kWindowHeight);
+	list->IASetPrimitiveTopology(getPrimitiveTopology());
+	list->IASetVertexBuffers(0, 1, &m_vbView);
+	list->IASetIndexBuffer(&m_ibView);
 
 	return S_OK;
 }
@@ -1738,28 +1824,12 @@ void PmdActor::solveCCDIK(const PmdIk& ik)
 	}
 }
 
-static HRESULT setViewportScissor()
+static HRESULT setViewportScissor(int32_t width, int32_t height)
 {
-	D3D12_VIEWPORT viewport = { };
-	{
-		viewport.Width = kWindowWidth;
-		viewport.Height = kWindowHeight;
-		viewport.TopLeftX = 0;
-		viewport.TopLeftY = 0;
-		viewport.MaxDepth = 1.0f;
-		viewport.MinDepth = 0.0f;
-	}
-
+	const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
 	Resource::instance()->getCommandList()->RSSetViewports(1, &viewport);
 
-	D3D12_RECT scissorRect = { };
-	{
-		scissorRect.top = 0;
-		scissorRect.left = 0;
-		scissorRect.right = scissorRect.left + kWindowWidth;
-		scissorRect.bottom = scissorRect.top + kWindowHeight;
-	}
-
+	const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, width, height);
 	Resource::instance()->getCommandList()->RSSetScissorRects(1, &scissorRect);
 
 	return S_OK;

@@ -48,8 +48,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 	ThrowIfFalse(RegisterClassEx(&w) != 0);
 
-	const long window_width = kWindowWidth;
-	const long window_height = kWindowHeight;
+	const long window_width = Config::kWindowWidth;
+	const long window_height = Config::kWindowHeight;
 	RECT wrc = { 0, 0, window_width, window_height };
 
 	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
@@ -163,7 +163,6 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 
 	// release resource
 	{
-		PmdActor::release();
 		ThrowIfFailed(Resource::instance()->release());
 		Loader::quit();
 		Resource::instance()->destroy();

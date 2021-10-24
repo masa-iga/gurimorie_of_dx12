@@ -25,6 +25,9 @@
     <Filter Include="リソース ファイル\normal">
       <UniqueIdentifier>{3f47d75e-40ba-46d2-b1ef-9ffd056d40d3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="シェーダ ファイル">
+      <UniqueIdentifier>{ec1c9d6e-c952-4eb1-a3fa-534e444542d0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -55,6 +58,9 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="shadow.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="floor.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
   </ItemGroup>
@@ -89,19 +95,40 @@
     <ClInclude Include="shadow.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="BasicVertexShader.hlsl" />
-    <FxCompile Include="BasicPixelShader.hlsl" />
-    <FxCompile Include="peraVertex.hlsl" />
-    <FxCompile Include="peraPixel.hlsl" />
-    <FxCompile Include="shadowVertex.hlsl" />
-    <FxCompile Include="shadowPixel.hlsl" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="BasicShaderHeader.hlsli">
+    <ClInclude Include="floor.h">
       <Filter>ヘッダー ファイル</Filter>
-    </None>
+    </ClInclude>
+    <ClInclude Include="constant.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="BasicPixelShader.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="BasicVertexShader.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="peraPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="peraVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shadowPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="shadowVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="floorVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="floorPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
     <None Include="Model\a1.sph">
       <Filter>リソース ファイル\Model</Filter>
     </None>
@@ -171,8 +198,14 @@
     <None Include="Motion\squat.vmd">
       <Filter>リソース ファイル\Motion</Filter>
     </None>
+    <None Include="BasicShaderHeader.hlsli">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
     <None Include="peraHeader.hlsli">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="floorHeader.hlsli">
+      <Filter>シェーダ ファイル</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

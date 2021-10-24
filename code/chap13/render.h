@@ -8,6 +8,7 @@
 #include <vector>
 #include <wrl.h>
 #pragma warning(pop)
+#include "floor.h"
 #include "pmd_actor.h"
 #include "pera.h"
 #include "shadow.h"
@@ -17,6 +18,7 @@ struct SceneMatrix
 {
 	DirectX::XMMATRIX view = { };
 	DirectX::XMMATRIX proj = { };
+	DirectX::XMMATRIX lightCamera = { };
 	DirectX::XMMATRIX shadow = { };
 	DirectX::XMFLOAT3 eye = { };
 };
@@ -35,12 +37,12 @@ private:
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
 	HRESULT createPeraView();
-	HRESULT updateMvpMatrix();
-	HRESULT clearRenderTarget(ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH);
-	HRESULT clearDepthRenderTarget(D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
-	HRESULT clearPeraRenderTarget();
-	HRESULT preRenderToPeraBuffer();
-	HRESULT postRenderToPeraBuffer();
+	HRESULT updateMvpMatrix(bool animationReversed);
+	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH);
+	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
+	HRESULT clearPeraRenderTarget(ID3D12GraphicsCommandList* list);
+	HRESULT preRenderToPeraBuffer(ID3D12GraphicsCommandList* list);
+	HRESULT postRenderToPeraBuffer(ID3D12GraphicsCommandList* list);
 
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
@@ -48,6 +50,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_depthSrvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_lightDepthDsvHeap = nullptr; // TODO: bundle the heaps into one
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_lightDepthSrvHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_lightDepthResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_sceneDescHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneMatrixResource = nullptr;
 	SceneMatrix* m_sceneMatrix = nullptr;
@@ -55,6 +60,8 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
+
+	Floor m_floor;
 
 	std::vector<PmdActor> m_pmdActors;
 

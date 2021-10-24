@@ -20,47 +20,37 @@ HRESULT Shadow::init()
     return S_OK;
 }
 
-HRESULT Shadow::render(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap)
+HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap)
 {
-    ID3D12GraphicsCommandList* commandList = Resource::instance()->getCommandList();
+    const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.f, 0.f, Config::kWindowWidth, Config::kWindowHeight);
+    const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+    return render(pCommandList, pRtvHeap, texDescHeap, viewport, scissorRect);
+}
 
-    commandList->OMSetRenderTargets(1, pRtvHeap, false, nullptr);
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    commandList->IASetVertexBuffers(0, 1, &m_vbView);
+HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
+{
+	pCommandList->OMSetRenderTargets(1, pRtvHeap, false, nullptr);
 
+	pCommandList->RSSetViewports(1, &viewport);
+	pCommandList->RSSetScissorRects(1, &scissorRect);
+
+	pCommandList->SetGraphicsRootSignature(m_rootSignature.Get());
+	pCommandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
 	{
-		D3D12_VIEWPORT viewport = { };
-		{
-			viewport.Width = kWindowWidth;
-			viewport.Height = kWindowHeight;
-			viewport.TopLeftX = 0;
-			viewport.TopLeftY = 0;
-			viewport.MaxDepth = 1.0f;
-			viewport.MinDepth = 0.0f;
-		}
-		commandList->RSSetViewports(1, &viewport);
+		pCommandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	}
 
-	{
-		D3D12_RECT scissorRect = { };
-		{
-			scissorRect.top = 0;
-			scissorRect.left = 0;
-			scissorRect.right = scissorRect.left + kWindowWidth;
-			scissorRect.bottom = scissorRect.top + kWindowHeight;
-		}
-		commandList->RSSetScissorRects(1, &scissorRect);
-	}
+	pCommandList->SetPipelineState(m_pipelineStates.at(Type::kQuadTriangle).Get());
+	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(Type::kQuadTriangle));
 
-    commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-    commandList->SetPipelineState(m_pipelineState.Get());
+	pCommandList->DrawInstanced(4, 1, 0, 0);
 
-    commandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
-    {
-        commandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
-    }
+	pCommandList->SetPipelineState(m_pipelineStates.at(Type::kFrameLine).Get());
+    pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
+    pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(Type::kFrameLine));
 
-    commandList->DrawInstanced(4, 1, 0, 0);
+	pCommandList->DrawInstanced(5, 1, 0, 0);
 
 	return S_OK;
 }
@@ -77,7 +67,7 @@ HRESULT Shadow::compileShaders()
         "vs_5_0",
         0,
         0,
-        m_vs.ReleaseAndGetAddressOf(),
+        m_commonVs.ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -94,7 +84,7 @@ HRESULT Shadow::compileShaders()
         "ps_5_0",
         0,
         0,
-        m_ps.ReleaseAndGetAddressOf(),
+        m_psArray.at(Type::kQuadTriangle).ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -102,6 +92,23 @@ HRESULT Shadow::compileShaders()
 		outputDebugMessage(errBlob.Get());
         ThrowIfFalse(false);
 	}
+
+    result = D3DCompileFromFile(
+        L"shadowPixel.hlsl",
+        nullptr,
+        D3D_COMPILE_STANDARD_FILE_INCLUDE,
+        "black",
+        "ps_5_0",
+        0,
+        0,
+        m_psArray.at(Type::kFrameLine).ReleaseAndGetAddressOf(),
+        errBlob.ReleaseAndGetAddressOf());
+
+    if (FAILED(result))
+    {
+        outputDebugMessage(errBlob.Get());
+        ThrowIfFalse(false);
+    }
 
 	return S_OK;
 }
@@ -114,11 +121,19 @@ HRESULT Shadow::createVertexBuffer()
         DirectX::XMFLOAT2 uv = { };
     };
 
-    constexpr Vertex vertex[4] = {
+    constexpr Vertex quadTriangleVertecies[4] = {
 		{{-1.0f, -1.0f, 0.1f }, { 0.0f , 1.0f}}, // lower-left
 		{{-1.0f,  1.0f, 0.1f }, { 0.0f , 0.0f}}, // upper-left
 		{{ 1.0f, -1.0f, 0.1f }, { 1.0f , 1.0f}}, // lower-right
 		{{ 1.0f,  1.0f, 0.1f }, { 1.0f , 0.0f}}, // upper-right
+    };
+
+    constexpr Vertex frameLineVertecies[] = {
+        {{-0.999f, -0.999f, 0.0f }, { 0.0f , 1.0f}}, // lower-left
+        {{-0.999f,  0.999f, 0.0f }, { 0.0f , 0.0f}}, // upper-left
+        {{ 0.999f,  0.999f, 0.0f }, { 1.0f , 0.0f}}, // upper-right
+        {{ 0.999f, -0.999f, 0.0f }, { 1.0f , 1.0f}}, // lower-right
+        {{-0.999f, -0.999f, 0.0f }, { 0.0f , 1.0f}}, // lower-left
     };
 
     {
@@ -135,7 +150,7 @@ HRESULT Shadow::createVertexBuffer()
         {
             resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
             resourceDesc.Alignment = 0;
-            resourceDesc.Width = sizeof(vertex);
+            resourceDesc.Width = sizeof(quadTriangleVertecies);
             resourceDesc.Height = 1;
             resourceDesc.DepthOrArraySize = 1;
             resourceDesc.MipLevels = 1;
@@ -145,34 +160,86 @@ HRESULT Shadow::createVertexBuffer()
             resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
         }
 
-        auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-            &heapProp,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(m_vbResource.ReleaseAndGetAddressOf()));
-        ThrowIfFailed(result);
+		auto& resource = m_vbResources.at(Type::kQuadTriangle);
 
-        result = m_vbResource.Get()->SetName(Util::getWideStringFromString("peraVertexBuffer").c_str());
-        ThrowIfFailed(result);
+        {
+            auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+                &heapProp,
+                D3D12_HEAP_FLAG_NONE,
+                &resourceDesc,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
+            ThrowIfFailed(result);
+
+            result = resource.Get()->SetName(Util::getWideStringFromString("shadowVertexQuadTriangleBuffer").c_str());
+            ThrowIfFailed(result);
+        }
+
+		{
+			Vertex* pVertex = nullptr;
+
+			auto result = resource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
+			ThrowIfFailed(result);
+
+			std::copy(std::begin(quadTriangleVertecies), std::end(quadTriangleVertecies), pVertex);
+
+			resource.Get()->Unmap(0, nullptr);
+		}
+		{
+			D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(Type::kQuadTriangle);
+
+			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
+			vbView.SizeInBytes = sizeof(quadTriangleVertecies);
+			vbView.StrideInBytes = sizeof(Vertex);
+		}
     }
 
-    {
-        Vertex* pVertex = nullptr;
-
-        auto result = m_vbResource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
-        ThrowIfFailed(result);
-
-        std::copy(std::begin(vertex), std::end(vertex), pVertex);
-
-        m_vbResource.Get()->Unmap(0, nullptr);
-    }
 
     {
-		m_vbView.BufferLocation = m_vbResource.Get()->GetGPUVirtualAddress();
-		m_vbView.SizeInBytes = sizeof(vertex);
-		m_vbView.StrideInBytes = sizeof(Vertex);
+        D3D12_RESOURCE_DESC resourceDesc = m_vbResources.at(Type::kQuadTriangle).Get()->GetDesc();
+        D3D12_HEAP_PROPERTIES heapProp = { };
+
+        {
+            auto result = m_vbResources.at(Type::kQuadTriangle).Get()->GetHeapProperties(&heapProp, nullptr);
+            ThrowIfFailed(result);
+
+            resourceDesc.Width = sizeof(frameLineVertecies);
+        }
+
+		auto& resource = m_vbResources.at(Type::kFrameLine);
+
+        {
+            auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+                &heapProp,
+                D3D12_HEAP_FLAG_NONE,
+                &resourceDesc,
+                D3D12_RESOURCE_STATE_GENERIC_READ,
+                nullptr,
+                IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
+            ThrowIfFailed(result);
+
+            result = resource.Get()->SetName(Util::getWideStringFromString("shadowVertexFrameLineBuffer").c_str());
+            ThrowIfFailed(result);
+        }
+
+		{
+			Vertex* pVertex = nullptr;
+
+			auto result = resource.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertex));
+			ThrowIfFailed(result);
+
+			std::copy(std::begin(frameLineVertecies), std::end(frameLineVertecies), pVertex);
+
+			resource.Get()->Unmap(0, nullptr);
+		}
+		{
+            D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(Type::kFrameLine);
+
+			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
+			vbView.SizeInBytes = sizeof(frameLineVertecies);
+			vbView.StrideInBytes = sizeof(Vertex);
+		}
     }
 
     return S_OK;
@@ -274,8 +341,8 @@ HRESULT Shadow::createPipelineState()
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc = { };
     {
         pipelineDesc.pRootSignature = m_rootSignature.Get();
-        pipelineDesc.VS = { m_vs.Get()->GetBufferPointer(), m_vs.Get()->GetBufferSize() };
-        pipelineDesc.PS = { m_ps.Get()->GetBufferPointer(), m_ps.Get()->GetBufferSize() };
+        pipelineDesc.VS = { m_commonVs.Get()->GetBufferPointer(), m_commonVs.Get()->GetBufferSize() };
+        pipelineDesc.PS = { m_psArray.at(Type::kQuadTriangle).Get()->GetBufferPointer(), m_psArray.at(Type::kQuadTriangle).Get()->GetBufferSize() };
         //D3D12_SHADER_BYTECODE DS;
         //D3D12_SHADER_BYTECODE HS;
         //D3D12_SHADER_BYTECODE GS;
@@ -322,14 +389,33 @@ HRESULT Shadow::createPipelineState()
         //D3D12_CACHED_PIPELINE_STATE CachedPSO;
         //D3D12_PIPELINE_STATE_FLAGS Flags;
     }
+    {
+        auto& pipelineState = m_pipelineStates.at(Type::kQuadTriangle);
 
-    auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
-        &pipelineDesc,
-        IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
-    ThrowIfFailed(result);
+        auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+            &pipelineDesc,
+            IID_PPV_ARGS(pipelineState.ReleaseAndGetAddressOf()));
+        ThrowIfFailed(result);
 
-    result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("shadowPipelineState").c_str());
-    ThrowIfFailed(result);
+        result = pipelineState.Get()->SetName(Util::getWideStringFromString("shadowPipelineState").c_str());
+        ThrowIfFailed(result);
+    }
+
+    {
+		pipelineDesc.PS = { m_psArray.at(Type::kFrameLine).Get()->GetBufferPointer(), m_psArray.at(Type::kFrameLine).Get()->GetBufferSize() };
+        pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+    }
+    {
+        auto& pipelineState = m_pipelineStates.at(Type::kFrameLine);
+
+        auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+            &pipelineDesc,
+            IID_PPV_ARGS(pipelineState.ReleaseAndGetAddressOf()));
+        ThrowIfFailed(result);
+
+        result = pipelineState.Get()->SetName(Util::getWideStringFromString("shadowLinePipelineState").c_str());
+        ThrowIfFailed(result);
+    }
 
     return S_OK;
 }
