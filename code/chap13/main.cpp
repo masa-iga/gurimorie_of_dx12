@@ -139,6 +139,30 @@ static Action processKeyInput(const MSG& msg, Render* pRender)
 		case VK_SPACE:
 			pRender->toggleAnimationEnable();
 			break;
+		case VK_LEFT:
+			pRender->moveEye(MoveEye::kCounterClockwise);
+			break;
+		case VK_UP:
+			pRender->moveEye(MoveEye::kUp);
+			break;
+		case VK_RIGHT:
+			pRender->moveEye(MoveEye::kClockwise);
+			break;
+		case VK_DOWN:
+			pRender->moveEye(MoveEye::kDown);
+			break;
+		case 'A':
+			pRender->moveEye(MoveEye::kLeft);
+			break;
+		case 'W':
+			pRender->moveEye(MoveEye::kForward);
+			break;
+		case 'D':
+			pRender->moveEye(MoveEye::kRight);
+			break;
+		case 'S':
+			pRender->moveEye(MoveEye::kBackward);
+			break;
 		case 'R':
 			pRender->toggleAnimationReverse();
 			break;

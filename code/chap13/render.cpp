@@ -251,6 +251,41 @@ void Render::setFpsInImgui(float fps)
 	m_imguif.setFps(fps);
 }
 
+void Render::moveEye(MoveEye moveEye)
+{
+	switch (moveEye) {
+	case MoveEye::kNone:
+		break;
+	case MoveEye::kForward:
+		m_eyePos.z += 0.5f;
+		break;
+	case MoveEye::kBackward:
+		m_eyePos.z -= 0.5f;
+		break;
+	case MoveEye::kRight:
+		m_eyePos.x += 0.5f;
+		break;
+	case MoveEye::kLeft:
+		m_eyePos.x -= 0.5f;
+		break;
+	case MoveEye::kClockwise:
+		ThrowIfFalse(false); // TODO: impl
+		break;
+	case MoveEye::kCounterClockwise:
+		ThrowIfFalse(false); // TODO: impl
+		break;
+	case MoveEye::kUp:
+		m_eyePos.y += 0.5f;
+		break;
+	case MoveEye::kDown:
+		m_eyePos.y -= 0.5f;
+		break;
+	default:
+		ThrowIfFalse(false);
+		break;
+	}
+}
+
 HRESULT Render::createSceneMatrixBuffer()
 {
 	using namespace DirectX;
@@ -492,10 +527,14 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 		static float angle = 0.0f;
 		constexpr float kRadius = 30.0f;
 
+#if 0
 		const float x = kRadius * std::sin(angle);
 		const float z = -1 * kRadius * std::cos(angle);
 
 		eye = XMFLOAT3(x, 20.0f, z);
+#else
+		eye = m_eyePos;
+#endif
 
 		if (!m_bAnimationEnabled)
 		{
@@ -536,7 +575,8 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 #if MODIFY_LIGHT_POS
 		const XMVECTOR lightPos = XMLoadFloat4(&light);
 
-		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
+		m_sceneMatrix->lightCamera =
+			XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
 			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
 #else
 		const XMVECTOR lightVec = XMLoadFloat4(&light);

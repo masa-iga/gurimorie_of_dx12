@@ -24,6 +24,18 @@ struct SceneMatrix
 	DirectX::XMFLOAT3 eye = { };
 };
 
+enum class MoveEye {
+	kNone,
+	kForward,
+	kBackward,
+	kRight,
+	kLeft,
+	kClockwise,
+	kCounterClockwise,
+	kUp,
+	kDown,
+};
+
 class Render {
 public:
 	HRESULT init(HWND hwnd);
@@ -35,6 +47,7 @@ public:
 	void toggleAnimationEnable();
 	void toggleAnimationReverse();
 	void setFpsInImgui(float fps);
+	void moveEye(MoveEye moveEye);
 
 private:
 	HRESULT createSceneMatrixBuffer();
@@ -49,6 +62,7 @@ private:
 
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
+	DirectX::XMFLOAT3 m_eyePos = DirectX::XMFLOAT3(0.0f, 20.0f, -20.0f);
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_depthSrvHeap = nullptr;
