@@ -514,7 +514,7 @@ HRESULT Pera::createOffscreenResource()
 			heapProp.VisibleNodeMask = 0;
 		}
 
-		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getBackBuffer(0)->GetDesc();
+		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getFrameBuffer(0)->GetDesc();
 
 		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,

@@ -75,7 +75,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	{
 		Render render;
-		ThrowIfFailed(render.init());
+		ThrowIfFailed(render.init(hwnd));
 
 		MSG msg = {};
 

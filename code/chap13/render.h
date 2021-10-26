@@ -9,6 +9,7 @@
 #include <wrl.h>
 #pragma warning(pop)
 #include "floor.h"
+#include "imgui_if.h"
 #include "pmd_actor.h"
 #include "pera.h"
 #include "shadow.h"
@@ -25,7 +26,7 @@ struct SceneMatrix
 
 class Render {
 public:
-	HRESULT init();
+	HRESULT init(HWND hwnd);
 	HRESULT update();
 	HRESULT render();
 	HRESULT waitForEndOfRendering();
@@ -71,6 +72,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
 
 	Shadow m_shadow;
+	ImguiIf m_imguif;
 
 	TimeStamp m_timeStamp;
 };

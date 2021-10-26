@@ -28,7 +28,7 @@ constexpr float kClearColorPeraRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 constexpr DirectX::XMFLOAT4 kPlaneVec(0.0f, 1.0f, 0.0f, 0.0f);
 constexpr DirectX::XMFLOAT3 kParallelLightVec(1.0f, -1.0f, 1.0f);
 
-HRESULT Render::init()
+HRESULT Render::init(HWND hwnd)
 {
 	m_parallelLightVec = kParallelLightVec;
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
@@ -54,6 +54,7 @@ HRESULT Render::init()
 	ThrowIfFailed(m_pera.createPipelineState());
 
 	ThrowIfFailed(m_shadow.init());
+	ThrowIfFailed(m_imguif.init(hwnd));
 
 	ThrowIfFailed(m_timeStamp.init());
 
@@ -82,7 +83,7 @@ HRESULT Render::render()
 	{
 		const UINT bbIdx = Resource::instance()->getSwapChain()->GetCurrentBackBufferIndex();
 
-		backBufferResource = Resource::instance()->getBackBuffer(bbIdx);
+		backBufferResource = Resource::instance()->getFrameBuffer(bbIdx);
 
 		rtvH = Resource::instance()->getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
 		rtvH.ptr += bbIdx * static_cast<SIZE_T>(Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
@@ -352,7 +353,7 @@ HRESULT Render::createPeraView()
 			memcpy(&clearValue.Color, &kClearColorPeraRenderTarget, sizeof(clearValue.Color));
 		}
 
-		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getBackBuffer(0)->GetDesc();
+		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getFrameBuffer(0)->GetDesc();
 
 		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,

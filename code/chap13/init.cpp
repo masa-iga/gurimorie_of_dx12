@@ -40,7 +40,7 @@ HRESULT Resource::allocate(HWND hwnd)
 	ret = createSwapChain(&m_pSwapChain, m_pDxgiFactory.Get(), hwnd);
 	ThrowIfFailed(ret);
 
-	ret = createDescriptorHeap(&m_pRtvHeaps, m_backBuffers);
+	ret = createDescriptorHeap(&m_pRtvHeaps, m_frameBuffers);
 	ThrowIfFailed(ret);
 
 	return S_OK;
@@ -55,7 +55,7 @@ HRESULT Resource::release()
 	m_pCommandAllocator.Reset();
 	m_pCommandQueue.Reset();
 
-	for (auto& buffer : m_backBuffers)
+	for (auto& buffer : m_frameBuffers)
 	{
 		buffer.Reset();
 	}
@@ -131,9 +131,9 @@ ID3D12DescriptorHeap* Resource::getRtvHeaps()
 	return m_pRtvHeaps.Get();
 }
 
-ID3D12Resource* Resource::getBackBuffer(UINT index)
+ID3D12Resource* Resource::getFrameBuffer(UINT index)
 {
-	auto buffer = m_backBuffers.at(index);
+	auto buffer = m_frameBuffers.at(index);
 	ThrowIfFalse(buffer != nullptr);
 	return buffer.Get();
 }
@@ -247,9 +247,9 @@ HRESULT Resource::createSwapChain(IDXGISwapChain4** ppSwapChain, IDXGIFactory6* 
 	return result;
 }
 
-HRESULT Resource::createDescriptorHeap(ComPtr<ID3D12DescriptorHeap>* rtvHeaps, std::vector<ComPtr<ID3D12Resource>>& backBuffers)
+HRESULT Resource::createDescriptorHeap(ComPtr<ID3D12DescriptorHeap>* rtvHeaps, std::vector<ComPtr<ID3D12Resource>>& frameBuffers)
 {
-	backBuffers.resize(kNumOfSwapBuffer, nullptr);
+	frameBuffers.resize(kNumOfSwapBuffer, nullptr);
 
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
 	{
@@ -278,18 +278,18 @@ HRESULT Resource::createDescriptorHeap(ComPtr<ID3D12DescriptorHeap>* rtvHeaps, s
 	{
 		result = getSwapChain()->GetBuffer(
 			i,
-			IID_PPV_ARGS(backBuffers[i].ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(frameBuffers[i].ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
 		handle.ptr += i * static_cast<SIZE_T>(getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 
 		getDevice()->CreateRenderTargetView(
-			backBuffers[i].Get(),
+			frameBuffers[i].Get(),
 			&rtvDesc,
 			handle);
 
-		ThrowIfFailed(backBuffers[i].Get()->SetName(Util::getWideStringFromString("frameBuffer" + std::to_string(i)).c_str()));
+		ThrowIfFailed(frameBuffers[i].Get()->SetName(Util::getWideStringFromString("frameBuffer" + std::to_string(i)).c_str()));
 	}
 
 	return S_OK;
