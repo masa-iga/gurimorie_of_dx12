@@ -7,7 +7,6 @@
 #include "debug.h"
 #include "init.h"
 #include "util.h"
-#include "../imgui/src/imgui.h"
 #include "../imgui/src/imgui_impl_win32.h"
 #include "../imgui/src/imgui_impl_dx12.h"
 
@@ -59,9 +58,26 @@ HRESULT ImguiIf::init(HWND hwnd)
 	return S_OK;
 }
 
-Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::getDescHeap()
+void ImguiIf::newFrame()
 {
-	return m_descHeap;
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	ImGui::Begin("Rendering Test Menu");
+	ImGui::SetWindowPos(kWindowPos);
+	ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
+	ImGui::End();
+}
+
+void ImguiIf::render(ID3D12GraphicsCommandList* list)
+{
+	ThrowIfFalse(list != nullptr);
+
+	ImGui::Render();
+
+	list->SetDescriptorHeaps(1, getDescHeap().GetAddressOf());
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), list);
 }
 
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::createDescriptorHeap() const
@@ -84,3 +100,9 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::createDescriptorHeap() con
 
 	return descHeap;
 }
+
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::getDescHeap()
+{
+	return m_descHeap;
+}
+

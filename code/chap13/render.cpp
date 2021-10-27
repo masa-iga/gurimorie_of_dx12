@@ -97,6 +97,7 @@ HRESULT Render::render()
 
 	// clear
 	{
+		m_imguif.newFrame();
 		clearRenderTarget(list, backBufferResource, rtvH);
 		clearDepthRenderTarget(list, dsvH);
 		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
@@ -151,6 +152,8 @@ HRESULT Render::render()
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight / 4);
 		m_shadow.render(list, &rtvH, m_depthSrvHeap, viewport, scissorRect);
 	}
+
+	m_imguif.render(Resource::instance()->getCommandList());
 
 	// resolve time stamps
 	{
