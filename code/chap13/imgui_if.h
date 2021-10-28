@@ -19,7 +19,7 @@ public:
 	static LRESULT wndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 private:
-	inline static const ImVec2 kWindowSize = { 400.0f, 400.0f };
+	inline static const ImVec2 kWindowSize = { 400.0f, 700.0f };
 	inline static const ImVec2 kWindowPos = { 0.0f, Config::kWindowHeight - kWindowSize.y };
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> createDescriptorHeap() const;

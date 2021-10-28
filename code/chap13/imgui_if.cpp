@@ -79,6 +79,51 @@ void ImguiIf::newFrame()
 			ImGui::SetWindowPos(kWindowPos);
 			ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
 		}
+
+		if (true /* test */)
+		{
+			{
+				static bool blnChk = false;
+				bool bUpdated = ImGui::Checkbox("CheckboxTest", &blnChk);
+			}
+
+			{
+				bool bUpdated = false;
+
+				static int32_t radio = 0;
+				bUpdated |= ImGui::RadioButton("Radio 1", &radio, 0);
+				ImGui::SameLine();
+				bUpdated |= ImGui::RadioButton("Radio 2", &radio, 1);
+				ImGui::SameLine();
+				bUpdated |= ImGui::RadioButton("Radio 3", &radio, 2);
+
+				if (bUpdated)
+				{
+					//DebugOutputFormatString("Radio button updated. (%d)\n", radio);
+				}
+			}
+
+			{
+				static int32_t nSlider = 0;
+				bool bUpdated = ImGui::SliderInt("Int Slider", &nSlider, 0, 100);
+			}
+
+			{
+				static float fSlider = 0.0f;
+				bool bUpdated = ImGui::SliderFloat("Float Slider", &fSlider, 0.0f, 100.0f);
+			}
+
+			{
+				static float col3[3] = { };
+				bool bUpdated = ImGui::ColorPicker3("ColorPicker3", col3, ImGuiColorEditFlags_::ImGuiColorEditFlags_DisplayRGB);
+			}
+
+			{
+				static float col4[4] = { };
+				bool bUpdated = ImGui::ColorPicker4("ColorPicker4", col4, 
+					ImGuiColorEditFlags_::ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_::ImGuiColorEditFlags_AlphaBar);
+			}
+		}
 	}
 	ImGui::End();
 }
