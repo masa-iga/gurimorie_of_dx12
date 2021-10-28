@@ -10,6 +10,7 @@
 #pragma warning(pop)
 #include "config.h"
 #include "debug.h"
+#include "imgui_if.h"
 #include "init.h"
 #include "loader.h"
 #include "pmd_actor.h"
@@ -120,6 +121,7 @@ LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		return S_OK;
 	}
 
+	ImguiIf::wndProcHandler(hwnd, msg, wparam, lparam);
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 

@@ -11,6 +11,7 @@
 #include "../imgui/src/imgui_impl_dx12.h"
 
 using namespace Microsoft::WRL;
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 HRESULT ImguiIf::init(HWND hwnd)
 {
@@ -55,6 +56,10 @@ HRESULT ImguiIf::init(HWND hwnd)
 		return E_FAIL;
 	}
 
+	// disable create ini file
+	auto& io = ImGui::GetIO();
+	io.IniFilename = nullptr;
+
 	return S_OK;
 }
 
@@ -65,8 +70,16 @@ void ImguiIf::newFrame()
 	ImGui::NewFrame();
 
 	ImGui::Begin("Rendering Test Menu");
-	ImGui::SetWindowPos(kWindowPos);
-	ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
+	{
+		static bool bFirst = true;
+
+		if (bFirst)
+		{
+			bFirst = false;
+			ImGui::SetWindowPos(kWindowPos);
+			ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
+		}
+	}
 	ImGui::End();
 }
 
@@ -78,6 +91,11 @@ void ImguiIf::render(ID3D12GraphicsCommandList* list)
 
 	list->SetDescriptorHeaps(1, getDescHeap().GetAddressOf());
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), list);
+}
+
+LRESULT ImguiIf::wndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+{
+	return ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
 }
 
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::createDescriptorHeap() const
