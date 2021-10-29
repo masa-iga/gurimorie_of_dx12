@@ -153,7 +153,11 @@ HRESULT Render::render()
 		m_shadow.render(list, &rtvH, m_depthSrvHeap, viewport, scissorRect);
 	}
 
-	m_imguif.render(Resource::instance()->getCommandList());
+	// render imgui
+	{
+		m_imguif.build();
+		m_imguif.render(Resource::instance()->getCommandList());
+	}
 
 	// resolve time stamps
 	{

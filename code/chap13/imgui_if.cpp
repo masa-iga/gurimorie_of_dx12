@@ -68,7 +68,56 @@ void ImguiIf::newFrame()
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
+}
 
+void ImguiIf::build()
+{
+	buildTestWindow();
+}
+
+void ImguiIf::render(ID3D12GraphicsCommandList* list)
+{
+	ThrowIfFalse(list != nullptr);
+
+	ImGui::Render();
+
+	list->SetDescriptorHeaps(1, getDescHeap().GetAddressOf());
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), list);
+}
+
+LRESULT ImguiIf::wndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+{
+	return ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
+}
+
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::createDescriptorHeap() const
+{
+	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
+
+	D3D12_DESCRIPTOR_HEAP_DESC desc = { };
+	{
+		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		desc.NumDescriptors = 1;
+		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		desc.NodeMask = 0;
+	}
+
+	auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(descHeap.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(ret);
+
+	ret = descHeap.Get()->SetName(Util::getWideStringFromString("DescHeapImgui").c_str());
+	ThrowIfFailed(ret);
+
+	return descHeap;
+}
+
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::getDescHeap()
+{
+	return m_descHeap;
+}
+
+void ImguiIf::buildTestWindow()
+{
 	ImGui::Begin("Rendering Test Menu");
 	{
 		static bool bFirst = true;
@@ -120,7 +169,7 @@ void ImguiIf::newFrame()
 
 			{
 				static float col4[4] = { };
-				bool bUpdated = ImGui::ColorPicker4("ColorPicker4", col4, 
+				bool bUpdated = ImGui::ColorPicker4("ColorPicker4", col4,
 					ImGuiColorEditFlags_::ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_::ImGuiColorEditFlags_AlphaBar);
 			}
 		}
@@ -128,44 +177,4 @@ void ImguiIf::newFrame()
 	ImGui::End();
 }
 
-void ImguiIf::render(ID3D12GraphicsCommandList* list)
-{
-	ThrowIfFalse(list != nullptr);
-
-	ImGui::Render();
-
-	list->SetDescriptorHeaps(1, getDescHeap().GetAddressOf());
-	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), list);
-}
-
-LRESULT ImguiIf::wndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-	return ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
-}
-
-Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::createDescriptorHeap() const
-{
-	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
-
-	D3D12_DESCRIPTOR_HEAP_DESC desc = { };
-	{
-		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		desc.NumDescriptors = 1;
-		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		desc.NodeMask = 0;
-	}
-
-	auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(descHeap.ReleaseAndGetAddressOf()));
-	ThrowIfFailed(ret);
-
-	ret = descHeap.Get()->SetName(Util::getWideStringFromString("DescHeapImgui").c_str());
-	ThrowIfFailed(ret);
-
-	return descHeap;
-}
-
-Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::getDescHeap()
-{
-	return m_descHeap;
-}
 

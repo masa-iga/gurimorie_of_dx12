@@ -14,6 +14,7 @@ class ImguiIf {
 public:
 	HRESULT init(HWND hwnd);
 	void newFrame();
+	void build();
 	void render(ID3D12GraphicsCommandList* list);
 
 	static LRESULT wndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
@@ -24,6 +25,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> createDescriptorHeap() const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getDescHeap();
+	void buildTestWindow();
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap = nullptr;
 };
