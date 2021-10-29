@@ -2,6 +2,7 @@
 #pragma warning(push, 0)
 #include <codeanalysis/warnings.h>
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
+#include <DirectXMath.h>
 #include <Windows.h>
 #include <d3d12.h>
 #include <winnt.h>
@@ -18,6 +19,7 @@ public:
 	void build();
 	void render(ID3D12GraphicsCommandList* list);
 	void setFps(float fps) { m_fps = fps; };
+	void setEye(DirectX::XMFLOAT3 eye) { m_eye = eye; }
 
 	static LRESULT wndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
@@ -33,4 +35,5 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap = nullptr;
 	float m_fps = 0.0f;
+	DirectX::XMFLOAT3 m_eye = { };
 };

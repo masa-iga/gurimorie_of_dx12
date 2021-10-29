@@ -553,6 +553,10 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
 	m_sceneMatrix->eye = eye;
 
+	{
+		m_imguif.setEye(eye);
+	}
+
 	return S_OK;
 }
 

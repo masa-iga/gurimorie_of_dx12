@@ -90,6 +90,7 @@ void ImguiIf::build()
 		}
 
 		ImGui::Text("FPS %2.1f\n", m_fps);
+		ImGui::Text("Eye %2.2f %2.2f %2.2f\n", m_eye.x, m_eye.y, m_eye.z);
 	}
 	ImGui::End();
 
