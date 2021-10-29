@@ -61,6 +61,11 @@ HRESULT Render::init(HWND hwnd)
 	return S_OK;
 }
 
+void Render::teardown()
+{
+	m_imguif.teardown();
+}
+
 HRESULT Render::update()
 {
 	updateMvpMatrix(m_bAnimationReversed);
@@ -239,6 +244,11 @@ void Render::toggleAnimationEnable()
 void Render::toggleAnimationReverse()
 {
 	m_bAnimationReversed = !m_bAnimationReversed;
+}
+
+void Render::setFpsInImgui(float fps)
+{
+	m_imguif.setFps(fps);
 }
 
 HRESULT Render::createSceneMatrixBuffer()

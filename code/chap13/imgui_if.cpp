@@ -63,6 +63,12 @@ HRESULT ImguiIf::init(HWND hwnd)
 	return S_OK;
 }
 
+void ImguiIf::teardown()
+{
+	ImGui_ImplWin32_Shutdown();
+	ImGui_ImplDX12_Shutdown();
+}
+
 void ImguiIf::newFrame()
 {
 	ImGui_ImplDX12_NewFrame();
@@ -72,6 +78,21 @@ void ImguiIf::newFrame()
 
 void ImguiIf::build()
 {
+	ImGui::Begin("Information");
+	{
+		static bool bFirst = true;
+
+		if (bFirst)
+		{
+			bFirst = false;
+			ImGui::SetWindowPos(kWindowPos);
+			ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
+		}
+
+		ImGui::Text("FPS %2.1f\n", m_fps);
+	}
+	ImGui::End();
+
 	buildTestWindow();
 }
 
@@ -125,8 +146,8 @@ void ImguiIf::buildTestWindow()
 		if (bFirst)
 		{
 			bFirst = false;
-			ImGui::SetWindowPos(kWindowPos);
-			ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
+			ImGui::SetWindowPos(kTestWindowPos);
+			ImGui::SetWindowSize(kTestWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
 		}
 
 		if (true /* test */)

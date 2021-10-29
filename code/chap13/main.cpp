@@ -29,7 +29,8 @@ enum class Action {
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 static Action processKeyInput(const MSG& msg, Render* pRender);
 static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd);
-static void trackFrameTime(UINT frame);
+static void trackFrameTime();
+static float getFps();
 
 #ifdef _DEBUG
 int main()
@@ -82,6 +83,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		for (UINT i = 0; ; ++i)
 		{
+			render.setFpsInImgui(getFps());
 			ThrowIfFailed(render.update());
 			ThrowIfFailed(render.render());
 			ThrowIfFailed(render.waitForEndOfRendering());
@@ -104,8 +106,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				break;
 			}
 
-			trackFrameTime(i);
+			trackFrameTime();
 		}
+
+		render.teardown();
 	}
 
 	tearDown(w, hwnd);
@@ -227,15 +231,16 @@ UINT64 FrameCounter::getInUsec() const
 	return elapsed;
 }
 
-void trackFrameTime(UINT frame)
+static FrameCounter frameCounter;
+
+void trackFrameTime()
 {
-	static FrameCounter frameCounter;
-
 	frameCounter.track();
+}
 
-	if (frame != 0 && frame % 60 == 0)
-	{
-		DebugOutputFormatString("FPS %.1f\n", 1'000'000.0f / frameCounter.getInUsec());
-	}
+float getFps()
+{
+	const float fps = 1'000'000.0f / frameCounter.getInUsec();
+	return fps;
 }
 

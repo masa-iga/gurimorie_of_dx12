@@ -27,12 +27,14 @@ struct SceneMatrix
 class Render {
 public:
 	HRESULT init(HWND hwnd);
+	void teardown();
 	HRESULT update();
 	HRESULT render();
 	HRESULT waitForEndOfRendering();
 	HRESULT swap();
 	void toggleAnimationEnable();
 	void toggleAnimationReverse();
+	void setFpsInImgui(float fps);
 
 private:
 	HRESULT createSceneMatrixBuffer();
