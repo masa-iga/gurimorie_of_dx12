@@ -22,6 +22,7 @@ using namespace Microsoft::WRL;
 static HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
 static HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
 static HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
+static DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
 
 constexpr float kClearColorRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 constexpr float kClearColorPeraRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -522,33 +523,10 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	constexpr XMFLOAT4 light(-1, -1, -1, 0);
 #endif // MODIFY_LIGHT_POS
 
-
-	{
-		static float angle = 0.0f;
-		constexpr float kRadius = 30.0f;
-
-#if 0
-		const float x = kRadius * std::sin(angle);
-		const float z = -1 * kRadius * std::cos(angle);
-
-		eye = XMFLOAT3(x, 20.0f, z);
-#else
+	if (m_bAutoMoveEyePos)
+		eye = getAutoMoveEyePos(m_bAnimationEnabled, animationReversed);
+	else
 		eye = m_eyePos;
-#endif
-
-		if (!m_bAnimationEnabled)
-		{
-			;
-		}
-		else if (!animationReversed)
-		{
-			angle += 0.01f;
-		}
-		else
-		{
-			angle -= 0.01f;
-		}
-	}
 
 	{
 		const XMMATRIX viewMat = XMMatrixLookAtLH(
@@ -928,3 +906,27 @@ HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12De
 	return S_OK;
 }
 
+static DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse)
+{
+	static float angle = 0.0f;
+	constexpr float kRadius = 30.0f;
+	constexpr float kY = 20.0f;
+
+	const float x = kRadius * std::sin(angle);
+	const float z = -1 * kRadius * std::cos(angle);
+
+	if (!update)
+	{
+		;
+	}
+	else if (!reverse)
+	{
+		angle += 0.01f;
+	}
+	else
+	{
+		angle -= 0.01f;
+	}
+
+	return DirectX::XMFLOAT3(x, kY, z);
+}
