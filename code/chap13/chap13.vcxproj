@@ -92,6 +92,7 @@
     <ClCompile Include="init.cpp" />
     <ClCompile Include="loader.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="observer.cpp" />
     <ClCompile Include="pera.cpp" />
     <ClCompile Include="pmd_actor.cpp" />
     <ClCompile Include="render.cpp" />
@@ -107,6 +108,7 @@
     <ClInclude Include="imgui_if.h" />
     <ClInclude Include="init.h" />
     <ClInclude Include="loader.h" />
+    <ClInclude Include="observer.h" />
     <ClInclude Include="pera.h" />
     <ClInclude Include="pmd_actor.h" />
     <ClInclude Include="render.h" />
