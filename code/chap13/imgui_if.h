@@ -10,8 +10,10 @@
 #pragma warning(pop)
 #include "../imgui/src/imgui.h"
 #include "config.h"
+#include "observer.h"
 
-class ImguiIf {
+class ImguiIf : public Subject
+{
 public:
 	HRESULT init(HWND hwnd);
 	void teardown();

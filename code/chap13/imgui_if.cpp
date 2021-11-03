@@ -91,6 +91,14 @@ void ImguiIf::build()
 
 		ImGui::Text("FPS %2.1f\n", m_fps);
 		ImGui::Text("Eye %2.2f %2.2f %2.2f\n", m_eye.x, m_eye.y, m_eye.z);
+
+		static bool bCheck = false;
+		bool bUpdated = ImGui::Checkbox("Auto moving eye position", &bCheck);
+
+		if (bUpdated)
+		{
+			notify(UiEvent::kUpdateAutoMovePos, bCheck);
+		}
 	}
 	ImGui::End();
 

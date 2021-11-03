@@ -31,6 +31,11 @@ namespace {
 	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
 } // namespace anonymous
 
+void Render::onNotify(UiEvent uiEvent, bool flag)
+{
+	m_bAutoMoveEyePos = flag;
+}
+
 HRESULT Render::init(HWND hwnd)
 {
 	m_parallelLightVec = kParallelLightVec;
@@ -58,6 +63,7 @@ HRESULT Render::init(HWND hwnd)
 
 	ThrowIfFailed(m_shadow.init());
 	ThrowIfFailed(m_imguif.init(hwnd));
+	m_imguif.addObserver(this);
 
 	ThrowIfFailed(m_timeStamp.init());
 

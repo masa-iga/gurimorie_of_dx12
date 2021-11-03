@@ -9,6 +9,7 @@
 #include <wrl.h>
 #pragma warning(pop)
 #include "floor.h"
+#include "observer.h"
 #include "imgui_if.h"
 #include "pmd_actor.h"
 #include "pera.h"
@@ -36,8 +37,10 @@ enum class MoveEye {
 	kDown,
 };
 
-class Render {
+class Render : public Observer
+{
 public:
+	void onNotify(UiEvent uiEvent, bool flag);
 	HRESULT init(HWND hwnd);
 	void teardown();
 	HRESULT update();
