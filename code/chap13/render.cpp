@@ -73,6 +73,7 @@ HRESULT Render::init(HWND hwnd)
 void Render::teardown()
 {
 	m_imguif.teardown();
+	m_imguif.removeObserver(this);
 }
 
 HRESULT Render::update()

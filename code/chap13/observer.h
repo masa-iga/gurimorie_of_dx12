@@ -1,5 +1,5 @@
 #pragma once
-#include <array>
+#include <list>
 
 enum class UiEvent {
 	kUpdateAutoMovePos,
@@ -16,12 +16,13 @@ class Subject
 {
 public:
 	void addObserver(Observer* observer);
+	void removeObserver(Observer* observer);
 
 protected:
 	void notify(UiEvent uiEvent, bool flag);
 
 private:
-	static constexpr size_t kMaxObservers = 1;
-	std::array<Observer*, kMaxObservers> m_observers = { };
+	static constexpr size_t kMaxObservers = 3;
+	std::list<Observer*> m_observers = { };
 	size_t m_count = 0;
 };
