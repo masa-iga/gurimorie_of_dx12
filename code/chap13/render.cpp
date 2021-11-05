@@ -268,15 +268,19 @@ void Render::moveEye(MoveEye moveEye)
 		break;
 	case MoveEye::kForward:
 		m_eyePos.z += 0.5f;
+		m_focusPos.z += 0.5f;
 		break;
 	case MoveEye::kBackward:
 		m_eyePos.z -= 0.5f;
+		m_focusPos.z -= 0.5f;
 		break;
 	case MoveEye::kRight:
 		m_eyePos.x += 0.5f;
+		m_focusPos.x += 0.5f;
 		break;
 	case MoveEye::kLeft:
 		m_eyePos.x -= 0.5f;
+		m_focusPos.x -= 0.5f;
 		break;
 	case MoveEye::kClockwise:
 		ThrowIfFalse(false); // TODO: impl
@@ -286,9 +290,11 @@ void Render::moveEye(MoveEye moveEye)
 		break;
 	case MoveEye::kUp:
 		m_eyePos.y += 0.5f;
+		m_focusPos.y += 0.5f;
 		break;
 	case MoveEye::kDown:
 		m_eyePos.y -= 0.5f;
+		m_focusPos.y -= 0.5f;
 		break;
 	default:
 		ThrowIfFalse(false);
@@ -522,25 +528,32 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 #define MODIFY_LIGHT_POS (1)
 
 	using namespace DirectX;
-
-	XMFLOAT3 eye(0, 0, 0);
-	constexpr XMFLOAT3 target(0, 0, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
+
+	XMFLOAT3 eyePos(0, 0, 0);
+	XMFLOAT3 focusPos(0, 0, 0);
+
 #if MODIFY_LIGHT_POS
-	constexpr XMFLOAT4 light(0, 50, -10, 0);
+	constexpr XMFLOAT4 lightPos(0, 50, -10, 0);
 #else
-	constexpr XMFLOAT4 light(-1, -1, -1, 0);
+	constexpr XMFLOAT4 lightPos(-1, -1, -1, 0);
 #endif // MODIFY_LIGHT_POS
+	XMFLOAT3 lightFocusPos(0, 0, 0);
 
 	if (m_bAutoMoveEyePos)
-		eye = getAutoMoveEyePos(m_bAnimationEnabled, animationReversed);
+	{
+		eyePos = getAutoMoveEyePos(m_bAnimationEnabled, animationReversed);
+	}
 	else
-		eye = m_eyePos;
+	{
+		eyePos = m_eyePos;
+		focusPos = m_focusPos;
+	}
 
 	{
 		const XMMATRIX viewMat = XMMatrixLookAtLH(
-			XMLoadFloat3(&eye),
-			XMLoadFloat3(&target),
+			XMLoadFloat3(&eyePos),
+			XMLoadFloat3(&focusPos),
 			XMLoadFloat3(&up)
 		);
 
@@ -560,28 +573,28 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 
 	{
 #if MODIFY_LIGHT_POS
-		const XMVECTOR lightPos = XMLoadFloat4(&light);
+		const XMVECTOR lightVec = XMLoadFloat4(&lightPos);
 
 		m_sceneMatrix->lightCamera =
-			XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
+			XMMatrixLookAtLH(lightVec, XMLoadFloat3(&lightFocusPos), XMLoadFloat3(&up)) *
 			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
 #else
-		const XMVECTOR lightVec = XMLoadFloat4(&light);
+		const XMVECTOR lightVec = XMLoadFloat4(&lightPos);
 
-		const XMVECTOR lightPos = XMLoadFloat3(&target) +
+		const XMVECTOR lightVec = XMLoadFloat3(&focusPos) +
 			XMVector3Normalize(lightVec) *
-			XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
+			XMVector3Length(XMVectorSubtract(XMLoadFloat3(&focusPos), XMLoadFloat3(&eyePos))).m128_f32[0];
 
-		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
+		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightVec, XMLoadFloat3(&focusPos), XMLoadFloat3(&up)) *
 			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
 #endif // MODIFY_LIGHT_POS
 	}
 
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
-	m_sceneMatrix->eye = eye;
+	m_sceneMatrix->eye = eyePos;
 
 	{
-		m_imguif.setEye(eye);
+		m_imguif.setEye(eyePos);
 	}
 
 	return S_OK;

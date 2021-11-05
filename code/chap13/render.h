@@ -66,7 +66,8 @@ private:
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
 	bool m_bAutoMoveEyePos = false;
-	DirectX::XMFLOAT3 m_eyePos = DirectX::XMFLOAT3(0.0f, 20.0f, -20.0f);
+	DirectX::XMFLOAT3 m_eyePos = DirectX::XMFLOAT3(0.0f, 13.0f, -20.0f);
+	DirectX::XMFLOAT3 m_focusPos = DirectX::XMFLOAT3(0.0f, m_eyePos.y, 0.0f);
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_depthSrvHeap = nullptr;
