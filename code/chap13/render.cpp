@@ -525,19 +525,13 @@ HRESULT Render::createPeraView()
 
 HRESULT Render::updateMvpMatrix(bool animationReversed)
 {
-#define MODIFY_LIGHT_POS (1)
-
 	using namespace DirectX;
 	constexpr XMFLOAT3 up(0, 1, 0);
 
 	XMFLOAT3 eyePos(0, 0, 0);
 	XMFLOAT3 focusPos(0, 0, 0);
 
-#if MODIFY_LIGHT_POS
 	constexpr XMFLOAT4 lightPos(0, 50, -10, 0);
-#else
-	constexpr XMFLOAT4 lightPos(-1, -1, -1, 0);
-#endif // MODIFY_LIGHT_POS
 	XMFLOAT3 lightFocusPos(0, 0, 0);
 
 	if (m_bAutoMoveEyePos)
@@ -572,22 +566,11 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	}
 
 	{
-#if MODIFY_LIGHT_POS
 		const XMVECTOR lightVec = XMLoadFloat4(&lightPos);
 
 		m_sceneMatrix->lightCamera =
 			XMMatrixLookAtLH(lightVec, XMLoadFloat3(&lightFocusPos), XMLoadFloat3(&up)) *
 			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
-#else
-		const XMVECTOR lightVec = XMLoadFloat4(&lightPos);
-
-		const XMVECTOR lightVec = XMLoadFloat3(&focusPos) +
-			XMVector3Normalize(lightVec) *
-			XMVector3Length(XMVectorSubtract(XMLoadFloat3(&focusPos), XMLoadFloat3(&eyePos))).m128_f32[0];
-
-		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightVec, XMLoadFloat3(&focusPos), XMLoadFloat3(&up)) *
-			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
-#endif // MODIFY_LIGHT_POS
 	}
 
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
