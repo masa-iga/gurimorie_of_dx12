@@ -29,6 +29,7 @@ namespace {
 	HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
 	HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
 	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
+	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude);
 	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle);
 } // namespace anonymous
 
@@ -268,12 +269,10 @@ void Render::moveEye(MoveEye moveEye)
 	case MoveEye::kNone:
 		break;
 	case MoveEye::kForward:
-		m_eyePos.z += 0.5f;
-		m_focusPos.z += 0.5f;
+		moveForward(&m_focusPos, &m_eyePos, 0.5f);
 		break;
 	case MoveEye::kBackward:
-		m_eyePos.z -= 0.5f;
-		m_focusPos.z -= 0.5f;
+		moveForward(&m_focusPos, &m_eyePos, -0.5f);
 		break;
 	case MoveEye::kRight:
 		m_eyePos.x += 0.5f;
@@ -937,6 +936,16 @@ namespace {
 		}
 
 		return DirectX::XMFLOAT3(x, kY, z);
+	}
+
+	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude)
+	{
+		const DirectX::XMFLOAT3 vec(focus->x - eye->x, focus->y - eye->y, focus->z - eye->z);
+		const float abs = std::sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+		const DirectX::XMFLOAT3 normalizedVec(vec.x / abs, vec.y / abs, vec.z / abs);
+
+		*focus = { focus->x + amplitude * normalizedVec.x, focus->y + amplitude * normalizedVec.y, focus->z + amplitude * normalizedVec.z };
+		*eye = { eye->x + amplitude * normalizedVec.x, eye->y + amplitude * normalizedVec.y, eye->z + amplitude * normalizedVec.z };
 	}
 
 	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle)
