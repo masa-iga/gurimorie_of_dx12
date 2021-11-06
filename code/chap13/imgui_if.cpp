@@ -89,8 +89,9 @@ void ImguiIf::build()
 			ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
 		}
 
-		ImGui::Text("FPS %2.1f\n", m_fps);
-		ImGui::Text("Eye %2.2f %2.2f %2.2f\n", m_eye.x, m_eye.y, m_eye.z);
+		ImGui::Text("FPS   %2.1f\n", m_fps);
+		ImGui::Text("Eye   %2.2f %2.2f %2.2f\n", m_eye.x, m_eye.y, m_eye.z);
+		ImGui::Text("Focus %2.2f %2.2f %2.2f\n", m_focus.x, m_focus.y, m_focus.z);
 
 		static bool bCheck = false;
 		bool bUpdated = ImGui::Checkbox("Auto moving eye position", &bCheck);

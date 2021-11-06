@@ -29,6 +29,7 @@ namespace {
 	HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
 	HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
 	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
+	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle);
 } // namespace anonymous
 
 void Render::onNotify(UiEvent uiEvent, bool flag)
@@ -283,10 +284,10 @@ void Render::moveEye(MoveEye moveEye)
 		m_focusPos.x -= 0.5f;
 		break;
 	case MoveEye::kClockwise:
-		ThrowIfFalse(false); // TODO: impl
+		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), 0.03f);
 		break;
 	case MoveEye::kCounterClockwise:
-		ThrowIfFalse(false); // TODO: impl
+		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), -0.03f);
 		break;
 	case MoveEye::kUp:
 		m_eyePos.y += 0.5f;
@@ -578,6 +579,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 
 	{
 		m_imguif.setEye(eyePos);
+		m_imguif.setFocus(focusPos);
 	}
 
 	return S_OK;
@@ -936,4 +938,17 @@ namespace {
 
 		return DirectX::XMFLOAT3(x, kY, z);
 	}
+
+	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle)
+	{
+		const DirectX::XMFLOAT3 pos = DirectX::XMFLOAT3(dst.x - src.x, dst.y - src.y, dst.z - src.z);
+		const DirectX::XMVECTOR rotQuaternion = DirectX::XMQuaternionRotationAxis(DirectX::XMLoadFloat3(&axis), angle);
+		const DirectX::XMVECTOR rotVec = DirectX::XMVector3Rotate(DirectX::XMLoadFloat3(&pos), rotQuaternion);
+
+		DirectX::XMFLOAT3 temp = { };
+		DirectX::XMStoreFloat3(&temp, rotVec);
+
+		return DirectX::XMFLOAT3(temp.x + src.x, temp.y + src.y, temp.z + src.z);
+	};
+
 } // namespace anonymous
