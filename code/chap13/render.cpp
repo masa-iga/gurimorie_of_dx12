@@ -30,6 +30,7 @@ namespace {
 	HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
 	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
 	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude);
+	void move(DirectX::XMFLOAT3* dst, DirectX::XMFLOAT3* src, float angle, float amplitude);
 	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle);
 } // namespace anonymous
 
@@ -275,12 +276,10 @@ void Render::moveEye(MoveEye moveEye)
 		moveForward(&m_focusPos, &m_eyePos, -0.5f);
 		break;
 	case MoveEye::kRight:
-		m_eyePos.x += 0.5f;
-		m_focusPos.x += 0.5f;
+		move(&m_focusPos, &m_eyePos, 90.f, 0.03f);
 		break;
 	case MoveEye::kLeft:
-		m_eyePos.x -= 0.5f;
-		m_focusPos.x -= 0.5f;
+		move(&m_focusPos, &m_eyePos, -90.f, 0.03f);
 		break;
 	case MoveEye::kClockwise:
 		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), 0.03f);
@@ -948,11 +947,30 @@ namespace {
 		*eye = { eye->x + amplitude * normalizedVec.x, eye->y + amplitude * normalizedVec.y, eye->z + amplitude * normalizedVec.z };
 	}
 
+	void move(DirectX::XMFLOAT3* dst, DirectX::XMFLOAT3* src, float angle, float amplitude)
+	{
+		const DirectX::XMFLOAT3 vec(dst->x - src->x, dst->y - src->y, dst->z - src->z);
+
+		// We assume that rotations will be done clockwise along Y axis
+		constexpr DirectX::XMFLOAT3 axis(0, 1, 0);
+
+		const float radian = DirectX::XMConvertToRadians(angle);
+		const DirectX::XMVECTOR rotQuaternion = DirectX::XMQuaternionRotationAxis(DirectX::XMLoadFloat3(&axis), radian);
+
+		const DirectX::XMVECTOR rotVec = DirectX::XMVector3Rotate(DirectX::XMLoadFloat3(&vec), rotQuaternion);
+
+		DirectX::XMFLOAT3 rotPos = { };
+		DirectX::XMStoreFloat3(&rotPos, rotVec);
+
+		*dst = { dst->x + amplitude * rotPos.x, dst->y + amplitude * rotPos.y, dst->z + amplitude * rotPos.z };
+		*src = { src->x + amplitude * rotPos.x, src->y + amplitude * rotPos.y, src->z + amplitude * rotPos.z };
+	};
+
 	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle)
 	{
-		const DirectX::XMFLOAT3 pos = DirectX::XMFLOAT3(dst.x - src.x, dst.y - src.y, dst.z - src.z);
+		const DirectX::XMFLOAT3 vec(dst.x - src.x, dst.y - src.y, dst.z - src.z);
 		const DirectX::XMVECTOR rotQuaternion = DirectX::XMQuaternionRotationAxis(DirectX::XMLoadFloat3(&axis), angle);
-		const DirectX::XMVECTOR rotVec = DirectX::XMVector3Rotate(DirectX::XMLoadFloat3(&pos), rotQuaternion);
+		const DirectX::XMVECTOR rotVec = DirectX::XMVector3Rotate(DirectX::XMLoadFloat3(&vec), rotQuaternion);
 
 		DirectX::XMFLOAT3 temp = { };
 		DirectX::XMStoreFloat3(&temp, rotVec);
