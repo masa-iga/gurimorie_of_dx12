@@ -61,7 +61,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Debug</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>imgui.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -80,15 +81,18 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Release</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>imgui.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="floor.cpp" />
+    <ClCompile Include="imgui_if.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="loader.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="observer.cpp" />
     <ClCompile Include="pera.cpp" />
     <ClCompile Include="pmd_actor.cpp" />
     <ClCompile Include="render.cpp" />
@@ -101,8 +105,10 @@
     <ClInclude Include="constant.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="floor.h" />
+    <ClInclude Include="imgui_if.h" />
     <ClInclude Include="init.h" />
     <ClInclude Include="loader.h" />
+    <ClInclude Include="observer.h" />
     <ClInclude Include="pera.h" />
     <ClInclude Include="pmd_actor.h" />
     <ClInclude Include="render.h" />

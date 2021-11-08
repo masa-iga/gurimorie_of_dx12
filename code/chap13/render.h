@@ -9,6 +9,8 @@
 #include <wrl.h>
 #pragma warning(pop)
 #include "floor.h"
+#include "observer.h"
+#include "imgui_if.h"
 #include "pmd_actor.h"
 #include "pera.h"
 #include "shadow.h"
@@ -23,15 +25,32 @@ struct SceneMatrix
 	DirectX::XMFLOAT3 eye = { };
 };
 
-class Render {
+enum class MoveEye {
+	kNone,
+	kForward,
+	kBackward,
+	kRight,
+	kLeft,
+	kClockwise,
+	kCounterClockwise,
+	kUp,
+	kDown,
+};
+
+class Render : public Observer
+{
 public:
-	HRESULT init();
+	void onNotify(UiEvent uiEvent, bool flag);
+	HRESULT init(HWND hwnd);
+	void teardown();
 	HRESULT update();
 	HRESULT render();
 	HRESULT waitForEndOfRendering();
 	HRESULT swap();
 	void toggleAnimationEnable();
 	void toggleAnimationReverse();
+	void setFpsInImgui(float fps);
+	void moveEye(MoveEye moveEye);
 
 private:
 	HRESULT createSceneMatrixBuffer();
@@ -46,6 +65,9 @@ private:
 
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
+	bool m_bAutoMoveEyePos = false;
+	DirectX::XMFLOAT3 m_eyePos = DirectX::XMFLOAT3(0.0f, 13.0f, -20.0f);
+	DirectX::XMFLOAT3 m_focusPos = DirectX::XMFLOAT3(0.0f, m_eyePos.y, 0.0f);
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_depthSrvHeap = nullptr;
@@ -71,6 +93,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
 
 	Shadow m_shadow;
+	ImguiIf m_imguif;
 
 	TimeStamp m_timeStamp;
 };

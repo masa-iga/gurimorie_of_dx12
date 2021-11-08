@@ -10,6 +10,7 @@
 #pragma warning(pop)
 #include "config.h"
 #include "debug.h"
+#include "imgui_if.h"
 #include "init.h"
 #include "loader.h"
 #include "pmd_actor.h"
@@ -28,7 +29,8 @@ enum class Action {
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 static Action processKeyInput(const MSG& msg, Render* pRender);
 static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd);
-static void trackFrameTime(UINT frame);
+static void trackFrameTime();
+static float getFps();
 
 #ifdef _DEBUG
 int main()
@@ -75,12 +77,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	{
 		Render render;
-		ThrowIfFailed(render.init());
+		ThrowIfFailed(render.init(hwnd));
 
 		MSG msg = {};
 
 		for (UINT i = 0; ; ++i)
 		{
+			render.setFpsInImgui(getFps());
 			ThrowIfFailed(render.update());
 			ThrowIfFailed(render.render());
 			ThrowIfFailed(render.waitForEndOfRendering());
@@ -103,8 +106,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 				break;
 			}
 
-			trackFrameTime(i);
+			trackFrameTime();
 		}
+
+		render.teardown();
 	}
 
 	tearDown(w, hwnd);
@@ -120,6 +125,7 @@ LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		return S_OK;
 	}
 
+	ImguiIf::wndProcHandler(hwnd, msg, wparam, lparam);
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
@@ -132,6 +138,30 @@ static Action processKeyInput(const MSG& msg, Render* pRender)
 			return Action::kQuit;
 		case VK_SPACE:
 			pRender->toggleAnimationEnable();
+			break;
+		case VK_LEFT:
+			pRender->moveEye(MoveEye::kCounterClockwise);
+			break;
+		case VK_UP:
+			pRender->moveEye(MoveEye::kUp);
+			break;
+		case VK_RIGHT:
+			pRender->moveEye(MoveEye::kClockwise);
+			break;
+		case VK_DOWN:
+			pRender->moveEye(MoveEye::kDown);
+			break;
+		case 'A':
+			pRender->moveEye(MoveEye::kLeft);
+			break;
+		case 'W':
+			pRender->moveEye(MoveEye::kForward);
+			break;
+		case 'D':
+			pRender->moveEye(MoveEye::kRight);
+			break;
+		case 'S':
+			pRender->moveEye(MoveEye::kBackward);
 			break;
 		case 'R':
 			pRender->toggleAnimationReverse();
@@ -225,15 +255,16 @@ UINT64 FrameCounter::getInUsec() const
 	return elapsed;
 }
 
-void trackFrameTime(UINT frame)
+static FrameCounter frameCounter;
+
+void trackFrameTime()
 {
-	static FrameCounter frameCounter;
-
 	frameCounter.track();
+}
 
-	if (frame != 0 && frame % 60 == 0)
-	{
-		DebugOutputFormatString("FPS %.1f\n", 1'000'000.0f / frameCounter.getInUsec());
-	}
+float getFps()
+{
+	const float fps = 1'000'000.0f / frameCounter.getInUsec();
+	return fps;
 }
 

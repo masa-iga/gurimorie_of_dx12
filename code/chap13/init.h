@@ -43,7 +43,7 @@ public:
 	ID3D12CommandQueue* getCommandQueue();
 	IDXGISwapChain4* getSwapChain();
 	ID3D12DescriptorHeap* getRtvHeaps();
-	ID3D12Resource* getBackBuffer(UINT index);
+	ID3D12Resource* getFrameBuffer(UINT index);
 
 private:
 	Resource() = default;
@@ -66,5 +66,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_pCommandQueue = nullptr;
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pRtvHeaps = nullptr;
-	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_backBuffers;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_frameBuffers;
 };

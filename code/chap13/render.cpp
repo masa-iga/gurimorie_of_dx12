@@ -19,16 +19,27 @@
 
 using namespace Microsoft::WRL;
 
-static HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
-static HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
-static HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
+namespace {
+	constexpr float kClearColorRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	constexpr float kClearColorPeraRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	constexpr DirectX::XMFLOAT4 kPlaneVec(0.0f, 1.0f, 0.0f, 0.0f);
+	constexpr DirectX::XMFLOAT3 kParallelLightVec(1.0f, -1.0f, 1.0f);
 
-constexpr float kClearColorRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-constexpr float kClearColorPeraRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-constexpr DirectX::XMFLOAT4 kPlaneVec(0.0f, 1.0f, 0.0f, 0.0f);
-constexpr DirectX::XMFLOAT3 kParallelLightVec(1.0f, -1.0f, 1.0f);
+	HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
+	HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
+	HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
+	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
+	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude);
+	void move(DirectX::XMFLOAT3* dst, DirectX::XMFLOAT3* src, float angle, float amplitude);
+	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle);
+} // namespace anonymous
 
-HRESULT Render::init()
+void Render::onNotify(UiEvent uiEvent, bool flag)
+{
+	m_bAutoMoveEyePos = flag;
+}
+
+HRESULT Render::init(HWND hwnd)
 {
 	m_parallelLightVec = kParallelLightVec;
 	ThrowIfFailed(createFence(m_fenceVal, &m_pFence));
@@ -54,10 +65,18 @@ HRESULT Render::init()
 	ThrowIfFailed(m_pera.createPipelineState());
 
 	ThrowIfFailed(m_shadow.init());
+	ThrowIfFailed(m_imguif.init(hwnd));
+	m_imguif.addObserver(this);
 
 	ThrowIfFailed(m_timeStamp.init());
 
 	return S_OK;
+}
+
+void Render::teardown()
+{
+	m_imguif.teardown();
+	m_imguif.removeObserver(this);
 }
 
 HRESULT Render::update()
@@ -82,7 +101,7 @@ HRESULT Render::render()
 	{
 		const UINT bbIdx = Resource::instance()->getSwapChain()->GetCurrentBackBufferIndex();
 
-		backBufferResource = Resource::instance()->getBackBuffer(bbIdx);
+		backBufferResource = Resource::instance()->getFrameBuffer(bbIdx);
 
 		rtvH = Resource::instance()->getRtvHeaps()->GetCPUDescriptorHandleForHeapStart();
 		rtvH.ptr += bbIdx * static_cast<SIZE_T>(Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
@@ -96,6 +115,7 @@ HRESULT Render::render()
 
 	// clear
 	{
+		m_imguif.newFrame();
 		clearRenderTarget(list, backBufferResource, rtvH);
 		clearDepthRenderTarget(list, dsvH);
 		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
@@ -149,6 +169,12 @@ HRESULT Render::render()
 		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(Config::kWindowWidth * 3 / 4, 0, Config::kWindowWidth / 4, Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight / 4);
 		m_shadow.render(list, &rtvH, m_depthSrvHeap, viewport, scissorRect);
+	}
+
+	// render imgui
+	{
+		m_imguif.build();
+		m_imguif.render(Resource::instance()->getCommandList());
 	}
 
 	// resolve time stamps
@@ -231,6 +257,48 @@ void Render::toggleAnimationEnable()
 void Render::toggleAnimationReverse()
 {
 	m_bAnimationReversed = !m_bAnimationReversed;
+}
+
+void Render::setFpsInImgui(float fps)
+{
+	m_imguif.setFps(fps);
+}
+
+void Render::moveEye(MoveEye moveEye)
+{
+	switch (moveEye) {
+	case MoveEye::kNone:
+		break;
+	case MoveEye::kForward:
+		moveForward(&m_focusPos, &m_eyePos, 0.5f);
+		break;
+	case MoveEye::kBackward:
+		moveForward(&m_focusPos, &m_eyePos, -0.5f);
+		break;
+	case MoveEye::kRight:
+		move(&m_focusPos, &m_eyePos, 90.f, 0.03f);
+		break;
+	case MoveEye::kLeft:
+		move(&m_focusPos, &m_eyePos, -90.f, 0.03f);
+		break;
+	case MoveEye::kClockwise:
+		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), 0.03f);
+		break;
+	case MoveEye::kCounterClockwise:
+		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), -0.03f);
+		break;
+	case MoveEye::kUp:
+		m_eyePos.y += 0.5f;
+		m_focusPos.y += 0.5f;
+		break;
+	case MoveEye::kDown:
+		m_eyePos.y -= 0.5f;
+		m_focusPos.y -= 0.5f;
+		break;
+	default:
+		ThrowIfFalse(false);
+		break;
+	}
 }
 
 HRESULT Render::createSceneMatrixBuffer()
@@ -352,7 +420,7 @@ HRESULT Render::createPeraView()
 			memcpy(&clearValue.Color, &kClearColorPeraRenderTarget, sizeof(clearValue.Color));
 		}
 
-		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getBackBuffer(0)->GetDesc();
+		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getFrameBuffer(0)->GetDesc();
 
 		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
@@ -456,47 +524,29 @@ HRESULT Render::createPeraView()
 
 HRESULT Render::updateMvpMatrix(bool animationReversed)
 {
-#define MODIFY_LIGHT_POS (1)
-
 	using namespace DirectX;
-
-	XMFLOAT3 eye(0, 0, 0);
-	constexpr XMFLOAT3 target(0, 0, 0);
 	constexpr XMFLOAT3 up(0, 1, 0);
-#if MODIFY_LIGHT_POS
-	constexpr XMFLOAT4 light(0, 50, -10, 0);
-#else
-	constexpr XMFLOAT4 light(-1, -1, -1, 0);
-#endif // MODIFY_LIGHT_POS
 
+	XMFLOAT3 eyePos(0, 0, 0);
+	XMFLOAT3 focusPos(0, 0, 0);
 
+	constexpr XMFLOAT4 lightPos(0, 50, -10, 0);
+	XMFLOAT3 lightFocusPos(0, 0, 0);
+
+	if (m_bAutoMoveEyePos)
 	{
-		static float angle = 0.0f;
-		constexpr float kRadius = 30.0f;
-
-		const float x = kRadius * std::sin(angle);
-		const float z = -1 * kRadius * std::cos(angle);
-
-		eye = XMFLOAT3(x, 20.0f, z);
-
-		if (!m_bAnimationEnabled)
-		{
-			;
-		}
-		else if (!animationReversed)
-		{
-			angle += 0.01f;
-		}
-		else
-		{
-			angle -= 0.01f;
-		}
+		eyePos = getAutoMoveEyePos(m_bAnimationEnabled, animationReversed);
+	}
+	else
+	{
+		eyePos = m_eyePos;
+		focusPos = m_focusPos;
 	}
 
 	{
 		const XMMATRIX viewMat = XMMatrixLookAtLH(
-			XMLoadFloat3(&eye),
-			XMLoadFloat3(&target),
+			XMLoadFloat3(&eyePos),
+			XMLoadFloat3(&focusPos),
 			XMLoadFloat3(&up)
 		);
 
@@ -515,25 +565,20 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	}
 
 	{
-#if MODIFY_LIGHT_POS
-		const XMVECTOR lightPos = XMLoadFloat4(&light);
+		const XMVECTOR lightVec = XMLoadFloat4(&lightPos);
 
-		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
+		m_sceneMatrix->lightCamera =
+			XMMatrixLookAtLH(lightVec, XMLoadFloat3(&lightFocusPos), XMLoadFloat3(&up)) *
 			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
-#else
-		const XMVECTOR lightVec = XMLoadFloat4(&light);
-
-		const XMVECTOR lightPos = XMLoadFloat3(&target) +
-			XMVector3Normalize(lightVec) *
-			XMVector3Length(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye))).m128_f32[0];
-
-		m_sceneMatrix->lightCamera = XMMatrixLookAtLH(lightPos, XMLoadFloat3(&target), XMLoadFloat3(&up)) *
-			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
-#endif // MODIFY_LIGHT_POS
 	}
 
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
-	m_sceneMatrix->eye = eye;
+	m_sceneMatrix->eye = eyePos;
+
+	{
+		m_imguif.setEye(eyePos);
+		m_imguif.setFocus(focusPos);
+	}
 
 	return S_OK;
 }
@@ -621,248 +666,316 @@ HRESULT Render::postRenderToPeraBuffer(ID3D12GraphicsCommandList* list)
 	return S_OK;
 }
 
-static HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence)
-{
-	return Resource::instance()->getDevice()->CreateFence(
-		initVal,
-		D3D12_FENCE_FLAG_NONE,
-		IID_PPV_ARGS(fence->ReleaseAndGetAddressOf()));
-}
-
-HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap)
-{
+namespace {
+	HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence)
 	{
-		D3D12_RESOURCE_DESC resourceDesc = { };
-		{
-			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-			resourceDesc.Alignment = 0;
-			resourceDesc.Width = Config::kWindowWidth;
-			resourceDesc.Height = Config::kWindowHeight;
-			resourceDesc.DepthOrArraySize = 1;
-			resourceDesc.MipLevels = 1;
-			resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS; // should be DXGI_FORMAT_D32_FLOAT because the buffer will be read as a texture
-			resourceDesc.SampleDesc = { 1, 0 };
-			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-			resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		}
-
-		D3D12_HEAP_PROPERTIES heapProp = { };
-		{
-			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
-			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			heapProp.CreationNodeMask = 1;
-			heapProp.VisibleNodeMask = 1;
-		}
-
-		D3D12_CLEAR_VALUE clearVal = { };
-		{
-			clearVal.Format = DXGI_FORMAT_D32_FLOAT;
-			clearVal.DepthStencil.Depth = 1.0f;
-			clearVal.DepthStencil.Stencil = 0;
-		}
-
-		auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_DEPTH_WRITE,
-			&clearVal,
-			IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
-		ThrowIfFailed(ret);
-
-		ret = resource->Get()->SetName(Util::getWideStringFromString("depthBuffer").c_str());
-		ThrowIfFailed(ret);
+		return Resource::instance()->getDevice()->CreateFence(
+			initVal,
+			D3D12_FENCE_FLAG_NONE,
+			IID_PPV_ARGS(fence->ReleaseAndGetAddressOf()));
 	}
 
+	HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap)
 	{
-		D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = { };
 		{
-			descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-			descHeapDesc.NumDescriptors = 1;
-			descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-			descHeapDesc.NodeMask = 0;
+			D3D12_RESOURCE_DESC resourceDesc = { };
+			{
+				resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+				resourceDesc.Alignment = 0;
+				resourceDesc.Width = Config::kWindowWidth;
+				resourceDesc.Height = Config::kWindowHeight;
+				resourceDesc.DepthOrArraySize = 1;
+				resourceDesc.MipLevels = 1;
+				resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS; // should be DXGI_FORMAT_D32_FLOAT because the buffer will be read as a texture
+				resourceDesc.SampleDesc = { 1, 0 };
+				resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+				resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+			}
+
+			D3D12_HEAP_PROPERTIES heapProp = { };
+			{
+				heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+				heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+				heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+				heapProp.CreationNodeMask = 1;
+				heapProp.VisibleNodeMask = 1;
+			}
+
+			D3D12_CLEAR_VALUE clearVal = { };
+			{
+				clearVal.Format = DXGI_FORMAT_D32_FLOAT;
+				clearVal.DepthStencil.Depth = 1.0f;
+				clearVal.DepthStencil.Stencil = 0;
+			}
+
+			auto ret = Resource::instance()->getDevice()->CreateCommittedResource(
+				&heapProp,
+				D3D12_HEAP_FLAG_NONE,
+				&resourceDesc,
+				D3D12_RESOURCE_STATE_DEPTH_WRITE,
+				&clearVal,
+				IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
+			ThrowIfFailed(ret);
+
+			ret = resource->Get()->SetName(Util::getWideStringFromString("depthBuffer").c_str());
+			ThrowIfFailed(ret);
 		}
 
-		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
-			&descHeapDesc,
-			IID_PPV_ARGS(descHeap->ReleaseAndGetAddressOf()));
-		ThrowIfFailed(ret);
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = { };
+			{
+				descHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+				descHeapDesc.NumDescriptors = 1;
+				descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+				descHeapDesc.NodeMask = 0;
+			}
 
-		ret = descHeap->Get()->SetName(Util::getWideStringFromString("depthHeap").c_str());
-		ThrowIfFailed(ret);
+			auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
+				&descHeapDesc,
+				IID_PPV_ARGS(descHeap->ReleaseAndGetAddressOf()));
+			ThrowIfFailed(ret);
+
+			ret = descHeap->Get()->SetName(Util::getWideStringFromString("depthHeap").c_str());
+			ThrowIfFailed(ret);
+		}
+
+		{
+			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = { };
+			{
+				dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+				dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+				dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+				dsvDesc.Texture2D.MipSlice = 0;
+			}
+
+			Resource::instance()->getDevice()->CreateDepthStencilView(
+				resource->Get(),
+				&dsvDesc,
+				descHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+		}
+
+
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+			{
+				heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+				heapDesc.NumDescriptors = 1;
+				heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+				heapDesc.NodeMask = 0;
+			}
+
+			auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
+				&heapDesc,
+				IID_PPV_ARGS(srvDescHeap->ReleaseAndGetAddressOf()));
+			ThrowIfFailed(ret);
+		}
+
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
+			{
+				srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc.Texture2D.MostDetailedMip = 0;
+				srvDesc.Texture2D.MipLevels = 1;
+				srvDesc.Texture2D.PlaneSlice = 0;
+				srvDesc.Texture2D.ResourceMinLODClamp = 0;
+			}
+
+			Resource::instance()->getDevice()->CreateShaderResourceView(
+				resource->Get(),
+				&srvDesc,
+				srvDescHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+		}
+
+		return S_OK;
 	}
 
+	HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap)
 	{
-		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = { };
+		constexpr uint32_t kShadowBufferWidth = 1024;
+		constexpr uint32_t kShadowBufferHeight = kShadowBufferWidth;
+
 		{
-			dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
-			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-			dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-			dsvDesc.Texture2D.MipSlice = 0;
+			D3D12_HEAP_PROPERTIES heapProp = { };
+			{
+				heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
+				heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+				heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+				heapProp.CreationNodeMask = 0;
+				heapProp.VisibleNodeMask = 0;
+			}
+
+			D3D12_RESOURCE_DESC resourceDesc = { };
+			{
+				resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+				resourceDesc.Alignment = 0;
+				resourceDesc.Width = kShadowBufferWidth;
+				resourceDesc.Height = kShadowBufferHeight;
+				resourceDesc.DepthOrArraySize = 1;
+				resourceDesc.MipLevels = 1;
+				resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+				resourceDesc.SampleDesc = { 1, 0 };
+				resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+				resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+			}
+
+			D3D12_CLEAR_VALUE clearVal = { };
+			{
+				clearVal.Format = DXGI_FORMAT_D32_FLOAT;
+				clearVal.DepthStencil.Depth = 1.0f;
+				clearVal.DepthStencil.Stencil = 0;
+			}
+
+			auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+				&heapProp,
+				D3D12_HEAP_FLAG_NONE,
+				&resourceDesc,
+				D3D12_RESOURCE_STATE_DEPTH_WRITE,
+				&clearVal,
+				IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
+			ThrowIfFailed(result);
+
+			result = resource->Get()->SetName(Util::getWideStringFromString("lightDepthBuffer").c_str());
+			ThrowIfFailed(result);
 		}
 
-		Resource::instance()->getDevice()->CreateDepthStencilView(
-			resource->Get(),
-			&dsvDesc,
-			descHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+			{
+				heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+				heapDesc.NumDescriptors = 1;
+				heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+				heapDesc.NodeMask = 0;
+			}
+
+			auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+				&heapDesc,
+				IID_PPV_ARGS(dsvHeap->ReleaseAndGetAddressOf()));
+			ThrowIfFailed(result);
+
+			result = dsvHeap->Get()->SetName(Util::getWideStringFromString("lightDepthBufferDsvHeap").c_str());
+			ThrowIfFailed(result);
+		}
+
+		{
+			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = { };
+			{
+				dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+				dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+				dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+				dsvDesc.Texture2D.MipSlice = 0;
+			}
+
+			Resource::instance()->getDevice()->CreateDepthStencilView(
+				resource->Get(),
+				&dsvDesc,
+				dsvHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+		}
+
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+			{
+				heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+				heapDesc.NumDescriptors = 1;
+				heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+				heapDesc.NodeMask = 0;
+			}
+
+			auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+				&heapDesc,
+				IID_PPV_ARGS(srvHeap->ReleaseAndGetAddressOf()));
+			ThrowIfFailed(result);
+
+			result = srvHeap->Get()->SetName(Util::getWideStringFromString("lightDepthBufferSrvHeap").c_str());
+			ThrowIfFailed(result);
+		}
+
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
+			{
+				srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc.Texture2D.MostDetailedMip = 0;
+				srvDesc.Texture2D.MipLevels = 1;
+				srvDesc.Texture2D.PlaneSlice = 0;
+				srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+			}
+
+			Resource::instance()->getDevice()->CreateShaderResourceView(
+				resource->Get(),
+				&srvDesc,
+				srvHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+		}
+
+		return S_OK;
 	}
 
-
+	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse)
 	{
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
+		static float angle = 0.0f;
+		constexpr float kRadius = 30.0f;
+		constexpr float kY = 20.0f;
+
+		const float x = kRadius * std::sin(angle);
+		const float z = -1 * kRadius * std::cos(angle);
+
+		if (!update)
 		{
-			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = 1;
-			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-			heapDesc.NodeMask = 0;
+			;
+		}
+		else if (!reverse)
+		{
+			angle += 0.01f;
+		}
+		else
+		{
+			angle -= 0.01f;
 		}
 
-		auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(
-			&heapDesc,
-			IID_PPV_ARGS(srvDescHeap->ReleaseAndGetAddressOf()));
-		ThrowIfFailed(ret);
+		return DirectX::XMFLOAT3(x, kY, z);
 	}
 
+	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude)
 	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
-		{
-			srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Texture2D.MostDetailedMip = 0;
-			srvDesc.Texture2D.MipLevels = 1;
-			srvDesc.Texture2D.PlaneSlice = 0;
-			srvDesc.Texture2D.ResourceMinLODClamp = 0;
-		}
+		const DirectX::XMFLOAT3 vec(focus->x - eye->x, focus->y - eye->y, focus->z - eye->z);
+		const float abs = std::sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+		const DirectX::XMFLOAT3 normalizedVec(vec.x / abs, vec.y / abs, vec.z / abs);
 
-		Resource::instance()->getDevice()->CreateShaderResourceView(
-			resource->Get(),
-			&srvDesc,
-			srvDescHeap->Get()->GetCPUDescriptorHandleForHeapStart());
+		*focus = { focus->x + amplitude * normalizedVec.x, focus->y + amplitude * normalizedVec.y, focus->z + amplitude * normalizedVec.z };
+		*eye = { eye->x + amplitude * normalizedVec.x, eye->y + amplitude * normalizedVec.y, eye->z + amplitude * normalizedVec.z };
 	}
 
-	return S_OK;
-}
-
-HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap)
-{
-	constexpr uint32_t kShadowBufferWidth = 1024;
-	constexpr uint32_t kShadowBufferHeight = kShadowBufferWidth;
-
+	void move(DirectX::XMFLOAT3* dst, DirectX::XMFLOAT3* src, float angle, float amplitude)
 	{
-		D3D12_HEAP_PROPERTIES heapProp = { };
-		{
-			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
-			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			heapProp.CreationNodeMask = 0;
-			heapProp.VisibleNodeMask = 0;
-		}
+		const DirectX::XMFLOAT3 vec(dst->x - src->x, dst->y - src->y, dst->z - src->z);
 
-		D3D12_RESOURCE_DESC resourceDesc = { };
-		{
-			resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-			resourceDesc.Alignment = 0;
-			resourceDesc.Width = kShadowBufferWidth;
-			resourceDesc.Height = kShadowBufferHeight;
-			resourceDesc.DepthOrArraySize = 1;
-			resourceDesc.MipLevels = 1;
-			resourceDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-			resourceDesc.SampleDesc = { 1, 0 };
-			resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-			resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		}
+		// We assume that rotations will be done clockwise along Y axis
+		constexpr DirectX::XMFLOAT3 axis(0, 1, 0);
 
-		D3D12_CLEAR_VALUE clearVal = { };
-		{
-			clearVal.Format = DXGI_FORMAT_D32_FLOAT;
-			clearVal.DepthStencil.Depth = 1.0f;
-			clearVal.DepthStencil.Stencil = 0;
-		}
+		const float radian = DirectX::XMConvertToRadians(angle);
+		const DirectX::XMVECTOR rotQuaternion = DirectX::XMQuaternionRotationAxis(DirectX::XMLoadFloat3(&axis), radian);
 
-		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_DEPTH_WRITE,
-			&clearVal,
-			IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
+		const DirectX::XMVECTOR rotVec = DirectX::XMVector3Rotate(DirectX::XMLoadFloat3(&vec), rotQuaternion);
 
-		result = resource->Get()->SetName(Util::getWideStringFromString("lightDepthBuffer").c_str());
-		ThrowIfFailed(result);
-	}
+		DirectX::XMFLOAT3 rotPos = { };
+		DirectX::XMStoreFloat3(&rotPos, rotVec);
 
+		*dst = { dst->x + amplitude * rotPos.x, dst->y + amplitude * rotPos.y, dst->z + amplitude * rotPos.z };
+		*src = { src->x + amplitude * rotPos.x, src->y + amplitude * rotPos.y, src->z + amplitude * rotPos.z };
+	};
+
+	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle)
 	{
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
-		{
-			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-			heapDesc.NumDescriptors = 1;
-			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-			heapDesc.NodeMask = 0;
-		}
+		const DirectX::XMFLOAT3 vec(dst.x - src.x, dst.y - src.y, dst.z - src.z);
+		const DirectX::XMVECTOR rotQuaternion = DirectX::XMQuaternionRotationAxis(DirectX::XMLoadFloat3(&axis), angle);
+		const DirectX::XMVECTOR rotVec = DirectX::XMVector3Rotate(DirectX::XMLoadFloat3(&vec), rotQuaternion);
 
-		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
-			&heapDesc,
-			IID_PPV_ARGS(dsvHeap->ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
+		DirectX::XMFLOAT3 temp = { };
+		DirectX::XMStoreFloat3(&temp, rotVec);
 
-		result = dsvHeap->Get()->SetName(Util::getWideStringFromString("lightDepthBufferDsvHeap").c_str());
-		ThrowIfFailed(result);
-	}
+		return DirectX::XMFLOAT3(temp.x + src.x, temp.y + src.y, temp.z + src.z);
+	};
 
-	{
-		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = { };
-		{
-			dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
-			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-			dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
-			dsvDesc.Texture2D.MipSlice = 0;
-		}
-
-		Resource::instance()->getDevice()->CreateDepthStencilView(
-			resource->Get(),
-			&dsvDesc,
-			dsvHeap->Get()->GetCPUDescriptorHandleForHeapStart());
-	}
-
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
-		{
-			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = 1;
-			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-			heapDesc.NodeMask = 0;
-		}
-
-		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
-			&heapDesc,
-			IID_PPV_ARGS(srvHeap->ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
-
-		result = srvHeap->Get()->SetName(Util::getWideStringFromString("lightDepthBufferSrvHeap").c_str());
-		ThrowIfFailed(result);
-	}
-
-	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
-		{
-			srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Texture2D.MostDetailedMip = 0;
-			srvDesc.Texture2D.MipLevels = 1;
-			srvDesc.Texture2D.PlaneSlice = 0;
-			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-		}
-
-		Resource::instance()->getDevice()->CreateShaderResourceView(
-			resource->Get(),
-			&srvDesc,
-			srvHeap->Get()->GetCPUDescriptorHandleForHeapStart());
-	}
-
-	return S_OK;
-}
-
+} // namespace anonymous
