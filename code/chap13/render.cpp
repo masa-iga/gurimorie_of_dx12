@@ -530,7 +530,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	XMFLOAT3 eyePos(0, 0, 0);
 	XMFLOAT3 focusPos(0, 0, 0);
 
-	constexpr XMFLOAT4 lightPos(0, 50, -10, 0);
+	constexpr XMFLOAT3 lightPos(0, 50, -10);
 	XMFLOAT3 lightFocusPos(0, 0, 0);
 
 	if (m_bAutoMoveEyePos)
@@ -565,7 +565,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	}
 
 	{
-		const XMVECTOR lightVec = XMLoadFloat4(&lightPos);
+		const XMVECTOR lightVec = XMLoadFloat3(&lightPos);
 
 		m_sceneMatrix->lightCamera =
 			XMMatrixLookAtLH(lightVec, XMLoadFloat3(&lightFocusPos), XMLoadFloat3(&up)) *
@@ -576,8 +576,9 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	m_sceneMatrix->eye = eyePos;
 
 	{
-		m_imguif.setEye(eyePos);
-		m_imguif.setFocus(focusPos);
+		m_imguif.setEyePos(eyePos);
+		m_imguif.setFocusPos(focusPos);
+		m_imguif.setLightPos(lightPos);
 	}
 
 	return S_OK;
