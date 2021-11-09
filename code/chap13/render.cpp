@@ -568,7 +568,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 			XM_PIDIV2,
 			static_cast<float>(Config::kWindowWidth) / static_cast<float>(Config::kWindowHeight),
 			1.0f,
-			100.0f
+			150.0f
 		);
 
 		m_sceneMatrix->proj = projMat;
@@ -579,7 +579,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 
 		m_sceneMatrix->lightCamera =
 			XMMatrixLookAtLH(lightVec, XMLoadFloat3(&lightFocusPos), XMLoadFloat3(&up)) *
-			XMMatrixOrthographicLH(40, 40, 1.0f, 100.0f);
+			XMMatrixOrthographicLH(40, 40, 1.0f, 150.0f);
 	}
 
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
