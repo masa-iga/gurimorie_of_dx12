@@ -21,8 +21,9 @@ public:
 	void build();
 	void render(ID3D12GraphicsCommandList* list);
 	void setFps(float fps) { m_fps = fps; };
-	void setEye(DirectX::XMFLOAT3 eye) { m_eye = eye; }
-	void setFocus(DirectX::XMFLOAT3 focus) { m_focus = focus; }
+	void setEyePos(DirectX::XMFLOAT3 pos) { m_eyePos = pos; }
+	void setFocusPos(DirectX::XMFLOAT3 pos) { m_focusPos = pos; }
+	void setLightPos(DirectX::XMFLOAT3 pos) { m_lightPos = pos; }
 
 	static LRESULT wndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
@@ -38,6 +39,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap = nullptr;
 	float m_fps = 0.0f;
-	DirectX::XMFLOAT3 m_eye = { };
-	DirectX::XMFLOAT3 m_focus = { };
+	DirectX::XMFLOAT3 m_eyePos = { };
+	DirectX::XMFLOAT3 m_focusPos = { };
+	DirectX::XMFLOAT3 m_lightPos = { };
 };

@@ -89,16 +89,29 @@ void ImguiIf::build()
 			ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
 		}
 
-		ImGui::Text("FPS   %2.1f\n", m_fps);
-		ImGui::Text("Eye   %2.2f %2.2f %2.2f\n", m_eye.x, m_eye.y, m_eye.z);
-		ImGui::Text("Focus %2.2f %2.2f %2.2f\n", m_focus.x, m_focus.y, m_focus.z);
+		ImGui::Text("FPS  : %2.1f\n", m_fps);
+		ImGui::Text("Eye  : %2.2f %2.2f %2.2f\n", m_eyePos.x, m_eyePos.y, m_eyePos.z);
+		ImGui::Text("Focus: %2.2f %2.2f %2.2f\n", m_focusPos.x, m_focusPos.y, m_focusPos.z);
+		ImGui::Text("Light: %2.2f %2.2f %2.2f\n", m_lightPos.x, m_lightPos.y, m_lightPos.z);
 
-		static bool bCheck = false;
-		bool bUpdated = ImGui::Checkbox("Auto moving eye position", &bCheck);
-
-		if (bUpdated)
 		{
-			notify(UiEvent::kUpdateAutoMovePos, bCheck);
+			static bool bCheck = false;
+			const bool bUpdated = ImGui::Checkbox("Auto moving eye position", &bCheck);
+
+			if (bUpdated)
+			{
+				notify(UiEvent::kUpdateAutoMovePos, bCheck);
+			}
+		}
+
+		{
+			static bool bCheck = false;
+			const bool bUpdated = ImGui::Checkbox("Auto moving light position", &bCheck);
+
+			if (bUpdated)
+			{
+				notify(UiEvent::kUpdateAutoLightPos, bCheck);
+			}
 		}
 	}
 	ImGui::End();

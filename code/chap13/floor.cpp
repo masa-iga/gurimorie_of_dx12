@@ -12,7 +12,7 @@
 
 using namespace Microsoft::WRL;
 
-constexpr float kScalingFactor = 30.0f;
+constexpr float kScalingFactor = 100.0f;
 
 struct Vertex
 {
