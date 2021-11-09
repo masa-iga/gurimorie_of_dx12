@@ -94,12 +94,24 @@ void ImguiIf::build()
 		ImGui::Text("Focus: %2.2f %2.2f %2.2f\n", m_focusPos.x, m_focusPos.y, m_focusPos.z);
 		ImGui::Text("Light: %2.2f %2.2f %2.2f\n", m_lightPos.x, m_lightPos.y, m_lightPos.z);
 
-		static bool bCheck = false;
-		bool bUpdated = ImGui::Checkbox("Auto moving eye position", &bCheck);
-
-		if (bUpdated)
 		{
-			notify(UiEvent::kUpdateAutoMovePos, bCheck);
+			static bool bCheck = false;
+			const bool bUpdated = ImGui::Checkbox("Auto moving eye position", &bCheck);
+
+			if (bUpdated)
+			{
+				notify(UiEvent::kUpdateAutoMovePos, bCheck);
+			}
+		}
+
+		{
+			static bool bCheck = false;
+			const bool bUpdated = ImGui::Checkbox("Auto moving light position", &bCheck);
+
+			if (bUpdated)
+			{
+				notify(UiEvent::kUpdateAutoLightPos, bCheck);
+			}
 		}
 	}
 	ImGui::End();

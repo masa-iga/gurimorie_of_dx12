@@ -66,6 +66,7 @@ private:
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
 	bool m_bAutoMoveEyePos = false;
+	bool m_bAutoMoveLightPos = false;
 	DirectX::XMFLOAT3 m_eyePos = DirectX::XMFLOAT3(0.0f, 13.0f, -20.0f);
 	DirectX::XMFLOAT3 m_focusPos = DirectX::XMFLOAT3(0.0f, m_eyePos.y, 0.0f);
 

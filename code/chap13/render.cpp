@@ -29,6 +29,7 @@ namespace {
 	HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
 	HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
 	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
+	DirectX::XMFLOAT3 getAutoMoveLightPos();
 	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude);
 	void move(DirectX::XMFLOAT3* dst, DirectX::XMFLOAT3* src, float angle, float amplitude);
 	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle);
@@ -36,7 +37,11 @@ namespace {
 
 void Render::onNotify(UiEvent uiEvent, bool flag)
 {
-	m_bAutoMoveEyePos = flag;
+	switch (uiEvent) {
+	case UiEvent::kUpdateAutoMovePos: m_bAutoMoveEyePos = flag; break;
+	case UiEvent::kUpdateAutoLightPos: m_bAutoMoveLightPos = flag; break;
+	default: DebugOutputFormatString("unhandled UI event. (%d)\n", uiEvent); ThrowIfFalse(false);
+	}
 }
 
 HRESULT Render::init(HWND hwnd)
@@ -530,7 +535,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	XMFLOAT3 eyePos(0, 0, 0);
 	XMFLOAT3 focusPos(0, 0, 0);
 
-	constexpr XMFLOAT3 lightPos(0, 50, -10);
+	XMFLOAT3 lightPos(0, 50, -10);
 	XMFLOAT3 lightFocusPos(0, 0, 0);
 
 	if (m_bAutoMoveEyePos)
@@ -541,6 +546,11 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	{
 		eyePos = m_eyePos;
 		focusPos = m_focusPos;
+	}
+
+	if (m_bAutoMoveLightPos)
+	{
+		lightPos = getAutoMoveLightPos();
 	}
 
 	{
@@ -917,9 +927,9 @@ namespace {
 	{
 		static float angle = 0.0f;
 		constexpr float kRadius = 30.0f;
-		constexpr float kY = 20.0f;
 
 		const float x = kRadius * std::sin(angle);
+		const float y = 20.0f;
 		const float z = -1 * kRadius * std::cos(angle);
 
 		if (!update)
@@ -935,7 +945,20 @@ namespace {
 			angle -= 0.01f;
 		}
 
-		return DirectX::XMFLOAT3(x, kY, z);
+		return DirectX::XMFLOAT3(x, y, z);
+	}
+
+	DirectX::XMFLOAT3 getAutoMoveLightPos()
+	{
+		static float angle = 0.0f;
+		constexpr float kRadius = 15.0f;
+
+		const float x = kRadius * std::cos(angle);
+		const float y = 15.0f;
+		const float z = kRadius * std::sin(angle);
+		angle -= 0.005f;
+
+		return DirectX::XMFLOAT3(x, y, z);
 	}
 
 	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude)
