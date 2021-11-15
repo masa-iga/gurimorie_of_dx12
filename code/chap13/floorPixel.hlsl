@@ -1,7 +1,6 @@
 #include "floorHeader.hlsli"
 
-SamplerState smp : register(s0);
-SamplerComparisonState smpShadow : register(s1);
+SamplerComparisonState smpShadow : register(s0);
 Texture2D<float> lightDepthTex : register(t0);
 
 static const float kBias = 0.005f;
