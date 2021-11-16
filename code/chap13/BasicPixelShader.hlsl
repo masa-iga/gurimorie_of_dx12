@@ -7,8 +7,9 @@ Texture2D<float4> toon : register(t3);
 Texture2D<float> lightDepthTex : register(t4);
 SamplerState smp : register(s0);
 SamplerState smpToon : register(s1);
+SamplerComparisonState smpShadow : register(s2);
 
-static const float kBias = 0.001f;
+static const float kBias = 0.005f;
 
 float4 BasicPs(Output input) : SV_TARGET
 {
@@ -84,14 +85,8 @@ float4 BasicWithShadowMapPs(Output input) : SV_TARGET
 	const float3 posFromLightVP = input.tpos.xyz / input.tpos.w;
 
 	const float2 shadowUV = (posFromLightVP.xy + float2(1, -1)) * float2(0.5, -0.5);
-	const float depthFromLight = lightDepthTex.Sample(smp, shadowUV);
-
-	float shadowWeight = 1.0f;
-
-	if (depthFromLight < posFromLightVP.z - kBias)
-	{
-		shadowWeight = 0.5f;
-	}
+	const float depthFromLight = lightDepthTex.SampleCmp(smpShadow, shadowUV, posFromLightVP.z - kBias);
+	const float shadowWeight = lerp(0.5f, 1.0f, depthFromLight); // be 0.5f if the value is 0.0f
 
 	const float4 ret = max(
 		toonDif // brightness (toon)

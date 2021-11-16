@@ -110,7 +110,7 @@ HRESULT Floor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sce
 	list->SetGraphicsRootDescriptorTable(1 /* root param 1 */, m_transDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 
 	list->SetDescriptorHeaps(1, &depthLightSrvHeap);
-	list->SetGraphicsRootDescriptorTable(2 /* root param 1 */, depthLightSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	list->SetGraphicsRootDescriptorTable(2 /* root param 2 */, depthLightSrvHeap->GetGPUDescriptorHandleForHeapStart());
 
 	list->DrawInstanced(_countof(kFloorVertices), 1, 0, 0);
 
@@ -437,21 +437,15 @@ HRESULT Floor::createRootSignature()
 		rootParam[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	}
 
-	D3D12_STATIC_SAMPLER_DESC samplerDesc = CD3DX12_STATIC_SAMPLER_DESC(0);
+	D3D12_STATIC_SAMPLER_DESC samplerDesc = { };
 	{
-		//D3D12_FILTER Filter;
-		samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-		samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-		samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-		//FLOAT MipLODBias;
-		//UINT MaxAnisotropy;
-		//D3D12_COMPARISON_FUNC ComparisonFunc;
-		//D3D12_STATIC_BORDER_COLOR BorderColor;
-		//FLOAT MinLOD;
-		//FLOAT MaxLOD;
-		//UINT ShaderRegister;
-		//UINT RegisterSpace;
-		//D3D12_SHADER_VISIBILITY ShaderVisibility;
+		samplerDesc = CD3DX12_STATIC_SAMPLER_DESC(0);
+		samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		samplerDesc.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+		samplerDesc.MaxAnisotropy = 1;
 	}
 
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };

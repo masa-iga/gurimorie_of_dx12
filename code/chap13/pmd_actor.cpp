@@ -588,6 +588,7 @@ HRESULT PmdActor::createPipelineState()
 		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(ret);
 
+	// for shadow
 	{
 
 		gpipeDesc.VS = { m_shadowVsBlob->GetBufferPointer(), m_shadowVsBlob->GetBufferSize() };
@@ -665,7 +666,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 		CD3DX12_ROOT_PARAMETER::InitAsDescriptorTable(rootParam[3], 1, &descTblRange[4]);
 	}
 
-	D3D12_STATIC_SAMPLER_DESC samplerDesc[2] = { };
+	D3D12_STATIC_SAMPLER_DESC samplerDesc[3] = { };
 	{
 		samplerDesc[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
 		samplerDesc[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -694,13 +695,22 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 		samplerDesc[1].ShaderRegister = 1;
 		samplerDesc[1].RegisterSpace = 0;
 		samplerDesc[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		samplerDesc[2] = CD3DX12_STATIC_SAMPLER_DESC(
+			2,
+			D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR,
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+		samplerDesc[2].MaxAnisotropy = 1;
+		samplerDesc[2].ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	}
 
 	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
 	{
 		rootSignatureDesc.NumParameters = 4;
 		rootSignatureDesc.pParameters = &rootParam[0];
-		rootSignatureDesc.NumStaticSamplers = 2;
+		rootSignatureDesc.NumStaticSamplers = 3;
 		rootSignatureDesc.pStaticSamplers = &samplerDesc[0];
 		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 	}

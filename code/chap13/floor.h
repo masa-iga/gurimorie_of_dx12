@@ -67,7 +67,7 @@ private:
 	};
 
 	const DirectX::XMMATRIX kDefaultTransMat = DirectX::XMMatrixTranslation(0.0f, -1.0f, 0.0f);
-	const DirectX::XMMATRIX kDefaultScaleMat = DirectX::XMMatrixScaling(50.0f, 1.0f, 50.0f);
+	const DirectX::XMMATRIX kDefaultScaleMat = DirectX::XMMatrixScaling(25.0f, 1.0f, 25.0f);
 	static constexpr LPCWSTR kVsFile = L"floorVertex.hlsl";
 	static constexpr LPCWSTR kPsFile = L"floorPixel.hlsl";
 	static constexpr std::array<LPCSTR, VsType::kEnd> kVsEntryPoints = { "basicVs", "shadowVs", "axisVs" };

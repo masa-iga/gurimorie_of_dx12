@@ -575,11 +575,13 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	}
 
 	{
+		constexpr float viewWidth = 50.0f;
+		constexpr float viewHeight = 50.0f;
 		const XMVECTOR lightVec = XMLoadFloat3(&lightPos);
 
 		m_sceneMatrix->lightCamera =
 			XMMatrixLookAtLH(lightVec, XMLoadFloat3(&lightFocusPos), XMLoadFloat3(&up)) *
-			XMMatrixOrthographicLH(40, 40, 1.0f, 150.0f);
+			XMMatrixOrthographicLH(viewWidth, viewHeight, 1.0f, 150.0f);
 	}
 
 	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
