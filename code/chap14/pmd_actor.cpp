@@ -198,6 +198,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 
 static const std::string kModelDir = "../resource/Model";
 static const std::string kMotionDir = "../resource/Motion";
+static const std::string kToonDir = "../resource/toon";
 static constexpr char kSignature[] = "Pmd";
 static constexpr size_t kNumSignature = 3;
 static constexpr size_t kPmdVertexSize = sizeof(PMDVertex);
@@ -856,7 +857,7 @@ HRESULT PmdActor::loadPmd(Model model)
 				m_spaResources[i] = nullptr;
 
 				{
-					std::string toonFilePath = "toon/";
+					std::string toonFilePath = kToonDir + "/";
 					char toonFileName[16] = "";
 
 					int32_t ret = sprintf_s(
