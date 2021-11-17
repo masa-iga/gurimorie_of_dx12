@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="リソース ファイル\Model">
-      <UniqueIdentifier>{52f0aa26-8ac6-4c9e-b989-ae91f1c882ba}</UniqueIdentifier>
-    </Filter>
     <Filter Include="リソース ファイル\toon">
       <UniqueIdentifier>{c2163f6b-fd34-4179-8bb4-188764f6a7f8}</UniqueIdentifier>
     </Filter>
@@ -27,6 +24,9 @@
     </Filter>
     <Filter Include="シェーダ ファイル">
       <UniqueIdentifier>{ec1c9d6e-c952-4eb1-a3fa-534e444542d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="リソース ファイル\Model">
+      <UniqueIdentifier>{b3ddb5a6-9547-45fa-b003-3ab7ff1773de}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -141,63 +141,6 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Model\a1.sph">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\a2.spa">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\a3.spa">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\a4.sph">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\MEIKO.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\metal.sph">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\mikuhair.sph">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\カイト.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\ダミーボーン.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\亞北ネル.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\初音ミク.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\初音ミクmetal.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\初音ミクVer2.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\咲音メイコ.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\巡音ルカ.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\弱音ハク.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\鏡音リン.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\鏡音リン_act2.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
-    <None Include="Model\鏡音レン.pmd">
-      <Filter>リソース ファイル\Model</Filter>
-    </None>
     <None Include="Motion\pose.vmd">
       <Filter>リソース ファイル\Motion</Filter>
     </None>
@@ -219,41 +162,65 @@
     <None Include="floorHeader.hlsli">
       <Filter>シェーダ ファイル</Filter>
     </None>
+    <None Include="..\resource\Model\a1.sph">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\a2.spa">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\a3.spa">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\a4.sph">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\MEIKO.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\metal.sph">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\mikuhair.sph">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\カイト.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\ダミーボーン.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\亞北ネル.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\初音ミク.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\初音ミクmetal.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\初音ミクVer2.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\咲音メイコ.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\巡音ルカ.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\弱音ハク.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\鏡音リン.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\鏡音リン_act2.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Model\鏡音レン.pmd">
+      <Filter>リソース ファイル\Model</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Model\ao.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\eye2.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\eye3.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\eye3Ne.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\eye4.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\eyeKT.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\eyelu.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\eyeM2.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\eyeMe2.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\eyeR2.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
-    <Image Include="Model\sakine1.bmp">
-      <Filter>リソース ファイル\Model</Filter>
-    </Image>
     <Image Include="toon\toon01.bmp">
       <Filter>リソース ファイル\toon</Filter>
     </Image>
@@ -289,6 +256,39 @@
     </Image>
     <Image Include="normal\normalmap.jpg">
       <Filter>リソース ファイル\normal</Filter>
+    </Image>
+    <Image Include="..\resource\Model\ao.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\eye2.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\eye3.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\eye3Ne.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\eye4.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\eyeKT.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\eyelu.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\eyeM2.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\eyeMe2.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\eyeR2.bmp">
+      <Filter>リソース ファイル\Model</Filter>
+    </Image>
+    <Image Include="..\resource\Model\sakine1.bmp">
+      <Filter>リソース ファイル\Model</Filter>
     </Image>
   </ItemGroup>
 </Project>

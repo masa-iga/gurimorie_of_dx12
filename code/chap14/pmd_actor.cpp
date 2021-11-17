@@ -196,6 +196,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 	},
 };
 
+static const std::string kModelDir = "../resource/Model";
 static constexpr char kSignature[] = "Pmd";
 static constexpr size_t kNumSignature = 3;
 static constexpr size_t kPmdVertexSize = sizeof(PMDVertex);
@@ -1848,15 +1849,15 @@ static HRESULT setViewportScissor(int32_t width, int32_t height)
 static std::string getModelPath(PmdActor::Model model)
 {
 	switch (model) {
-	case PmdActor::Model::kMiku: return "Model/初音ミク.pmd";
-	case PmdActor::Model::kMikuMetal: return "Model/初音ミクmetal.pmd";
-	case PmdActor::Model::kLuka: return "Model/巡音ルカ.pmd";
-	case PmdActor::Model::kLen: return "Model/鏡音レン.pmd";
-	case PmdActor::Model::kKaito: return "Model/カイト.pmd";
-	case PmdActor::Model::kHaku: return "Model/弱音ハク.pmd";
-	case PmdActor::Model::kRin: return "Model/鏡音リン.pmd";
-	case PmdActor::Model::kMeiko: return "Model/咲音メイコ.pmd";
-	case PmdActor::Model::kNeru: return "Model/亞北ネル.pmd";
+	case PmdActor::Model::kMiku: return kModelDir + "/" + "初音ミク.pmd";
+	case PmdActor::Model::kMikuMetal: return kModelDir + "/" + "初音ミクmetal.pmd";
+	case PmdActor::Model::kLuka: return kModelDir + "/" + "巡音ルカ.pmd";
+	case PmdActor::Model::kLen: return kModelDir + "/" + "鏡音レン.pmd";
+	case PmdActor::Model::kKaito: return kModelDir + "/" + "カイト.pmd";
+	case PmdActor::Model::kHaku: return kModelDir + "/" + "弱音ハク.pmd";
+	case PmdActor::Model::kRin: return kModelDir + "/" + "鏡音リン.pmd";
+	case PmdActor::Model::kMeiko: return kModelDir + "/" + "咲音メイコ.pmd";
+	case PmdActor::Model::kNeru: return kModelDir + "/" + "亞北ネル.pmd";
 	default: ThrowIfFalse(false); break;
 	}
 

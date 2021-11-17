@@ -179,27 +179,27 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\resource\Model\a1.sph" />
+    <None Include="..\resource\Model\a2.spa" />
+    <None Include="..\resource\Model\a3.spa" />
+    <None Include="..\resource\Model\a4.sph" />
+    <None Include="..\resource\Model\MEIKO.pmd" />
+    <None Include="..\resource\Model\metal.sph" />
+    <None Include="..\resource\Model\mikuhair.sph" />
+    <None Include="..\resource\Model\カイト.pmd" />
+    <None Include="..\resource\Model\ダミーボーン.pmd" />
+    <None Include="..\resource\Model\亞北ネル.pmd" />
+    <None Include="..\resource\Model\初音ミク.pmd" />
+    <None Include="..\resource\Model\初音ミクmetal.pmd" />
+    <None Include="..\resource\Model\初音ミクVer2.pmd" />
+    <None Include="..\resource\Model\咲音メイコ.pmd" />
+    <None Include="..\resource\Model\巡音ルカ.pmd" />
+    <None Include="..\resource\Model\弱音ハク.pmd" />
+    <None Include="..\resource\Model\鏡音リン.pmd" />
+    <None Include="..\resource\Model\鏡音リン_act2.pmd" />
+    <None Include="..\resource\Model\鏡音レン.pmd" />
     <None Include="BasicShaderHeader.hlsli" />
     <None Include="floorHeader.hlsli" />
-    <None Include="Model\a1.sph" />
-    <None Include="Model\a2.spa" />
-    <None Include="Model\a3.spa" />
-    <None Include="Model\a4.sph" />
-    <None Include="Model\MEIKO.pmd" />
-    <None Include="Model\metal.sph" />
-    <None Include="Model\mikuhair.sph" />
-    <None Include="Model\カイト.pmd" />
-    <None Include="Model\ダミーボーン.pmd" />
-    <None Include="Model\亞北ネル.pmd" />
-    <None Include="Model\初音ミク.pmd" />
-    <None Include="Model\初音ミクmetal.pmd" />
-    <None Include="Model\初音ミクVer2.pmd" />
-    <None Include="Model\咲音メイコ.pmd" />
-    <None Include="Model\巡音ルカ.pmd" />
-    <None Include="Model\弱音ハク.pmd" />
-    <None Include="Model\鏡音リン.pmd" />
-    <None Include="Model\鏡音リン_act2.pmd" />
-    <None Include="Model\鏡音レン.pmd" />
     <None Include="Motion\motion.vmd" />
     <None Include="Motion\pose.vmd" />
     <None Include="Motion\squat.vmd" />
@@ -207,6 +207,17 @@
     <None Include="peraHeader.hlsli" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\resource\Model\ao.bmp" />
+    <Image Include="..\resource\Model\eye2.bmp" />
+    <Image Include="..\resource\Model\eye3.bmp" />
+    <Image Include="..\resource\Model\eye3Ne.bmp" />
+    <Image Include="..\resource\Model\eye4.bmp" />
+    <Image Include="..\resource\Model\eyeKT.bmp" />
+    <Image Include="..\resource\Model\eyelu.bmp" />
+    <Image Include="..\resource\Model\eyeM2.bmp" />
+    <Image Include="..\resource\Model\eyeMe2.bmp" />
+    <Image Include="..\resource\Model\eyeR2.bmp" />
+    <Image Include="..\resource\Model\sakine1.bmp" />
     <Image Include="normal\crack_n.png" />
     <Image Include="normal\normalmap.jpg" />
     <Image Include="toon\toon01.bmp" />
@@ -219,17 +230,6 @@
     <Image Include="toon\toon08.bmp" />
     <Image Include="toon\toon09.bmp" />
     <Image Include="toon\toon10.bmp" />
-    <Image Include="Model\ao.bmp" />
-    <Image Include="Model\eye2.bmp" />
-    <Image Include="Model\eye3.bmp" />
-    <Image Include="Model\eye3Ne.bmp" />
-    <Image Include="Model\eye4.bmp" />
-    <Image Include="Model\eyeKT.bmp" />
-    <Image Include="Model\eyelu.bmp" />
-    <Image Include="Model\eyeM2.bmp" />
-    <Image Include="Model\eyeMe2.bmp" />
-    <Image Include="Model\eyeR2.bmp" />
-    <Image Include="Model\sakine1.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
