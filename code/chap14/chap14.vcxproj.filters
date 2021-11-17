@@ -141,18 +141,6 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Motion\pose.vmd">
-      <Filter>リソース ファイル\Motion</Filter>
-    </None>
-    <None Include="Motion\swing.vmd">
-      <Filter>リソース ファイル\Motion</Filter>
-    </None>
-    <None Include="Motion\motion.vmd">
-      <Filter>リソース ファイル\Motion</Filter>
-    </None>
-    <None Include="Motion\squat.vmd">
-      <Filter>リソース ファイル\Motion</Filter>
-    </None>
     <None Include="BasicShaderHeader.hlsli">
       <Filter>シェーダ ファイル</Filter>
     </None>
@@ -218,6 +206,18 @@
     </None>
     <None Include="..\resource\Model\鏡音レン.pmd">
       <Filter>リソース ファイル\Model</Filter>
+    </None>
+    <None Include="..\resource\Motion\motion.vmd">
+      <Filter>リソース ファイル\Motion</Filter>
+    </None>
+    <None Include="..\resource\Motion\pose.vmd">
+      <Filter>リソース ファイル\Motion</Filter>
+    </None>
+    <None Include="..\resource\Motion\squat.vmd">
+      <Filter>リソース ファイル\Motion</Filter>
+    </None>
+    <None Include="..\resource\Motion\swing.vmd">
+      <Filter>リソース ファイル\Motion</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

@@ -198,12 +198,12 @@
     <None Include="..\resource\Model\鏡音リン.pmd" />
     <None Include="..\resource\Model\鏡音リン_act2.pmd" />
     <None Include="..\resource\Model\鏡音レン.pmd" />
+    <None Include="..\resource\Motion\motion.vmd" />
+    <None Include="..\resource\Motion\pose.vmd" />
+    <None Include="..\resource\Motion\squat.vmd" />
+    <None Include="..\resource\Motion\swing.vmd" />
     <None Include="BasicShaderHeader.hlsli" />
     <None Include="floorHeader.hlsli" />
-    <None Include="Motion\motion.vmd" />
-    <None Include="Motion\pose.vmd" />
-    <None Include="Motion\squat.vmd" />
-    <None Include="Motion\swing.vmd" />
     <None Include="peraHeader.hlsli" />
   </ItemGroup>
   <ItemGroup>

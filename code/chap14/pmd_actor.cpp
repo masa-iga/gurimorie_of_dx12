@@ -197,6 +197,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 };
 
 static const std::string kModelDir = "../resource/Model";
+static const std::string kMotionDir = "../resource/Motion";
 static constexpr char kSignature[] = "Pmd";
 static constexpr size_t kNumSignature = 3;
 static constexpr size_t kPmdVertexSize = sizeof(PMDVertex);
@@ -1866,10 +1867,10 @@ static std::string getModelPath(PmdActor::Model model)
 
 std::string getMotionPath()
 {
-	//return "Motion/pose.vmd";
-	//return "Motion/swing.vmd";
-	return "Motion/motion.vmd";
-	//return "Motion/squat.vmd";
+	//return kMotionDir + "/" + "pose.vmd";
+	//return kMotionDir + "/" + "swing.vmd";
+	return kMotionDir + "/" + "motion.vmd";
+	//return kMotionDir + "/" + "squat.vmd";
 }
 
 static std::string getTexturePathFromModelAndTexPath(const std::string& modelPath, const char* texPath)
