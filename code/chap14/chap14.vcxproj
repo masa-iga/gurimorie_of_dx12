@@ -218,6 +218,8 @@
     <Image Include="..\resource\Model\eyeMe2.bmp" />
     <Image Include="..\resource\Model\eyeR2.bmp" />
     <Image Include="..\resource\Model\sakine1.bmp" />
+    <Image Include="..\resource\normal\crack_n.png" />
+    <Image Include="..\resource\normal\normalmap.jpg" />
     <Image Include="..\resource\toon\toon01.bmp" />
     <Image Include="..\resource\toon\toon02.bmp" />
     <Image Include="..\resource\toon\toon03.bmp" />
@@ -228,8 +230,6 @@
     <Image Include="..\resource\toon\toon08.bmp" />
     <Image Include="..\resource\toon\toon09.bmp" />
     <Image Include="..\resource\toon\toon10.bmp" />
-    <Image Include="normal\crack_n.png" />
-    <Image Include="normal\normalmap.jpg" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

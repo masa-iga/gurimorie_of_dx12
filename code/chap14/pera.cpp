@@ -13,7 +13,7 @@
 using namespace Microsoft::WRL;
 
 static std::vector<float> getGaussianWeights(size_t count, float sigma);
-static const std::string kNormalMapImagePath = "normal/normalmap.jpg";
+static const std::string kNormalMapImagePath = "../resource/normal/normalmap.jpg";
 
 HRESULT Pera::createResources()
 {
