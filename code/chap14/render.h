@@ -57,9 +57,8 @@ private:
 	HRESULT createViews();
 	HRESULT createPeraView();
 	HRESULT updateMvpMatrix(bool animationReversed);
-	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH);
 	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
-	HRESULT clearPeraRenderTarget(ID3D12GraphicsCommandList* list);
+	HRESULT clearPeraRenderTargets(ID3D12GraphicsCommandList* list);
 	HRESULT preRenderToPeraBuffer(ID3D12GraphicsCommandList* list);
 	HRESULT postRenderToPeraBuffer(ID3D12GraphicsCommandList* list);
 
@@ -89,7 +88,7 @@ private:
 	std::vector<PmdActor> m_pmdActors;
 
 	Pera m_pera;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_peraResource = nullptr;
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_peraResources;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraRtvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
 

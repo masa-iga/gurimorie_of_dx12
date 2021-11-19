@@ -28,6 +28,7 @@ namespace {
 	HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
 	HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
 	HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
+	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter);
 	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
 	DirectX::XMFLOAT3 getAutoMoveLightPos();
 	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude);
@@ -121,10 +122,10 @@ HRESULT Render::render()
 	// clear
 	{
 		m_imguif.newFrame();
-		clearRenderTarget(list, backBufferResource, rtvH);
+		clearRenderTarget(list, backBufferResource, rtvH, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		clearDepthRenderTarget(list, dsvH);
 		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
-		clearPeraRenderTarget(list);
+		clearPeraRenderTargets(list);
 	}
 
 	// render light depth map
@@ -427,17 +428,19 @@ HRESULT Render::createPeraView()
 
 		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getFrameBuffer(0)->GetDesc();
 
-		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resDesc,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-			&clearValue,
-			IID_PPV_ARGS(m_peraResource.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
+		for (uint32_t i = 0; i < m_peraResources.size(); ++i)
+		{
+			auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+				&heapProp,
+				D3D12_HEAP_FLAG_NONE,
+				&resDesc,
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				&clearValue,
+				IID_PPV_ARGS(m_peraResources.at(i).ReleaseAndGetAddressOf()));
+			ThrowIfFailed(result);
 
-		result = m_peraResource.Get()->SetName(Util::getWideStringFromString("peraBuffer").c_str());
-		ThrowIfFailed(result);
+			result = m_peraResources.at(i).Get()->SetName(Util::getWideStringFromString("peraBuffer" + std::to_string(i)).c_str());
+		}
 	}
 
 #if NO_UPDATE_TEXTURE_FROM_CPU
@@ -466,7 +469,7 @@ HRESULT Render::createPeraView()
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = Resource::instance()->getRtvHeaps()->GetDesc();
 		{
-			heapDesc.NumDescriptors = 1;
+			heapDesc.NumDescriptors = 2;
 		}
 
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
@@ -476,17 +479,25 @@ HRESULT Render::createPeraView()
 
 		result = m_peraRtvHeap.Get()->SetName(Util::getWideStringFromString("peraRtvHeap").c_str());
 		ThrowIfFailed(result);
-
+	}
+	// create RTV views
+	{
 		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = { };
 		{
 			rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 		}
 
-		Resource::instance()->getDevice()->CreateRenderTargetView(
-			m_peraResource.Get(),
-			&rtvDesc,
-			m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+		for (auto& resource : m_peraResources)
+		{
+			Resource::instance()->getDevice()->CreateRenderTargetView(
+				resource.Get(),
+				&rtvDesc,
+				handle);
+			handle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		}
 	}
 
 	// create SRV heap
@@ -494,7 +505,7 @@ HRESULT Render::createPeraView()
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
 		{
 			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = 1;
+			heapDesc.NumDescriptors = 2;
 			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			heapDesc.NodeMask = 0;
 		}
@@ -506,7 +517,9 @@ HRESULT Render::createPeraView()
 
 		result = m_peraSrvHeap.Get()->SetName(Util::getWideStringFromString("peraSrvHeap").c_str());
 		ThrowIfFailed(result);
-
+	}
+	// create SRV views
+	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
 		{
 			srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -518,10 +531,16 @@ HRESULT Render::createPeraView()
 			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 		}
 
-		Resource::instance()->getDevice()->CreateShaderResourceView(
-			m_peraResource.Get(),
-			&srvDesc,
-			m_peraSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_peraSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+		for (auto& resource : m_peraResources)
+		{
+			Resource::instance()->getDevice()->CreateShaderResourceView(
+				resource.Get(),
+				&srvDesc,
+				handle);
+			handle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
 	}
 
 	return S_OK;
@@ -596,24 +615,6 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	return S_OK;
 }
 
-HRESULT Render::clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE rtvH)
-{
-	D3D12_RESOURCE_BARRIER barrier = { };
-	{
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = resource;
-		barrier.Transition.Subresource = 0;
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	}
-	list->ResourceBarrier(1, &barrier);
-
-	list->ClearRenderTargetView(rtvH, kClearColorRenderTarget, 0, nullptr);
-
-	return S_OK;
-}
-
 HRESULT Render::clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
 {
 	list->ClearDepthStencilView(
@@ -627,22 +628,15 @@ HRESULT Render::clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CP
 	return S_OK;
 }
 
-HRESULT Render::clearPeraRenderTarget(ID3D12GraphicsCommandList* list)
+HRESULT Render::clearPeraRenderTargets(ID3D12GraphicsCommandList* list)
 {
-	D3D12_RESOURCE_BARRIER barrier = { };
+	D3D12_CPU_DESCRIPTOR_HANDLE handle = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+	for (auto& resource : m_peraResources)
 	{
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = m_peraResource.Get();
-		barrier.Transition.Subresource = 0;
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		clearRenderTarget(list, resource.Get(), handle, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		handle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
-	list->ResourceBarrier(1, &barrier);
-
-	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
-
-	list->ClearRenderTargetView(rtvH, kClearColorPeraRenderTarget, 0, nullptr);
 
 	return S_OK;
 }
@@ -663,18 +657,14 @@ HRESULT Render::preRenderToPeraBuffer(ID3D12GraphicsCommandList* list)
 
 HRESULT Render::postRenderToPeraBuffer(ID3D12GraphicsCommandList* list)
 {
-	ID3D12Resource* resource = m_peraResource.Get();
-
-	D3D12_RESOURCE_BARRIER barrier = { };
+	for (auto& resource : m_peraResources)
 	{
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = resource;
-		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			resource.Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		list->ResourceBarrier(1, &barrier);
 	}
-	list->ResourceBarrier(1, &barrier);
 
 	return S_OK;
 }
@@ -921,6 +911,16 @@ namespace {
 				&srvDesc,
 				srvHeap->Get()->GetCPUDescriptorHandleForHeapStart());
 		}
+
+		return S_OK;
+	}
+
+	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
+	{
+		D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(resource, stateBefore, stateAfter, 0);
+		list->ResourceBarrier(1, &barrier);
+
+		list->ClearRenderTargetView(handle, kClearColorPeraRenderTarget, 0, nullptr);
 
 		return S_OK;
 	}
