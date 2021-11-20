@@ -517,8 +517,9 @@ HRESULT Floor::createGraphicsPipeline()
 		pipelineStateDesc.InputLayout = { kInputElementDesc, _countof(kInputElementDesc) };
 		//D3D12_INDEX_BUFFER_STRIP_CUT_VALUE IBStripCutValue;
 		pipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		pipelineStateDesc.NumRenderTargets = 1;
+		pipelineStateDesc.NumRenderTargets = 2;
 		pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		pipelineStateDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		pipelineStateDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 		pipelineStateDesc.SampleDesc = { 1, 0 };
 		//UINT NodeMask;
@@ -542,6 +543,7 @@ HRESULT Floor::createGraphicsPipeline()
 		pipelineStateDesc.PS = { nullptr, 0 };
 		pipelineStateDesc.NumRenderTargets = 0;
 		pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+		pipelineStateDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
 	}
 
 	{
@@ -559,8 +561,9 @@ HRESULT Floor::createGraphicsPipeline()
 		pipelineStateDesc.VS = { m_vsArray.at(VsType::kAxis).Get()->GetBufferPointer(), m_vsArray.at(VsType::kAxis).Get()->GetBufferSize() };
 		pipelineStateDesc.PS = { m_psArray.at(PsType::kAxis).Get()->GetBufferPointer(), m_psArray.at(PsType::kAxis).Get()->GetBufferSize() };
 		pipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-		pipelineStateDesc.NumRenderTargets = 1;
+		pipelineStateDesc.NumRenderTargets = 2;
 		pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		pipelineStateDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	}
 
 	{

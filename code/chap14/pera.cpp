@@ -281,8 +281,9 @@ HRESULT Pera::createPipelineState()
 			gpsDesc.InputLayout.NumElements = _countof(layout);
 			//D3D12_INDEX_BUFFER_STRIP_CUT_VALUE IBStripCutValue;
 			gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			gpsDesc.NumRenderTargets = 1;
+			gpsDesc.NumRenderTargets = 2;
 			gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+			gpsDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 			//DXGI_FORMAT DSVFormat;
 			gpsDesc.SampleDesc = { 1, 0 };
 			//UINT NodeMask;
