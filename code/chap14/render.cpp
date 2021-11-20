@@ -428,7 +428,7 @@ HRESULT Render::createPeraView()
 
 		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getFrameBuffer(0)->GetDesc();
 
-		for (uint32_t i = 0; i < m_peraResources.size(); ++i)
+		for (size_t i = 0; auto& resource : m_peraResources)
 		{
 			auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 				&heapProp,
@@ -436,10 +436,10 @@ HRESULT Render::createPeraView()
 				&resDesc,
 				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 				&clearValue,
-				IID_PPV_ARGS(m_peraResources.at(i).ReleaseAndGetAddressOf()));
+				IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
 			ThrowIfFailed(result);
 
-			result = m_peraResources.at(i).Get()->SetName(Util::getWideStringFromString("peraBuffer" + std::to_string(i)).c_str());
+			result = resource.Get()->SetName(Util::getWideStringFromString("peraBuffer" + std::to_string(i++)).c_str());
 		}
 	}
 
