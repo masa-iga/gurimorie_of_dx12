@@ -119,7 +119,7 @@ HRESULT Render::render()
 		ThrowIfFailed(list->Reset(allocator, nullptr));
 	}
 
-	// clear
+	// clear buffers
 	{
 		m_imguif.newFrame();
 		clearRenderTarget(list, backBufferResource, rtvH, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -128,7 +128,7 @@ HRESULT Render::render()
 		clearPeraRenderTargets(list);
 	}
 
-	// render light depth map
+	// render light depth map (shadow map)
 	{
 		m_floor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
 
@@ -138,8 +138,8 @@ HRESULT Render::render()
 		}
 	}
 
-	// render to off screen buffer
-	preRenderToPeraBuffer(list);
+	// render to off screen buffer : albedo, normal, depth
+	preProcessForOffscreenRendering(list);
 	{
 		m_floor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
 		m_floor.renderAxis(list, m_sceneDescHeap.Get());
@@ -149,7 +149,7 @@ HRESULT Render::render()
 			actor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
 		}
 	}
-	postRenderToPeraBuffer(list);
+	postProcessForOffScreenRendering(list);
 
 	// render to display buffer
 	{
@@ -162,6 +162,7 @@ HRESULT Render::render()
 
 	constexpr bool bDebugRenderShadowMap = true;
 	constexpr bool bDebugRenderDepth = true;
+	constexpr bool bDebugNormal = true;
 
 	if (bDebugRenderShadowMap)
 	{
@@ -183,6 +184,23 @@ HRESULT Render::render()
 			Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
 		m_shadow.render(list, &rtvH, m_depthSrvHeap, viewport, scissorRect);
+	}
+
+	if (bDebugNormal)
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
+			Config::kWindowWidth * 3 / 4,
+			Config::kWindowHeight / 4,
+			Config::kWindowWidth / 4,
+			Config::kWindowHeight / 4);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_peraSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+		handle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		// TODO: GetDescriptorHandleIncrementSize()でGPU handleもincできる？
+		// TODO: CD3DX12_CPU_DESCRIPTOR_HANDLE, CD3DX12_GPU_DESCRIPTOR_HANDLE を使うとoffsetでかんたんにポインタを設定できる
+		//m_shadow.render(list, &rtvH, handle, viewport, scissorRect);
 	}
 
 	// render imgui
@@ -649,21 +667,24 @@ HRESULT Render::clearPeraRenderTargets(ID3D12GraphicsCommandList* list)
 	return S_OK;
 }
 
-HRESULT Render::preRenderToPeraBuffer(ID3D12GraphicsCommandList* list)
+HRESULT Render::preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list)
 {
-	const D3D12_CPU_DESCRIPTOR_HANDLE rtvH = m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
-	const D3D12_CPU_DESCRIPTOR_HANDLE dsvH = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[] = {
+		m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(),
+		m_peraRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart().ptr + Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV),
+	};
+	const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
 	list->OMSetRenderTargets(
-		1,
-		&rtvH,
+		2,
+		rtvHandles,
 		false,
-		&dsvH);
+		&dsvHandle);
 
 	return S_OK;
 }
 
-HRESULT Render::postRenderToPeraBuffer(ID3D12GraphicsCommandList* list)
+HRESULT Render::postProcessForOffScreenRendering(ID3D12GraphicsCommandList* list)
 {
 	for (auto& resource : m_peraResources)
 	{

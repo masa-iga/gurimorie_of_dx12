@@ -499,7 +499,7 @@ HRESULT PmdActor::loadShaders()
 		L"BasicPixelShader.hlsl",
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"BasicWithShadowMapPs",
+		"MrtWithShadowMapPs",
 		"ps_5_0",
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
