@@ -40,15 +40,15 @@ HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_
 		pCommandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	}
 
-	pCommandList->SetPipelineState(m_pipelineStates.at(Type::kQuadTriangle).Get());
+	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kQuadR)).Get());
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(Type::kQuadTriangle));
+	pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(Type::kQuadR)));
 
 	pCommandList->DrawInstanced(4, 1, 0, 0);
 
-	pCommandList->SetPipelineState(m_pipelineStates.at(Type::kFrameLine).Get());
+	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kFrameLine)).Get());
     pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
-    pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(Type::kFrameLine));
+    pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(Type::kFrameLine)));
 
 	pCommandList->DrawInstanced(5, 1, 0, 0);
 
@@ -84,7 +84,7 @@ HRESULT Shadow::compileShaders()
         "ps_5_0",
         0,
         0,
-        m_psArray.at(Type::kQuadTriangle).ReleaseAndGetAddressOf(),
+        m_psArray.at(static_cast<size_t>(Type::kQuadR)).ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -101,7 +101,7 @@ HRESULT Shadow::compileShaders()
         "ps_5_0",
         0,
         0,
-        m_psArray.at(Type::kFrameLine).ReleaseAndGetAddressOf(),
+        m_psArray.at(static_cast<size_t>(Type::kFrameLine)).ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
     if (FAILED(result))
@@ -160,7 +160,7 @@ HRESULT Shadow::createVertexBuffer()
             resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
         }
 
-		auto& resource = m_vbResources.at(Type::kQuadTriangle);
+		auto& resource = m_vbResources.at(static_cast<size_t>(VbType::kQuad));
 
         {
             auto result = Resource::instance()->getDevice()->CreateCommittedResource(
@@ -187,7 +187,7 @@ HRESULT Shadow::createVertexBuffer()
 			resource.Get()->Unmap(0, nullptr);
 		}
 		{
-			D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(Type::kQuadTriangle);
+			D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(static_cast<size_t>(Type::kQuadR));
 
 			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
 			vbView.SizeInBytes = sizeof(quadTriangleVertecies);
@@ -197,17 +197,16 @@ HRESULT Shadow::createVertexBuffer()
 
 
     {
-        D3D12_RESOURCE_DESC resourceDesc = m_vbResources.at(Type::kQuadTriangle).Get()->GetDesc();
+        D3D12_RESOURCE_DESC resourceDesc = m_vbResources.at(static_cast<size_t>(VbType::kQuad)).Get()->GetDesc();
+		resourceDesc.Width = sizeof(frameLineVertecies);
+
         D3D12_HEAP_PROPERTIES heapProp = { };
-
         {
-            auto result = m_vbResources.at(Type::kQuadTriangle).Get()->GetHeapProperties(&heapProp, nullptr);
+            auto result = m_vbResources.at(static_cast<size_t>(VbType::kQuad)).Get()->GetHeapProperties(&heapProp, nullptr);
             ThrowIfFailed(result);
-
-            resourceDesc.Width = sizeof(frameLineVertecies);
         }
 
-		auto& resource = m_vbResources.at(Type::kFrameLine);
+		auto& resource = m_vbResources.at(static_cast<size_t>(VbType::kFrameLine));
 
         {
             auto result = Resource::instance()->getDevice()->CreateCommittedResource(
@@ -234,7 +233,7 @@ HRESULT Shadow::createVertexBuffer()
 			resource.Get()->Unmap(0, nullptr);
 		}
 		{
-            D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(Type::kFrameLine);
+            D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(static_cast<size_t>(Type::kFrameLine));
 
 			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
 			vbView.SizeInBytes = sizeof(frameLineVertecies);
@@ -342,7 +341,7 @@ HRESULT Shadow::createPipelineState()
     {
         pipelineDesc.pRootSignature = m_rootSignature.Get();
         pipelineDesc.VS = { m_commonVs.Get()->GetBufferPointer(), m_commonVs.Get()->GetBufferSize() };
-        pipelineDesc.PS = { m_psArray.at(Type::kQuadTriangle).Get()->GetBufferPointer(), m_psArray.at(Type::kQuadTriangle).Get()->GetBufferSize() };
+        pipelineDesc.PS = { m_psArray.at(static_cast<size_t>(Type::kQuadR)).Get()->GetBufferPointer(), m_psArray.at(static_cast<size_t>(Type::kQuadR)).Get()->GetBufferSize() };
         //D3D12_SHADER_BYTECODE DS;
         //D3D12_SHADER_BYTECODE HS;
         //D3D12_SHADER_BYTECODE GS;
@@ -390,7 +389,7 @@ HRESULT Shadow::createPipelineState()
         //D3D12_PIPELINE_STATE_FLAGS Flags;
     }
     {
-        auto& pipelineState = m_pipelineStates.at(Type::kQuadTriangle);
+        auto& pipelineState = m_pipelineStates.at(static_cast<size_t>(Type::kQuadR));
 
         auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
             &pipelineDesc,
@@ -402,11 +401,11 @@ HRESULT Shadow::createPipelineState()
     }
 
     {
-		pipelineDesc.PS = { m_psArray.at(Type::kFrameLine).Get()->GetBufferPointer(), m_psArray.at(Type::kFrameLine).Get()->GetBufferSize() };
+		pipelineDesc.PS = { m_psArray.at(static_cast<size_t>(Type::kFrameLine)).Get()->GetBufferPointer(), m_psArray.at(static_cast<size_t>(Type::kFrameLine)).Get()->GetBufferSize() };
         pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     }
     {
-        auto& pipelineState = m_pipelineStates.at(Type::kFrameLine);
+        auto& pipelineState = m_pipelineStates.at(static_cast<size_t>(Type::kFrameLine));
 
         auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
             &pipelineDesc,
