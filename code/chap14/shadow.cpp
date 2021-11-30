@@ -27,28 +27,52 @@ HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_
     return render(pCommandList, pRtvHeap, texDescHeap, viewport, scissorRect);
 }
 
-HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
+HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtDesc, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
 {
-	pCommandList->OMSetRenderTargets(1, pRtvHeap, false, nullptr);
+	pCommandList->OMSetRenderTargets(1, pRtDesc, false, nullptr);
 
 	pCommandList->RSSetViewports(1, &viewport);
 	pCommandList->RSSetScissorRects(1, &scissorRect);
 
 	pCommandList->SetGraphicsRootSignature(m_rootSignature.Get());
 	pCommandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
-	{
-		pCommandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
-	}
+	pCommandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 
 	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kQuadR)).Get());
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(Type::kQuadR)));
+	pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kQuad)));
 
 	pCommandList->DrawInstanced(4, 1, 0, 0);
 
 	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kFrameLine)).Get());
     pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
-    pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(Type::kFrameLine)));
+    pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kFrameLine)));
+
+	pCommandList->DrawInstanced(5, 1, 0, 0);
+
+	return S_OK;
+}
+
+HRESULT Shadow::renderRgba(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtDesc, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_GPU_DESCRIPTOR_HANDLE texDesc, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
+{
+	pCommandList->OMSetRenderTargets(1, pRtDesc, false, nullptr);
+
+	pCommandList->RSSetViewports(1, &viewport);
+	pCommandList->RSSetScissorRects(1, &scissorRect);
+
+	pCommandList->SetGraphicsRootSignature(m_rootSignature.Get());
+	pCommandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
+	pCommandList->SetGraphicsRootDescriptorTable(1, texDesc);
+
+	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kQuadRgba)).Get());
+	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kQuad)));
+
+	pCommandList->DrawInstanced(4, 1, 0, 0);
+
+	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kFrameLine)).Get());
+    pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
+    pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kFrameLine)));
 
 	pCommandList->DrawInstanced(5, 1, 0, 0);
 
@@ -85,6 +109,23 @@ HRESULT Shadow::compileShaders()
         0,
         0,
         m_psArray.at(static_cast<size_t>(Type::kQuadR)).ReleaseAndGetAddressOf(),
+        errBlob.ReleaseAndGetAddressOf());
+
+	if (FAILED(result))
+	{
+		outputDebugMessage(errBlob.Get());
+        ThrowIfFalse(false);
+	}
+
+    result = D3DCompileFromFile(
+        L"shadowPixel.hlsl",
+        nullptr,
+        D3D_COMPILE_STANDARD_FILE_INCLUDE,
+        "mainRgba",
+        "ps_5_0",
+        0,
+        0,
+        m_psArray.at(static_cast<size_t>(Type::kQuadRgba)).ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
 	if (FAILED(result))
@@ -160,7 +201,7 @@ HRESULT Shadow::createVertexBuffer()
             resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
         }
 
-		auto& resource = m_vbResources.at(static_cast<size_t>(VbType::kQuad));
+		auto& resource = m_vbResources.at(static_cast<size_t>(MeshType::kQuad));
 
         {
             auto result = Resource::instance()->getDevice()->CreateCommittedResource(
@@ -187,7 +228,7 @@ HRESULT Shadow::createVertexBuffer()
 			resource.Get()->Unmap(0, nullptr);
 		}
 		{
-			D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(static_cast<size_t>(Type::kQuadR));
+			D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(static_cast<size_t>(MeshType::kQuad));
 
 			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
 			vbView.SizeInBytes = sizeof(quadTriangleVertecies);
@@ -197,16 +238,16 @@ HRESULT Shadow::createVertexBuffer()
 
 
     {
-        D3D12_RESOURCE_DESC resourceDesc = m_vbResources.at(static_cast<size_t>(VbType::kQuad)).Get()->GetDesc();
+        D3D12_RESOURCE_DESC resourceDesc = m_vbResources.at(static_cast<size_t>(MeshType::kQuad)).Get()->GetDesc();
 		resourceDesc.Width = sizeof(frameLineVertecies);
 
         D3D12_HEAP_PROPERTIES heapProp = { };
         {
-            auto result = m_vbResources.at(static_cast<size_t>(VbType::kQuad)).Get()->GetHeapProperties(&heapProp, nullptr);
+            auto result = m_vbResources.at(static_cast<size_t>(MeshType::kQuad)).Get()->GetHeapProperties(&heapProp, nullptr);
             ThrowIfFailed(result);
         }
 
-		auto& resource = m_vbResources.at(static_cast<size_t>(VbType::kFrameLine));
+		auto& resource = m_vbResources.at(static_cast<size_t>(MeshType::kFrameLine));
 
         {
             auto result = Resource::instance()->getDevice()->CreateCommittedResource(
@@ -233,7 +274,7 @@ HRESULT Shadow::createVertexBuffer()
 			resource.Get()->Unmap(0, nullptr);
 		}
 		{
-            D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(static_cast<size_t>(Type::kFrameLine));
+            D3D12_VERTEX_BUFFER_VIEW& vbView = m_vbViews.at(static_cast<size_t>(MeshType::kFrameLine));
 
 			vbView.BufferLocation = resource.Get()->GetGPUVirtualAddress();
 			vbView.SizeInBytes = sizeof(frameLineVertecies);
@@ -268,23 +309,37 @@ HRESULT Shadow::createPipelineState()
 	};
 
     {
-        // t0
-        D3D12_DESCRIPTOR_RANGE descRange = { };
+        D3D12_DESCRIPTOR_RANGE descRanges[2] = { };
 		{
-			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-			descRange.NumDescriptors = 1;
-			descRange.BaseShaderRegister = 0;
-			descRange.RegisterSpace = 0;
-			descRange.OffsetInDescriptorsFromTableStart = 0;
+			// t0
+			descRanges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			descRanges[0].NumDescriptors = 1;
+			descRanges[0].BaseShaderRegister = 0;
+			descRanges[0].RegisterSpace = 0;
+			descRanges[0].OffsetInDescriptorsFromTableStart = 0;
+		}
+		{
+			// t1
+			descRanges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			descRanges[1].NumDescriptors = 1;
+			descRanges[1].BaseShaderRegister = 1;
+			descRanges[1].RegisterSpace = 0;
+			descRanges[1].OffsetInDescriptorsFromTableStart = 0;
 		}
 
-        D3D12_ROOT_PARAMETER rootParam = { };
+        D3D12_ROOT_PARAMETER rootParams[2] = { };
 		{
-			rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			rootParam.DescriptorTable.NumDescriptorRanges = 1;
-			rootParam.DescriptorTable.pDescriptorRanges = &descRange;
-			rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
+			rootParams[0].DescriptorTable.pDescriptorRanges = &descRanges[0];
+			rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		}
+        {
+			rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
+			rootParams[1].DescriptorTable.pDescriptorRanges = &descRanges[1];
+			rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+        }
 
         D3D12_STATIC_SAMPLER_DESC samplerDesc = { };
 		{
@@ -305,8 +360,8 @@ HRESULT Shadow::createPipelineState()
 
         D3D12_ROOT_SIGNATURE_DESC rsDesc = { };
 		{
-			rsDesc.NumParameters = 1;
-			rsDesc.pParameters = &rootParam;
+			rsDesc.NumParameters = 2;
+			rsDesc.pParameters = rootParams;
 			rsDesc.NumStaticSamplers = 1;
 			rsDesc.pStaticSamplers = &samplerDesc;
 			rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -396,7 +451,22 @@ HRESULT Shadow::createPipelineState()
             IID_PPV_ARGS(pipelineState.ReleaseAndGetAddressOf()));
         ThrowIfFailed(result);
 
-        result = pipelineState.Get()->SetName(Util::getWideStringFromString("shadowPipelineState").c_str());
+        result = pipelineState.Get()->SetName(Util::getWideStringFromString("shadowRPipelineState").c_str());
+        ThrowIfFailed(result);
+    }
+
+    {
+		pipelineDesc.PS = { m_psArray.at(static_cast<size_t>(Type::kQuadRgba)).Get()->GetBufferPointer(), m_psArray.at(static_cast<size_t>(Type::kQuadRgba)).Get()->GetBufferSize() };
+    }
+    {
+        auto& pipelineState = m_pipelineStates.at(static_cast<size_t>(Type::kQuadRgba));
+
+        auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+            &pipelineDesc,
+            IID_PPV_ARGS(pipelineState.ReleaseAndGetAddressOf()));
+        ThrowIfFailed(result);
+
+        result = pipelineState.Get()->SetName(Util::getWideStringFromString("shadowRgbaPipelineState").c_str());
         ThrowIfFailed(result);
     }
 

@@ -194,13 +194,9 @@ HRESULT Render::render()
 			Config::kWindowWidth / 4,
 			Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+		const CD3DX12_GPU_DESCRIPTOR_HANDLE texGpuDesc(m_peraSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart(), 1, Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
-		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_peraSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
-		handle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-		// TODO: GetDescriptorHandleIncrementSize()でGPU handleもincできる？
-		// TODO: CD3DX12_CPU_DESCRIPTOR_HANDLE, CD3DX12_GPU_DESCRIPTOR_HANDLE を使うとoffsetでかんたんにポインタを設定できる
-		//m_shadow.render(list, &rtvH, handle, viewport, scissorRect);
+		m_shadow.renderRgba(list, &rtvH, m_peraSrvHeap, texGpuDesc, viewport, scissorRect);
 	}
 
 	// render imgui
