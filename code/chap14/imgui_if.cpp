@@ -89,10 +89,11 @@ void ImguiIf::build()
 			ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
 		}
 
-		ImGui::Text("FPS  : %2.1f\n", m_fps);
-		ImGui::Text("Eye  : %2.2f %2.2f %2.2f\n", m_eyePos.x, m_eyePos.y, m_eyePos.z);
-		ImGui::Text("Focus: %2.2f %2.2f %2.2f\n", m_focusPos.x, m_focusPos.y, m_focusPos.z);
-		ImGui::Text("Light: %2.2f %2.2f %2.2f\n", m_lightPos.x, m_lightPos.y, m_lightPos.z);
+		ImGui::Text("FPS   : %2.1f\n", m_fps);
+		ImGui::Text("Render: %2.1f ms\n", m_renderingTimeInMs);
+		ImGui::Text("Eye   : %2.2f %2.2f %2.2f\n", m_eyePos.x, m_eyePos.y, m_eyePos.z);
+		ImGui::Text("Focus : %2.2f %2.2f %2.2f\n", m_focusPos.x, m_focusPos.y, m_focusPos.z);
+		ImGui::Text("Light : %2.2f %2.2f %2.2f\n", m_lightPos.x, m_lightPos.y, m_lightPos.z);
 
 		{
 			static bool bCheck = false;

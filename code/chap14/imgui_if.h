@@ -21,6 +21,7 @@ public:
 	void build();
 	void render(ID3D12GraphicsCommandList* list);
 	void setFps(float fps) { m_fps = fps; };
+	void setRenderTime(float time) { m_renderingTimeInMs = time; }
 	void setEyePos(DirectX::XMFLOAT3 pos) { m_eyePos = pos; }
 	void setFocusPos(DirectX::XMFLOAT3 pos) { m_focusPos = pos; }
 	void setLightPos(DirectX::XMFLOAT3 pos) { m_lightPos = pos; }
@@ -39,6 +40,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap = nullptr;
 	float m_fps = 0.0f;
+	float m_renderingTimeInMs = 0.0f;
 	DirectX::XMFLOAT3 m_eyePos = { };
 	DirectX::XMFLOAT3 m_focusPos = { };
 	DirectX::XMFLOAT3 m_lightPos = { };

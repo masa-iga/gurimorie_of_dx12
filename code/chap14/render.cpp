@@ -119,6 +119,15 @@ HRESULT Render::render()
 		ThrowIfFailed(list->Reset(allocator, nullptr));
 	}
 
+	{
+		m_imguif.setRenderTime(m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k1) / 1000.0f);
+	}
+
+	// get time stamp for starting
+	{
+		m_timeStamp.set(TimeStamp::Index::k0);
+	}
+
 	// clear buffers
 	{
 		m_imguif.newFrame();
@@ -153,11 +162,7 @@ HRESULT Render::render()
 
 	// render to display buffer
 	{
-		m_timeStamp.set(TimeStamp::Index::k0);
-		{
-			m_pera.render(&rtvH, m_peraSrvHeap.Get());
-		}
-		m_timeStamp.set(TimeStamp::Index::k1);
+		m_pera.render(&rtvH, m_peraSrvHeap.Get());
 	}
 
 	constexpr bool bDebugRenderShadowMap = true;
@@ -203,6 +208,11 @@ HRESULT Render::render()
 	{
 		m_imguif.build();
 		m_imguif.render(Resource::instance()->getCommandList());
+	}
+
+	// time stamp for ending
+	{
+		m_timeStamp.set(TimeStamp::Index::k1);
 	}
 
 	// resolve time stamps
