@@ -71,6 +71,7 @@ HRESULT Render::init(HWND hwnd)
 	ThrowIfFailed(m_pera.createPipelineState());
 
 	ThrowIfFailed(m_shadow.init());
+	ThrowIfFailed(m_graph.init());
 	ThrowIfFailed(m_imguif.init(hwnd));
 	m_imguif.addObserver(this);
 
@@ -91,6 +92,10 @@ HRESULT Render::update()
 
 	for (auto& actor : m_pmdActors)
 		actor.update(m_bAnimationReversed);
+
+
+	// m_graph.set(0.0f); // TODO: imple
+	m_graph.update();
 
 	return S_OK;
 }
@@ -202,6 +207,18 @@ HRESULT Render::render()
 		const CD3DX12_GPU_DESCRIPTOR_HANDLE texGpuDesc(m_peraSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart(), 1, Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
 		m_shadow.renderRgba(list, &rtvH, m_peraSrvHeap, texGpuDesc, viewport, scissorRect);
+	}
+
+	if (true) // TODO: impl
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
+			Config::kWindowWidth * 3 / 4,
+			Config::kWindowHeight / 2,
+			Config::kWindowWidth / 4,
+			Config::kWindowHeight / 4);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+
+		m_graph.render(list, viewport, scissorRect);
 	}
 
 	// render imgui

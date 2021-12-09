@@ -9,6 +9,7 @@
 #include <wrl.h>
 #pragma warning(pop)
 #include "floor.h"
+#include "graph.h"
 #include "observer.h"
 #include "imgui_if.h"
 #include "pmd_actor.h"
@@ -93,6 +94,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
 
 	Shadow m_shadow;
+	RenderGraph m_graph;
 	ImguiIf m_imguif;
 
 	TimeStamp m_timeStamp;
