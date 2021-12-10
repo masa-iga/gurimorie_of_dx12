@@ -94,7 +94,7 @@ HRESULT Render::update()
 		actor.update(m_bAnimationReversed);
 
 
-	// m_graph.set(0.0f); // TODO: imple
+	m_graph.set(m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k1) / 1000.0f);
 	m_graph.update();
 
 	return S_OK;

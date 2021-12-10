@@ -24,11 +24,12 @@ private:
 	};
 
 	static constexpr size_t kNumElements = 60;
-	static constexpr size_t kNumMaxVertices = 256;
+	static constexpr size_t kNumMaxVertices = kNumElements;
 
 	HRESULT compileShaders();
 	HRESULT createVertexBuffer();
 	HRESULT createPipelineState();
+	std::array<Vertex, kNumMaxVertices> createVertices() const;
 	void uploadVertices(const std::array<Vertex, kNumMaxVertices> vertices);
 
 	std::array<float, kNumElements> m_dataArray = { };
@@ -39,5 +40,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView = { };
+	uint32_t m_vertexCount = 0;
 };
 

@@ -2,6 +2,7 @@
 #pragma warning(push, 0)
 #include <codeanalysis/warnings.h>
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
+#include <algorithm>
 #include <d3dcompiler.h>
 #pragma warning(pop)
 #include "debug.h"
@@ -12,7 +13,7 @@ using namespace Microsoft::WRL;
 
 RenderGraph::RenderGraph()
 {
-	m_dataArray.fill(0);
+	m_dataArray.fill(0.0f);
 }
 
 HRESULT RenderGraph::init()
@@ -31,13 +32,7 @@ void RenderGraph::set(float val)
 
 void RenderGraph::update()
 {
-#if 1 // TODO: temporary code
-	const std::array<Vertex, kNumMaxVertices> vertices = {
-		DirectX::XMFLOAT3(-1.0f, -1.0f, 0.1f),
-		DirectX::XMFLOAT3(1.0f,  1.0f, 0.1f),
-	};
-#endif
-
+	const std::array<Vertex, kNumMaxVertices> vertices = createVertices();
 	uploadVertices(vertices);
 }
 
@@ -48,15 +43,13 @@ HRESULT RenderGraph::render(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT view
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 	list->SetPipelineState(m_pipelineState.Get());
 
-	//list->SetDescriptorHeaps(0, nullptr);
-
 	list->RSSetViewports(1, &viewport);
 	list->RSSetScissorRects(1, &scissorRect);
 
-	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
 	list->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 
-	list->DrawInstanced(2, 1, 0, 0);
+	list->DrawInstanced(kNumMaxVertices, 1, 0, 0);
 
 	return S_OK;
 }
@@ -204,6 +197,34 @@ HRESULT RenderGraph::createPipelineState()
 	ThrowIfFailed(result);
 
 	return S_OK;
+}
+
+std::array<RenderGraph::Vertex, RenderGraph::kNumMaxVertices> RenderGraph::createVertices() const
+{
+	std::array<Vertex, kNumMaxVertices> array = { };
+
+	constexpr float unit = (2.0f / kNumElements);
+	constexpr float z = 0.1f;
+
+	for (uint32_t i = 0; i < array.size(); ++i)
+	{
+		array.at(i) = Vertex(DirectX::XMFLOAT3(-1.0f + i * unit, 0.0f, z));
+	}
+
+	constexpr float min = 0.0f;
+	constexpr float max = 17.0f;
+
+	for (size_t i = 0; i < kNumElements; ++i)
+	{
+		const size_t idx = i < m_wrIdx ?
+			(m_wrIdx - 1) - i :
+			(kNumElements - 1) - (i - m_wrIdx);
+		const float v = std::clamp(m_dataArray.at(idx), min, max) / std::abs(max);
+
+		array.at(i).pos.y = v;
+	}
+
+	return array;
 }
 
 void RenderGraph::uploadVertices(const std::array<Vertex, kNumMaxVertices> vertices)
