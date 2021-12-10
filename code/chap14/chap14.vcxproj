@@ -98,6 +98,7 @@
     <ClCompile Include="pmd_actor.cpp" />
     <ClCompile Include="render.cpp" />
     <ClCompile Include="shadow.cpp" />
+    <ClCompile Include="toolkit.cpp" />
     <ClCompile Include="util.cpp" />
     <ClCompile Include="timestamp.cpp" />
   </ItemGroup>
@@ -116,6 +117,7 @@
     <ClInclude Include="render.h" />
     <ClInclude Include="shadow.h" />
     <ClInclude Include="timestamp.h" />
+    <ClInclude Include="toolkit.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
