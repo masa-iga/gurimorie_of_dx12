@@ -191,8 +191,8 @@ HRESULT RenderGraph::createPipelineState()
 		.CachedPSO = { nullptr, 0 },
 		.Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
 	};
-	gpDesc.DepthStencilState.DepthEnable = false,
-	gpDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM,
+	gpDesc.DepthStencilState.DepthEnable = false;
+	gpDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 	result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 		&gpDesc,
