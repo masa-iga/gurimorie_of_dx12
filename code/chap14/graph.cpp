@@ -100,7 +100,7 @@ HRESULT RenderGraph::createVertexBuffer()
 	constexpr size_t vertexBufferSize = sizeof(Vertex) * kNumMaxVertices;
 
 	const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC().Buffer(vertexBufferSize);
+	const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
 
 	auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 		&heapProp,
@@ -110,7 +110,10 @@ HRESULT RenderGraph::createVertexBuffer()
 		nullptr,
 		IID_PPV_ARGS(m_vertexBuffer.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(result);
-	
+
+	result = m_vertexBuffer.Get()->SetName(Util::getWideStringFromString("vertexBufferGraph").c_str());
+	ThrowIfFailed(result);
+
 	m_vertexBufferView = {
 		.BufferLocation = m_vertexBuffer.Get()->GetGPUVirtualAddress(),
 		.SizeInBytes = vertexBufferSize,
@@ -194,6 +197,9 @@ HRESULT RenderGraph::createPipelineState()
 	result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 		&gpDesc,
 		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(result);
+
+	result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("pipelineStateGraph").c_str());
 	ThrowIfFailed(result);
 
 	return S_OK;
