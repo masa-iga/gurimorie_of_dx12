@@ -152,7 +152,7 @@ HRESULT RenderGraph::createPipelineState()
 		IID_PPV_ARGS(m_rootSignature.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(result);
 
-	result = m_rootSignature.Get()->SetName(Util::getWideStringFromString("graphRootSignature").c_str());
+	result = m_rootSignature.Get()->SetName(Util::getWideStringFromString("RootSignatureGraph").c_str());
 	ThrowIfFailed(result);
 
 
@@ -160,7 +160,7 @@ HRESULT RenderGraph::createPipelineState()
 		{
 			.SemanticName = "POSITION",
 			.SemanticIndex = 0,
-			.Format = DXGI_FORMAT_R32G32_FLOAT,
+			.Format = DXGI_FORMAT_R32G32B32_FLOAT,
 			.InputSlot = 0,
 			.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
 			.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
