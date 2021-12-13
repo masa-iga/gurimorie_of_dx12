@@ -16,6 +16,7 @@
 #include "pera.h"
 #include "shadow.h"
 #include "timestamp.h"
+#include "toolkit.h"
 
 struct SceneMatrix
 {
@@ -93,6 +94,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraRtvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
 
+	Toolkit m_toolkit;
 	Shadow m_shadow;
 	RenderGraph m_graph;
 	ImguiIf m_imguif;

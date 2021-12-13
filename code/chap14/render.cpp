@@ -70,6 +70,7 @@ HRESULT Render::init(HWND hwnd)
 	ThrowIfFailed(m_pera.compileShaders());
 	ThrowIfFailed(m_pera.createPipelineState());
 
+	ThrowIfFailed(m_toolkit.init());
 	ThrowIfFailed(m_shadow.init());
 	ThrowIfFailed(m_graph.init());
 	ThrowIfFailed(m_imguif.init(hwnd));
