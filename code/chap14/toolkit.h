@@ -11,6 +11,7 @@
 class Toolkit
 {
 public:
+	Toolkit() = default;
 	HRESULT init();
 	HRESULT drawClear(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect);
 

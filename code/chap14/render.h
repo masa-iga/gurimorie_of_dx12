@@ -42,7 +42,10 @@ enum class MoveEye {
 class Render : public Observer
 {
 public:
+	static Toolkit& toolkitInsntace() { return s_toolkit; }
+
 	void onNotify(UiEvent uiEvent, bool flag);
+
 	HRESULT init(HWND hwnd);
 	void teardown();
 	HRESULT update();
@@ -63,6 +66,8 @@ private:
 	HRESULT clearPeraRenderTargets(ID3D12GraphicsCommandList* list);
 	HRESULT preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list);
 	HRESULT postProcessForOffScreenRendering(ID3D12GraphicsCommandList* list);
+
+	static Toolkit s_toolkit;
 
 	bool m_bAnimationEnabled = true;
 	bool m_bAnimationReversed = false;
@@ -94,7 +99,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraRtvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
 
-	Toolkit m_toolkit;
 	Shadow m_shadow;
 	RenderGraph m_graph;
 	ImguiIf m_imguif;
