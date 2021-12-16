@@ -21,7 +21,8 @@ private:
 		DirectX::XMFLOAT3 pos = { };
 	};
 
-	static constexpr size_t kNumVertices = 4;
+	static constexpr size_t kNumVertices = 3;
+	static constexpr size_t kVertexBufferSize = kNumVertices * sizeof(Vertex);
 
 	HRESULT compileShaders();
 	HRESULT createVertexBuffer();

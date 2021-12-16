@@ -38,10 +38,10 @@ HRESULT Toolkit::drawClear(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewp
 	list->RSSetViewports(1, &viewport);
 	list->RSSetScissorRects(1, &scissorRect);
 
-	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	list->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 
-	list->DrawInstanced(4, 1, 0, 0);
+	list->DrawInstanced(3, 1, 0, 0);
 
 	return S_OK;
 }
@@ -89,10 +89,8 @@ HRESULT Toolkit::compileShaders()
 
 HRESULT Toolkit::createVertexBuffer()
 {
-	constexpr size_t vertexBufferSize = sizeof(Vertex) * kNumVertices;
-
 	const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
+	const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(kVertexBufferSize);
 
 	auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 		&heapProp,
@@ -108,7 +106,7 @@ HRESULT Toolkit::createVertexBuffer()
 
 	m_vertexBufferView = {
 		.BufferLocation = m_vertexBuffer.Get()->GetGPUVirtualAddress(),
-		.SizeInBytes = vertexBufferSize,
+		.SizeInBytes = kVertexBufferSize,
 		.StrideInBytes = sizeof(Vertex),
 	};
 
@@ -199,13 +197,17 @@ HRESULT Toolkit::createPipelineState()
 
 HRESULT Toolkit::uploadVertices()
 {
-	// TODO: imple
-	m_vertexBuffer.Get()->GetDesc().Width;
+	constexpr Vertex vertices[kNumVertices] = {
+		DirectX::XMFLOAT3(-1.0f, -1.0f, 0.1f),
+		DirectX::XMFLOAT3(-1.0f,  3.0f, 0.1f),
+		DirectX::XMFLOAT3( 3.0f, -1.0f, 0.1f),
+	};
 
 	Vertex* pVertices = nullptr;
-
 	auto result = m_vertexBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertices));
 	ThrowIfFailed(result);
+
+	std::copy(std::begin(vertices), std::end(vertices), pVertices);
 
 	m_vertexBuffer.Get()->Unmap(0, nullptr);
 
