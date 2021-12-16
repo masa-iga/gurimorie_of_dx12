@@ -7,6 +7,7 @@
 #pragma warning(pop)
 #include "debug.h"
 #include "init.h"
+#include "render.h"
 #include "util.h"
 
 using namespace Microsoft::WRL;
@@ -39,6 +40,8 @@ void RenderGraph::update()
 HRESULT RenderGraph::render(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
 {
 	ThrowIfFalse(list != nullptr);
+
+	ThrowIfFailed(Render::toolkitInsntace().drawClear(list, viewport, scissorRect));
 
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 	list->SetPipelineState(m_pipelineState.Get());

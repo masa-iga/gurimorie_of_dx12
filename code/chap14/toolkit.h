@@ -13,6 +13,7 @@ class Toolkit
 public:
 	Toolkit() = default;
 	HRESULT init();
+	void teardown();
 	HRESULT drawClear(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect);
 
 private:
@@ -25,6 +26,7 @@ private:
 	HRESULT compileShaders();
 	HRESULT createVertexBuffer();
 	HRESULT createPipelineState();
+	HRESULT uploadVertices();
 
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vs = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_ps = nullptr;

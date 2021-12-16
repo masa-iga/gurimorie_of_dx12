@@ -15,11 +15,34 @@ HRESULT Toolkit::init()
 	ThrowIfFailed(compileShaders());
 	ThrowIfFailed(createVertexBuffer());
 	ThrowIfFailed(createPipelineState());
+	ThrowIfFailed(uploadVertices());
 	return S_OK;
+}
+
+void Toolkit::teardown()
+{
+	m_vs.Reset();
+	m_ps.Reset();
+	m_vertexBuffer.Reset();
+	m_rootSignature.Reset();
+	m_pipelineState.Reset();
 }
 
 HRESULT Toolkit::drawClear(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
 {
+	ThrowIfFalse(list != nullptr);
+
+	list->SetGraphicsRootSignature(m_rootSignature.Get());
+	list->SetPipelineState(m_pipelineState.Get());
+
+	list->RSSetViewports(1, &viewport);
+	list->RSSetScissorRects(1, &scissorRect);
+
+	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	list->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+
+	list->DrawInstanced(4, 1, 0, 0);
+
 	return S_OK;
 }
 
@@ -173,3 +196,19 @@ HRESULT Toolkit::createPipelineState()
 
 	return S_OK;
 }
+
+HRESULT Toolkit::uploadVertices()
+{
+	// TODO: imple
+	m_vertexBuffer.Get()->GetDesc().Width;
+
+	Vertex* pVertices = nullptr;
+
+	auto result = m_vertexBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertices));
+	ThrowIfFailed(result);
+
+	m_vertexBuffer.Get()->Unmap(0, nullptr);
+
+	return S_OK;
+}
+

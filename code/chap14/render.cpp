@@ -85,6 +85,7 @@ HRESULT Render::init(HWND hwnd)
 
 void Render::teardown()
 {
+	s_toolkit.teardown();
 	m_imguif.teardown();
 	m_imguif.removeObserver(this);
 }
