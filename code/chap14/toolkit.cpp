@@ -183,6 +183,21 @@ HRESULT Toolkit::createPipelineState()
 	};
 	gpDesc.DepthStencilState.DepthEnable = false;
 	gpDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	{
+		D3D12_RENDER_TARGET_BLEND_DESC blendDesc = {
+		.BlendEnable = true,
+		.LogicOpEnable = false,
+		.SrcBlend = D3D12_BLEND_SRC_ALPHA,
+		.DestBlend = D3D12_BLEND_INV_SRC_ALPHA,
+		.BlendOp = D3D12_BLEND_OP_ADD,
+		.SrcBlendAlpha = D3D12_BLEND_SRC_ALPHA,
+		.DestBlendAlpha = D3D12_BLEND_SRC_ALPHA,
+		.BlendOpAlpha = D3D12_BLEND_OP_MAX,
+		.LogicOp = D3D12_LOGIC_OP_CLEAR,
+		.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+		};
+		gpDesc.BlendState.RenderTarget[0] = blendDesc;
+	}
 
 	result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 		&gpDesc,
