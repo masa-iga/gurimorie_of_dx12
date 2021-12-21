@@ -26,24 +26,17 @@ void Toolkit::teardown()
 	m_vertexBuffer.Reset();
 	m_rootSignature.Reset();
 	m_pipelineState.Reset();
+	m_pipelineStateBlend.Reset();
 }
 
 HRESULT Toolkit::drawClear(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
 {
-	ThrowIfFalse(list != nullptr);
+	return drawClearInternal(list, viewport, scissorRect, false);
+}
 
-	list->SetGraphicsRootSignature(m_rootSignature.Get());
-	list->SetPipelineState(m_pipelineState.Get());
-
-	list->RSSetViewports(1, &viewport);
-	list->RSSetScissorRects(1, &scissorRect);
-
-	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	list->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-
-	list->DrawInstanced(3, 1, 0, 0);
-
-	return S_OK;
+HRESULT Toolkit::drawClearBlend(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
+{
+	return drawClearInternal(list, viewport, scissorRect, true);
 }
 
 HRESULT Toolkit::compileShaders()
@@ -183,6 +176,15 @@ HRESULT Toolkit::createPipelineState()
 	};
 	gpDesc.DepthStencilState.DepthEnable = false;
 	gpDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+		&gpDesc,
+		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(result);
+
+	result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("pipelineStateToolkit").c_str());
+	ThrowIfFailed(result);
+
 	{
 		D3D12_RENDER_TARGET_BLEND_DESC blendDesc = {
 		.BlendEnable = true,
@@ -201,10 +203,10 @@ HRESULT Toolkit::createPipelineState()
 
 	result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 		&gpDesc,
-		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+		IID_PPV_ARGS(m_pipelineStateBlend.ReleaseAndGetAddressOf()));
 	ThrowIfFailed(result);
 
-	result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("pipelineStateToolkit").c_str());
+	result = m_pipelineStateBlend.Get()->SetName(Util::getWideStringFromString("pipelineStateBlendToolkit").c_str());
 	ThrowIfFailed(result);
 
 	return S_OK;
@@ -225,6 +227,32 @@ HRESULT Toolkit::uploadVertices()
 	std::copy(std::begin(vertices), std::end(vertices), pVertices);
 
 	m_vertexBuffer.Get()->Unmap(0, nullptr);
+
+	return S_OK;
+}
+
+HRESULT Toolkit::drawClearInternal(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect, bool blend)
+{
+	ThrowIfFalse(list != nullptr);
+
+	list->SetGraphicsRootSignature(m_rootSignature.Get());
+
+	if (blend)
+	{
+		list->SetPipelineState(m_pipelineStateBlend.Get());
+	}
+	else
+	{
+		list->SetPipelineState(m_pipelineState.Get());
+	}
+
+	list->RSSetViewports(1, &viewport);
+	list->RSSetScissorRects(1, &scissorRect);
+
+	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	list->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+
+	list->DrawInstanced(3, 1, 0, 0);
 
 	return S_OK;
 }

@@ -15,6 +15,7 @@ public:
 	HRESULT init();
 	void teardown();
 	HRESULT drawClear(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect);
+	HRESULT drawClearBlend(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect);
 
 private:
 	struct Vertex {
@@ -28,11 +29,13 @@ private:
 	HRESULT createVertexBuffer();
 	HRESULT createPipelineState();
 	HRESULT uploadVertices();
+	HRESULT drawClearInternal(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect, bool blend);
 
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vs = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_ps = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineStateBlend = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView = { };
 };
