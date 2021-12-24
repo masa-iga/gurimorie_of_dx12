@@ -14,8 +14,10 @@ HRESULT Toolkit::init()
 {
 	ThrowIfFailed(compileShaders());
 	ThrowIfFailed(createVertexBuffer());
+	ThrowIfFailed(createConstantBuffer());
 	ThrowIfFailed(createPipelineState());
 	ThrowIfFailed(uploadVertices());
+	ThrowIfFailed(uploadOutputColor(kDefaultOutputColor));
 	return S_OK;
 }
 
@@ -106,11 +108,64 @@ HRESULT Toolkit::createVertexBuffer()
 	return S_OK;
 }
 
+HRESULT Toolkit::createConstantBuffer()
+{
+	const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(Util::alignmentedSize(sizeof(OutputColor), 256));
+
+	{
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_constantOutputColorBuffer.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_constantOutputColorBuffer.Get()->SetName(Util::getWideStringFromString("constantOutputColorBufferToolkit").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		const D3D12_DESCRIPTOR_HEAP_DESC descHeap = {
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.NumDescriptors = 1,
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+			.NodeMask = 0,
+		};
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+            &descHeap,
+			IID_PPV_ARGS(m_constantOutputColorHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+	}
+
+	{
+		const D3D12_CONSTANT_BUFFER_VIEW_DESC bufferView = {
+			.BufferLocation = m_constantOutputColorBuffer.Get()->GetGPUVirtualAddress(),
+			.SizeInBytes = static_cast<UINT>(m_constantOutputColorBuffer.Get()->GetDesc().Width),
+		};
+		D3D12_CPU_DESCRIPTOR_HANDLE descHandle = m_constantOutputColorHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+		Resource::instance()->getDevice()->CreateConstantBufferView(&bufferView, descHandle);
+	}
+
+	return S_OK;
+}
+
 HRESULT Toolkit::createPipelineState()
 {
+	const D3D12_DESCRIPTOR_RANGE descRange = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+	const D3D12_ROOT_DESCRIPTOR_TABLE descTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRange);
+	const D3D12_ROOT_PARAMETER rootParam = {
+		.DescriptorTable = descTable,
+		.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+	};
+
 	const D3D12_ROOT_SIGNATURE_DESC rsDesc = CD3DX12_ROOT_SIGNATURE_DESC(
-		0,
-		nullptr,
+		1,
+		&rootParam,
 		0,
 		nullptr,
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -231,6 +286,19 @@ HRESULT Toolkit::uploadVertices()
 	return S_OK;
 }
 
+HRESULT Toolkit::uploadOutputColor(OutputColor outputColor)
+{
+	OutputColor* pOutputColor = nullptr;
+	auto result = m_constantOutputColorBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pOutputColor));
+	ThrowIfFailed(result);
+
+	*pOutputColor = outputColor;
+
+	m_constantOutputColorBuffer.Get()->Unmap(0, nullptr);
+
+	return S_OK;
+}
+
 HRESULT Toolkit::drawClearInternal(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect, bool blend)
 {
 	ThrowIfFalse(list != nullptr);
@@ -245,6 +313,9 @@ HRESULT Toolkit::drawClearInternal(ID3D12GraphicsCommandList* list, D3D12_VIEWPO
 	{
 		list->SetPipelineState(m_pipelineState.Get());
 	}
+
+	list->SetDescriptorHeaps(1, m_constantOutputColorHeap.GetAddressOf());
+	list->SetGraphicsRootDescriptorTable(0, m_constantOutputColorHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 
 	list->RSSetViewports(1, &viewport);
 	list->RSSetScissorRects(1, &scissorRect);
