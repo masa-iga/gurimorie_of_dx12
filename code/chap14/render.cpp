@@ -177,6 +177,7 @@ HRESULT Render::render()
 	constexpr bool bDebugRenderShadowMap = true;
 	constexpr bool bDebugRenderDepth = true;
 	constexpr bool bDebugNormal = true;
+	constexpr bool bDebugGraph = true;
 
 	if (bDebugRenderShadowMap)
 	{
@@ -213,7 +214,7 @@ HRESULT Render::render()
 		m_shadow.renderRgba(list, &rtvH, m_peraSrvHeap, texGpuDesc, viewport, scissorRect);
 	}
 
-	if (true) // TODO: impl
+	if (bDebugGraph)
 	{
 		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
 			Config::kWindowWidth * 3 / 4,
