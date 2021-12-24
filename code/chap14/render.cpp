@@ -220,7 +220,7 @@ HRESULT Render::render()
 			Config::kWindowWidth * 3 / 4,
 			Config::kWindowHeight / 2,
 			Config::kWindowWidth / 4,
-			Config::kWindowHeight / 4);
+			Config::kWindowHeight / 8);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
 
 		m_graph.render(list, viewport, scissorRect);

@@ -228,9 +228,10 @@ std::array<RenderGraph::Vertex, RenderGraph::kNumMaxVertices> RenderGraph::creat
 		const size_t idx = i < m_wrIdx ?
 			(m_wrIdx - 1) - i :
 			(kNumElements - 1) - (i - m_wrIdx);
-		const float v = std::clamp(m_dataArray.at(idx), min, max) / std::abs(max);
 
-		array.at(i).pos.y = v;
+		const float v = std::clamp(m_dataArray.at(idx), min, max) / std::abs(max); // mapped to 0.0f to 1.0f;
+
+		array.at(i).pos.y = 2.f * v - 1.0f; // mapped to -1.0f to 1.0f;
 	}
 
 	return array;
