@@ -10,6 +10,21 @@
 
 using namespace Microsoft::WRL;
 
+namespace {
+	const std::vector<Toolkit::Vertex> kVertices0 = {
+		{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.1f) },
+		{ DirectX::XMFLOAT3(-1.0f,  3.0f, 0.1f) },
+		{ DirectX::XMFLOAT3( 3.0f, -1.0f, 0.1f) },
+	};
+
+	const std::vector<Toolkit::Vertex> kVertices1 = {
+		{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.1f) },
+		{ DirectX::XMFLOAT3(-1.0f,  1.0f, 0.1f) },
+		{ DirectX::XMFLOAT3( 1.0f,  1.0f, 0.1f) },
+		{ DirectX::XMFLOAT3( 1.0f, -1.0f, 0.1f) },
+	};
+} // anonymous namespace
+
 HRESULT Toolkit::init()
 {
 	ThrowIfFailed(compileShaders());
@@ -23,9 +38,17 @@ HRESULT Toolkit::init()
 
 void Toolkit::teardown()
 {
-	m_vs.Reset();
-	m_ps.Reset();
-	m_vertexBuffer.Reset();
+	for (auto& vs : m_vsArray)
+		vs.Reset();
+
+	for (auto& ps : m_psArray)
+		ps.Reset();
+
+	for (auto& buffer : m_vertexBuffers)
+		buffer.Reset();
+
+	m_constantOutputColorBuffer.Reset();
+	m_constantOutputColorHeap.Reset();
 	m_rootSignature.Reset();
 	m_pipelineState.Reset();
 	m_pipelineStateBlend.Reset();
@@ -41,42 +64,54 @@ HRESULT Toolkit::drawClearBlend(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT 
 	return drawClearInternal(list, viewport, scissorRect, true);
 }
 
+HRESULT Toolkit::drawRect(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
+{
+	return S_OK;
+}
+
 HRESULT Toolkit::compileShaders()
 {
 	ComPtr<ID3DBlob> errBlob = nullptr;
 
-	auto result = D3DCompileFromFile(
-		L"toolkit_vs.hlsl",
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main",
-		"vs_5_0",
-		0,
-		0,
-		m_vs.ReleaseAndGetAddressOf(),
-		errBlob.ReleaseAndGetAddressOf());
-
-	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
-		ThrowIfFalse(false);
+		auto result = D3DCompileFromFile(
+			L"toolkit_vs.hlsl",
+			nullptr,
+			D3D_COMPILE_STANDARD_FILE_INCLUDE,
+			"main",
+			"vs_5_0",
+			0,
+			0,
+			m_vsArray.at(static_cast<size_t>(DrawType::kClear)).ReleaseAndGetAddressOf(),
+			errBlob.ReleaseAndGetAddressOf());
+
+		if (FAILED(result))
+		{
+			outputDebugMessage(errBlob.Get());
+			ThrowIfFalse(false);
+		}
+
+		result = D3DCompileFromFile(
+			L"toolkit_ps.hlsl",
+			nullptr,
+			D3D_COMPILE_STANDARD_FILE_INCLUDE,
+			"main",
+			"ps_5_0",
+			0,
+			0,
+			m_psArray.at(static_cast<size_t>(DrawType::kClear)).ReleaseAndGetAddressOf(),
+			errBlob.ReleaseAndGetAddressOf());
+
+		if (FAILED(result))
+		{
+			outputDebugMessage(errBlob.Get());
+			ThrowIfFalse(false);
+		}
 	}
 
-	result = D3DCompileFromFile(
-		L"toolkit_ps.hlsl",
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main",
-		"ps_5_0",
-		0,
-		0,
-		m_ps.ReleaseAndGetAddressOf(),
-		errBlob.ReleaseAndGetAddressOf());
-
-	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
-		ThrowIfFalse(false);
+		m_vsArray.at(static_cast<size_t>(DrawType::kRect)) = m_vsArray.at(static_cast<size_t>(DrawType::kClear)).Get();
+		m_psArray.at(static_cast<size_t>(DrawType::kRect)) = m_psArray.at(static_cast<size_t>(DrawType::kClear)).Get();
 	}
 
 	return S_OK;
@@ -84,26 +119,33 @@ HRESULT Toolkit::compileShaders()
 
 HRESULT Toolkit::createVertexBuffer()
 {
-	const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-	const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(kVertexBufferSize);
+	for (size_t i = 0; i < static_cast<size_t>(DrawType::kEnd); ++i)
+	{
+		const size_t bufferSize = kVertexBufferSizes.at(i);
+		auto& buffer = m_vertexBuffers.at(i);
 
-	auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-		&heapProp,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(m_vertexBuffer.ReleaseAndGetAddressOf()));
-	ThrowIfFailed(result);
+		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
 
-	result = m_vertexBuffer.Get()->SetName(Util::getWideStringFromString("vertexBufferToolkit").c_str());
-	ThrowIfFailed(result);
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(buffer.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
 
-	m_vertexBufferView = {
-		.BufferLocation = m_vertexBuffer.Get()->GetGPUVirtualAddress(),
-		.SizeInBytes = kVertexBufferSize,
-		.StrideInBytes = sizeof(Vertex),
-	};
+		const std::string s = "vertexBufferToolkit" + std::to_string(i);
+		result = buffer.Get()->SetName(Util::getWideStringFromString(s).c_str());
+		ThrowIfFailed(result);
+
+		m_vertexBufferViews.at(i) = {
+			.BufferLocation = buffer.Get()->GetGPUVirtualAddress(),
+			.SizeInBytes = static_cast<UINT>(bufferSize),
+			.StrideInBytes = sizeof(Vertex),
+		};
+	}
 
 	return S_OK;
 }
@@ -138,6 +180,9 @@ HRESULT Toolkit::createConstantBuffer()
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
             &descHeap,
 			IID_PPV_ARGS(m_constantOutputColorHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_constantOutputColorHeap.Get()->SetName(Util::getWideStringFromString("constantOutputColorHeapToolkit").c_str());
 		ThrowIfFailed(result);
 	}
 
@@ -208,8 +253,8 @@ HRESULT Toolkit::createPipelineState()
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = {
 		.pRootSignature = m_rootSignature.Get(),
-		.VS = { m_vs.Get()->GetBufferPointer(), m_vs.Get()->GetBufferSize() },
-		.PS = { m_ps.Get()->GetBufferPointer(), m_ps.Get()->GetBufferSize() },
+		.VS = { m_vsArray.at((size_t)(DrawType::kClear)).Get()->GetBufferPointer(), m_vsArray.at((size_t)(DrawType::kClear)).Get()->GetBufferSize() },
+		.PS = { m_psArray.at((size_t)(DrawType::kClear)).Get()->GetBufferPointer(), m_psArray.at((size_t)(DrawType::kClear)).Get()->GetBufferSize() },
 		.DS = { nullptr, 0 },
 		.HS = { nullptr, 0 },
 		.GS = { nullptr, 0 },
@@ -269,19 +314,18 @@ HRESULT Toolkit::createPipelineState()
 
 HRESULT Toolkit::uploadVertices()
 {
-	constexpr Vertex vertices[kNumVertices] = {
-		DirectX::XMFLOAT3(-1.0f, -1.0f, 0.1f),
-		DirectX::XMFLOAT3(-1.0f,  3.0f, 0.1f),
-		DirectX::XMFLOAT3( 3.0f, -1.0f, 0.1f),
-	};
+	const std::array<std::vector<Vertex>, static_cast<size_t>(DrawType::kEnd)> vertexArray = { kVertices0, kVertices1 };
 
-	Vertex* pVertices = nullptr;
-	auto result = m_vertexBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVertices));
-	ThrowIfFailed(result);
+	for (size_t i = 0; i < static_cast<size_t>(DrawType::kEnd); ++i)
+	{
+		Vertex* pDst = nullptr;
+		auto result = m_vertexBuffers.at(i).Get()->Map(0, nullptr, reinterpret_cast<void**>(&pDst));
+		ThrowIfFailed(result);
 
-	std::copy(std::begin(vertices), std::end(vertices), pVertices);
+		std::copy(std::begin(vertexArray.at(i)), std::end(vertexArray.at(i)), pDst);
 
-	m_vertexBuffer.Get()->Unmap(0, nullptr);
+		m_vertexBuffers.at(i).Get()->Unmap(0, nullptr);
+	}
 
 	return S_OK;
 }
@@ -321,7 +365,7 @@ HRESULT Toolkit::drawClearInternal(ID3D12GraphicsCommandList* list, D3D12_VIEWPO
 	list->RSSetScissorRects(1, &scissorRect);
 
 	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	list->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	list->IASetVertexBuffers(0, 1, &m_vertexBufferViews.at(static_cast<size_t>(DrawType::kClear)));
 
 	list->DrawInstanced(3, 1, 0, 0);
 
