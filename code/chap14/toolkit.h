@@ -9,9 +9,15 @@
 #include <wrl.h>
 #pragma warning(pop)
 
+#define HAVE_RECT_SHADER (1)
+
 class Toolkit
 {
 public:
+	struct Vertex {
+		DirectX::XMFLOAT3 pos = { };
+	};
+
 	Toolkit() = default;
 	HRESULT init();
 	void teardown();
@@ -20,10 +26,6 @@ public:
 	HRESULT drawRect(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect);
 
 private:
-	struct Vertex {
-		DirectX::XMFLOAT3 pos = { };
-	};
-
 	struct OutputColor {
 		float r = 0.0f;
 		float g = 0.0f;
@@ -39,31 +41,37 @@ private:
 
 	static constexpr std::array<size_t, static_cast<size_t>(DrawType::kEnd)> kNumVertices = {
 		3,
-		4,
+		5,
 	};
 	static constexpr std::array<size_t, static_cast<size_t>(DrawType::kEnd)> kVertexBufferSizes = {
 		sizeof(Vertex) * kNumVertices.at(static_cast<size_t>(DrawType::kClear)),
 		sizeof(Vertex) * kNumVertices.at(static_cast<size_t>(DrawType::kRect)),
 	};
 
-	static constexpr OutputColor kDefaultOutputColor = { 0.2f, 0.2f, 0.2f, 0.75f };
+	std::array<OutputColor, static_cast<size_t>(DrawType::kEnd)> kDefaultOutputColors = {
+		OutputColor(0.2f, 0.2f, 0.2f, 0.75f),
+		OutputColor(0.0f, 0.0f, 0.0f, 1.0f),
+	};
 
 	HRESULT compileShaders();
 	HRESULT createVertexBuffer();
 	HRESULT createConstantBuffer();
 	HRESULT createPipelineState();
 	HRESULT uploadVertices();
-	HRESULT uploadOutputColor(OutputColor outputColor);
+	HRESULT uploadOutputColor(DrawType type, OutputColor outputColor);
 	HRESULT drawClearInternal(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect, bool blend);
 
 	std::array<Microsoft::WRL::ComPtr<ID3DBlob>, static_cast<uint32_t>(DrawType::kEnd)> m_vsArray = { };
 	std::array<Microsoft::WRL::ComPtr<ID3DBlob>, static_cast<uint32_t>(DrawType::kEnd)> m_psArray = { };
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, static_cast<uint32_t>(DrawType::kEnd)> m_vertexBuffers = { };
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_constantOutputColorBuffer = nullptr;
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, static_cast<uint32_t>(DrawType::kEnd)> m_constantOutputColorBuffers = { };
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_constantOutputColorHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineStateBlend = nullptr;
+#if HAVE_RECT_SHADER
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineStateRect = nullptr;
+#endif // HAVE_RECT_SHADER
 	std::array<D3D12_VERTEX_BUFFER_VIEW, static_cast<uint32_t>(DrawType::kEnd)> m_vertexBufferViews = { };
 };
 

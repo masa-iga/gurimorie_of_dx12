@@ -42,6 +42,7 @@ HRESULT RenderGraph::render(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT view
 	ThrowIfFalse(list != nullptr);
 
 	ThrowIfFailed(Render::toolkitInsntace().drawClearBlend(list, viewport, scissorRect));
+	ThrowIfFailed(Render::toolkitInsntace().drawRect(list, viewport, scissorRect));
 
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 	list->SetPipelineState(m_pipelineState.Get());
