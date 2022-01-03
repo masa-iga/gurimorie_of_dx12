@@ -11,25 +11,25 @@
 using namespace Microsoft::WRL;
 
 namespace {
-	const std::vector<Toolkit::Vertex> kVertices0 = {
-		{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.1f) },
-		{ DirectX::XMFLOAT3(-1.0f,  3.0f, 0.1f) },
-		{ DirectX::XMFLOAT3( 3.0f, -1.0f, 0.1f) },
+	const std::array<std::vector<Toolkit::Vertex>, static_cast<size_t>(Toolkit::DrawType::kEnd)> kVertexArray = {
+		std::vector<Toolkit::Vertex> {
+			{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.1f) },
+			{ DirectX::XMFLOAT3(-1.0f,  3.0f, 0.1f) },
+			{ DirectX::XMFLOAT3( 3.0f, -1.0f, 0.1f) },
+		},
+		std::vector<Toolkit::Vertex> {
+			{ DirectX::XMFLOAT3(-0.999f, -0.999f, 0.0f) },
+			{ DirectX::XMFLOAT3(-0.999f,  0.999f, 0.0f) },
+			{ DirectX::XMFLOAT3( 0.999f,  0.999f, 0.0f) },
+			{ DirectX::XMFLOAT3( 0.999f, -0.999f, 0.0f) },
+			{ DirectX::XMFLOAT3(-0.999f, -0.999f, 0.0f) },
+		},
 	};
-
-	const std::vector<Toolkit::Vertex> kVertices1 = {
-		{ DirectX::XMFLOAT3(-0.999f, -0.999f, 0.0f) },
-		{ DirectX::XMFLOAT3(-0.999f,  0.999f, 0.0f) },
-		{ DirectX::XMFLOAT3( 0.999f,  0.999f, 0.0f) },
-		{ DirectX::XMFLOAT3( 0.999f, -0.999f, 0.0f) },
-		{ DirectX::XMFLOAT3(-0.999f, -0.999f, 0.0f) },
-	};
-
-	const size_t aaa = kVertices0.size();
 } // anonymous namespace
 
 HRESULT Toolkit::init()
 {
+	ThrowIfFailed(checker());
 	ThrowIfFailed(compileShaders());
 	ThrowIfFailed(createVertexBuffer());
 	ThrowIfFailed(createConstantBuffer());
@@ -90,6 +90,16 @@ HRESULT Toolkit::drawRect(ID3D12GraphicsCommandList* list, D3D12_VIEWPORT viewpo
 	list->IASetVertexBuffers(0, 1, &m_vertexBufferViews.at(static_cast<size_t>(DrawType::kRect)));
 
 	list->DrawInstanced(static_cast<UINT>(kNumVertices.at(static_cast<size_t>(DrawType::kRect))), 1, 0, 0);
+
+	return S_OK;
+}
+
+HRESULT Toolkit::checker()
+{
+	for (size_t i = 0; i < static_cast<size_t>(DrawType::kEnd); ++i)
+	{
+		ThrowIfFalse(kVertexArray[i].size() == kNumVertices[i]);
+	}
 
 	return S_OK;
 }
@@ -379,15 +389,13 @@ HRESULT Toolkit::createPipelineState()
 
 HRESULT Toolkit::uploadVertices()
 {
-	const std::array<std::vector<Vertex>, static_cast<size_t>(DrawType::kEnd)> vertexArray = { kVertices0, kVertices1 };
-
 	for (size_t i = 0; i < static_cast<size_t>(DrawType::kEnd); ++i)
 	{
 		Vertex* pDst = nullptr;
 		auto result = m_vertexBuffers.at(i).Get()->Map(0, nullptr, reinterpret_cast<void**>(&pDst));
 		ThrowIfFailed(result);
 
-		std::copy(std::begin(vertexArray.at(i)), std::end(vertexArray.at(i)), pDst);
+		std::copy(std::begin(kVertexArray.at(i)), std::end(kVertexArray.at(i)), pDst);
 
 		m_vertexBuffers.at(i).Get()->Unmap(0, nullptr);
 	}

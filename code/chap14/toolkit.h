@@ -18,6 +18,12 @@ public:
 		DirectX::XMFLOAT3 pos = { };
 	};
 
+	enum class DrawType {
+		kClear,
+		kRect,
+		kEnd,
+	};
+
 	Toolkit() = default;
 	HRESULT init();
 	void teardown();
@@ -31,12 +37,6 @@ private:
 		float g = 0.0f;
 		float b = 0.0f;
 		float a = 0.0f;
-	};
-
-	enum class DrawType {
-		kClear,
-		kRect,
-		kEnd,
 	};
 
 	static constexpr std::array<size_t, static_cast<size_t>(DrawType::kEnd)> kNumVertices = {
@@ -53,6 +53,7 @@ private:
 		OutputColor(0.0f, 0.0f, 0.0f, 1.0f),
 	};
 
+	HRESULT checker();
 	HRESULT compileShaders();
 	HRESULT createVertexBuffer();
 	HRESULT createConstantBuffer();
