@@ -11,6 +11,8 @@
 using namespace Microsoft::WRL;
 
 namespace {
+	constexpr float kDelta = 0.001f;
+
 	const std::array<std::vector<Toolkit::Vertex>, static_cast<size_t>(Toolkit::DrawType::kEnd)> kVertexArray = {
 		std::vector<Toolkit::Vertex> {
 			{ DirectX::XMFLOAT3(-1.0f, -1.0f, 0.1f) },
@@ -18,11 +20,11 @@ namespace {
 			{ DirectX::XMFLOAT3( 3.0f, -1.0f, 0.1f) },
 		},
 		std::vector<Toolkit::Vertex> {
-			{ DirectX::XMFLOAT3(-0.999f, -0.999f, 0.0f) },
-			{ DirectX::XMFLOAT3(-0.999f,  0.999f, 0.0f) },
-			{ DirectX::XMFLOAT3( 0.999f,  0.999f, 0.0f) },
-			{ DirectX::XMFLOAT3( 0.999f, -0.999f, 0.0f) },
-			{ DirectX::XMFLOAT3(-0.999f, -0.999f, 0.0f) },
+			{ DirectX::XMFLOAT3(-1.0f + kDelta, -1.0f + kDelta, 0.0f) },
+			{ DirectX::XMFLOAT3(-1.0f + kDelta,  1.0f - kDelta, 0.0f) },
+			{ DirectX::XMFLOAT3( 1.0f - kDelta,  1.0f - kDelta, 0.0f) },
+			{ DirectX::XMFLOAT3( 1.0f - kDelta, -1.0f + kDelta, 0.0f) },
+			{ DirectX::XMFLOAT3(-1.0f + kDelta, -1.0f + kDelta, 0.0f) },
 		},
 	};
 } // anonymous namespace
