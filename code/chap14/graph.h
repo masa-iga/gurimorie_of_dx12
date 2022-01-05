@@ -23,7 +23,7 @@ private:
 		DirectX::XMFLOAT3 pos = { };
 	};
 
-	static constexpr size_t kNumElements = 60;
+	static constexpr size_t kNumElements = 180;
 	static constexpr size_t kNumMaxVertices = kNumElements;
 
 	HRESULT compileShaders();
