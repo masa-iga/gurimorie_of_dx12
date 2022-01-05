@@ -19,6 +19,8 @@
 
 using namespace Microsoft::WRL;
 
+Toolkit Render::s_toolkit = Toolkit();
+
 namespace {
 	constexpr float kClearColorRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 	constexpr float kClearColorPeraRenderTarget[] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -70,7 +72,9 @@ HRESULT Render::init(HWND hwnd)
 	ThrowIfFailed(m_pera.compileShaders());
 	ThrowIfFailed(m_pera.createPipelineState());
 
+	ThrowIfFailed(s_toolkit.init());
 	ThrowIfFailed(m_shadow.init());
+	ThrowIfFailed(m_graph.init());
 	ThrowIfFailed(m_imguif.init(hwnd));
 	m_imguif.addObserver(this);
 
@@ -81,6 +85,7 @@ HRESULT Render::init(HWND hwnd)
 
 void Render::teardown()
 {
+	s_toolkit.teardown();
 	m_imguif.teardown();
 	m_imguif.removeObserver(this);
 }
@@ -91,6 +96,10 @@ HRESULT Render::update()
 
 	for (auto& actor : m_pmdActors)
 		actor.update(m_bAnimationReversed);
+
+
+	m_graph.set(m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k1) / 1000.0f);
+	m_graph.update();
 
 	return S_OK;
 }
@@ -168,6 +177,7 @@ HRESULT Render::render()
 	constexpr bool bDebugRenderShadowMap = true;
 	constexpr bool bDebugRenderDepth = true;
 	constexpr bool bDebugNormal = true;
+	constexpr bool bDebugGraph = true;
 
 	if (bDebugRenderShadowMap)
 	{
@@ -202,6 +212,18 @@ HRESULT Render::render()
 		const CD3DX12_GPU_DESCRIPTOR_HANDLE texGpuDesc(m_peraSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart(), 1, Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
 		m_shadow.renderRgba(list, &rtvH, m_peraSrvHeap, texGpuDesc, viewport, scissorRect);
+	}
+
+	if (bDebugGraph)
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
+			Config::kWindowWidth * 3 / 4,
+			Config::kWindowHeight / 2,
+			Config::kWindowWidth / 4,
+			Config::kWindowHeight / 8);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+
+		m_graph.render(list, viewport, scissorRect);
 	}
 
 	// render imgui

@@ -88,6 +88,7 @@
   <ItemGroup>
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="floor.cpp" />
+    <ClCompile Include="graph.cpp" />
     <ClCompile Include="imgui_if.cpp" />
     <ClCompile Include="init.cpp" />
     <ClCompile Include="loader.cpp" />
@@ -97,6 +98,7 @@
     <ClCompile Include="pmd_actor.cpp" />
     <ClCompile Include="render.cpp" />
     <ClCompile Include="shadow.cpp" />
+    <ClCompile Include="toolkit.cpp" />
     <ClCompile Include="util.cpp" />
     <ClCompile Include="timestamp.cpp" />
   </ItemGroup>
@@ -105,6 +107,7 @@
     <ClInclude Include="constant.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="floor.h" />
+    <ClInclude Include="graph.h" />
     <ClInclude Include="imgui_if.h" />
     <ClInclude Include="init.h" />
     <ClInclude Include="loader.h" />
@@ -114,6 +117,7 @@
     <ClInclude Include="render.h" />
     <ClInclude Include="shadow.h" />
     <ClInclude Include="timestamp.h" />
+    <ClInclude Include="toolkit.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
@@ -149,6 +153,14 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">basicVs</EntryPointName>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">basicVs</EntryPointName>
     </FxCompile>
+    <FxCompile Include="graphPixel.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="graphVertex.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="peraPixel.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
@@ -176,6 +188,14 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="toolkit_ps.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="toolkit_vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

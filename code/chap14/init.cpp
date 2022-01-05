@@ -194,6 +194,8 @@ HRESULT Resource::createDevice(ComPtr<ID3D12Device>* device, IUnknown* pAdapter)
 		if (SUCCEEDED(ret))
 		{
 			featureLevel = lv;
+			ret = device->Get()->SetName(Util::getWideStringFromString("Device").c_str());
+			ThrowIfFailed(ret);
 			break;
 		}
 	}
@@ -262,6 +264,9 @@ HRESULT Resource::createDescriptorHeap(ComPtr<ID3D12DescriptorHeap>* rtvHeaps, s
 	auto result = getDevice()->CreateDescriptorHeap(
 		&heapDesc,
 		IID_PPV_ARGS(rtvHeaps->ReleaseAndGetAddressOf()));
+	ThrowIfFailed(result);
+
+	result = rtvHeaps->Get()->SetName(Util::getWideStringFromString("rtvHeapForFramebuffer").c_str());
 	ThrowIfFailed(result);
 
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = { };
