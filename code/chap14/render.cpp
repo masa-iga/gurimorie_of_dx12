@@ -134,7 +134,7 @@ HRESULT Render::render()
 
 	// get time stamp for starting
 	{
-		m_timeStamp.set(TimeStamp::Index::k0);
+		m_timeStamp.set(list, TimeStamp::Index::k0);
 	}
 
 	// clear buffers
@@ -234,12 +234,12 @@ HRESULT Render::render()
 
 	// time stamp for ending
 	{
-		m_timeStamp.set(TimeStamp::Index::k1);
+		m_timeStamp.set(list, TimeStamp::Index::k1);
 	}
 
 	// resolve time stamps
 	{
-		m_timeStamp.resolve();
+		m_timeStamp.resolve(list);
 	}
 
 	D3D12_RESOURCE_BARRIER barrier = { };
@@ -289,11 +289,6 @@ HRESULT Render::waitForEndOfRendering()
 			DebugOutputFormatString("failed to close handle. (ret %d error %d)\n", ret2, GetLastError());
 			ThrowIfFalse(FALSE);
 		}
-	}
-
-	{
-		const float usec = m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k1);
-		//DebugOutputFormatString("%6.1f usec\n", usec);
 	}
 
 	return S_OK;

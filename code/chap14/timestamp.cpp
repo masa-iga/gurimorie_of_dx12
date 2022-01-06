@@ -60,17 +60,17 @@ HRESULT TimeStamp::init()
 	return S_OK;
 }
 
-void TimeStamp::set(Index index)
+void TimeStamp::set(ID3D12GraphicsCommandList* list, Index index)
 {
 	ThrowIfFalse(static_cast<size_t>(index) < kNumOfTimestamp);
-	Resource::instance()->getCommandList()->EndQuery(m_tsQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, static_cast<UINT>(index));
+	list->EndQuery(m_tsQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, static_cast<UINT>(index));
 }
 
-void TimeStamp::resolve()
+void TimeStamp::resolve(ID3D12GraphicsCommandList* list)
 {
 	constexpr uint32_t startIndex = 0;
 
-	Resource::instance()->getCommandList()->ResolveQueryData(
+	list->ResolveQueryData(
 		m_tsQueryHeap.Get(),
 		D3D12_QUERY_TYPE_TIMESTAMP,
 		startIndex,
