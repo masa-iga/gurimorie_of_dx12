@@ -20,6 +20,7 @@ public:
 	};
 
 	HRESULT init();
+	void clear();
 	void set(ID3D12GraphicsCommandList* list, Index index);
 	void resolve(ID3D12GraphicsCommandList* list);
 	float getInUsec(Index index0, Index index1);
