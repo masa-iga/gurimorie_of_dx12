@@ -46,6 +46,8 @@ HRESULT TimeStamp::init()
 		DebugOutputFormatString("Time stamp freq: %zd Hz\n", m_gpuFreq);
 	}
 
+	clear();
+
 	return S_OK;
 }
 
