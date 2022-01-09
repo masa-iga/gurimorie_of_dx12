@@ -109,7 +109,7 @@ float TimeStamp::getInUsec(Index index0, Index index1)
 
 	m_tsResource->Unmap(0, nullptr);
 
-	DebugOutputFormatString("[%d %d] %6.1f us (%zd %zd %zd)\n", idx0, idx1, time_us, m_gpuFreq, pData[idx1], pData[idx0]);
+	//DebugOutputFormatString("[%d %d] %6.1f us (%zd %zd %zd)\n", idx0, idx1, time_us, m_gpuFreq, pData[idx1], pData[idx0]);
 	return time_us;
 }
 
