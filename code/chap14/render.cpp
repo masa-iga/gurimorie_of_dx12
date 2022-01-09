@@ -30,7 +30,7 @@ namespace {
 	HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
 	HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
 	HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
-	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter);
+	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE handle);
 	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
 	DirectX::XMFLOAT3 getAutoMoveLightPos();
 	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude);
@@ -128,6 +128,16 @@ HRESULT Render::render()
 		ThrowIfFailed(list->Reset(allocator, nullptr));
 	}
 
+	// wait unti the back buffer is available
+	{
+		const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			backBufferResource,
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			0);
+		list->ResourceBarrier(1, &barrier);
+	}
+
 	{
 		m_imguif.setRenderTime(m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k1) / 1000.0f);
 	}
@@ -140,7 +150,7 @@ HRESULT Render::render()
 	// clear buffers
 	{
 		m_imguif.newFrame();
-		clearRenderTarget(list, backBufferResource, rtvH, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		clearRenderTarget(list, rtvH);
 		clearDepthRenderTarget(list, dsvH);
 		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 		clearPeraRenderTargets(list);
@@ -242,17 +252,15 @@ HRESULT Render::render()
 		m_timeStamp.resolve(list);
 	}
 
-	D3D12_RESOURCE_BARRIER barrier = { };
+	// make ensure that the back buffer can be presented
 	{
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = backBufferResource;
-		barrier.Transition.Subresource = 0;
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			backBufferResource,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT,
+			0);
+		list->ResourceBarrier(1, &barrier);
 	}
-	list->ResourceBarrier(1, &barrier);
-
 
 	// execute command lists
 	ThrowIfFailed(list->Close());
@@ -683,7 +691,15 @@ HRESULT Render::clearPeraRenderTargets(ID3D12GraphicsCommandList* list)
 
 	for (auto& resource : m_peraResources)
 	{
-		clearRenderTarget(list, resource.Get(), handle, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			resource.Get(),
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			0);
+		list->ResourceBarrier(1, &barrier);
+
+		clearRenderTarget(list, handle);
+
 		handle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
@@ -967,13 +983,9 @@ namespace {
 		return S_OK;
 	}
 
-	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, ID3D12Resource* resource, D3D12_CPU_DESCRIPTOR_HANDLE handle, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
+	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE handle)
 	{
-		D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(resource, stateBefore, stateAfter, 0);
-		list->ResourceBarrier(1, &barrier);
-
 		list->ClearRenderTargetView(handle, kClearColorPeraRenderTarget, 0, nullptr);
-
 		return S_OK;
 	}
 
