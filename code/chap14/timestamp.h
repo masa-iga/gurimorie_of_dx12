@@ -14,15 +14,19 @@ public:
 	{
 		k0,
 		k1,
+		k2,
+		k3,
+		kEnd,
 	};
 
 	HRESULT init();
-	void set(Index index);
-	void resolve();
+	void clear();
+	void set(ID3D12GraphicsCommandList* list, Index index);
+	void resolve(ID3D12GraphicsCommandList* list);
 	float getInUsec(Index index0, Index index1);
 
 private:
-	static constexpr size_t kNumOfTimestamp = 2;
+	static constexpr size_t kNumOfTimestamp = static_cast<size_t>(Index::kEnd);
 
 	Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_tsQueryHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_tsResource = nullptr;
