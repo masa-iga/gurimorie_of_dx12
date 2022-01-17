@@ -75,6 +75,9 @@
     <ClCompile Include="toolkit.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="bloom.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="init.h">
@@ -125,6 +128,9 @@
     <ClInclude Include="toolkit.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="bloom.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="BasicPixelShader.hlsl">
@@ -161,6 +167,12 @@
       <Filter>シェーダ ファイル</Filter>
     </FxCompile>
     <FxCompile Include="toolkit_vs.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="bloomPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="bloomVertex.hlsl">
       <Filter>シェーダ ファイル</Filter>
     </FxCompile>
   </ItemGroup>
@@ -242,6 +254,9 @@
     </None>
     <None Include="..\resource\Motion\swing.vmd">
       <Filter>リソース ファイル\Motion</Filter>
+    </None>
+    <None Include="bloomHeader.hlsli">
+      <Filter>シェーダ ファイル</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

@@ -1,0 +1,31 @@
+#pragma once
+#pragma warning(push, 0)
+#include <codeanalysis/warnings.h>
+#pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
+#include <Windows.h>
+#include <array>
+#include <d3d12.h>
+#include <wrl.h>
+#pragma warning(pop)
+
+class Bloom
+{
+public:
+	HRESULT init(UINT64 width, UINT height);
+	HRESULT render(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE *pDstRtv, ID3D12DescriptorHeap *pSrcTexDescHeap);
+
+private:
+	static constexpr LPCWSTR kVsFile = L"bloomVertex.hlsl";
+	static constexpr LPCWSTR kPsFile = L"bloomPixel.hlsl";
+
+	HRESULT compileShaders();
+	HRESULT createResource(UINT64 width, UINT height);
+	HRESULT createRootSignature();
+	HRESULT createPipelineState();
+
+	Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob = nullptr;
+	Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob = nullptr;
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_buffers = { };
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
+};

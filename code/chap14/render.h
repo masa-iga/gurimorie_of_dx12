@@ -8,6 +8,7 @@
 #include <vector>
 #include <wrl.h>
 #pragma warning(pop)
+#include "bloom.h"
 #include "floor.h"
 #include "graph.h"
 #include "observer.h"
@@ -60,10 +61,11 @@ public:
 private:
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
-	HRESULT createPeraView();
+	HRESULT createBaseView();
+	HRESULT createPostView();
 	HRESULT updateMvpMatrix(bool animationReversed);
 	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
-	HRESULT clearPeraRenderTargets(ID3D12GraphicsCommandList* list);
+	HRESULT clearBaseRenderTargets(ID3D12GraphicsCommandList* list);
 	HRESULT preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list);
 	HRESULT postProcessForOffScreenRendering(ID3D12GraphicsCommandList* list);
 
@@ -86,19 +88,21 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneMatrixResource = nullptr;
 	SceneMatrix* m_sceneMatrix = nullptr;
 	DirectX::XMFLOAT3 m_parallelLightVec = { };
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_baseResources = { }; // render target ([0] color, [1] normal)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseRtvHeap = nullptr; // RT view ([0] color, [1] normal)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseSrvHeap = nullptr; // SR view ([0] color, [1] normal)
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_postResource = nullptr; // TODO: imple
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postRtvHeap = nullptr; // TODO: imple
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postSrvHeap = nullptr; // TODO: imple
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
 
-	Floor m_floor;
-
 	std::vector<PmdActor> m_pmdActors;
 
 	Pera m_pera;
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_peraResources; // render target ([0] albedo, [1] normal)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraRtvHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
-
+	Floor m_floor;
+	Bloom m_bloom;
 	Shadow m_shadow;
 	RenderGraph m_graph;
 	ImguiIf m_imguif;
