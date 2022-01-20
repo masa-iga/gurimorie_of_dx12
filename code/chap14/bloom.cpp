@@ -20,15 +20,15 @@ HRESULT Bloom::init(UINT64 width, UINT height)
 	return S_OK;
 }
 
-HRESULT Bloom::render(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE *pDstRtv, ID3D12DescriptorHeap *pSrcTexDescHeap)
+HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap *pSrcTexDescHeap)
 {
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 	list->SetPipelineState(m_pipelineState.Get());
 
-//	list->SetDescriptorHeaps();
-//	list->SetGraphicsRootDescriptorTable(0, 0);
+	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
+	list->SetGraphicsRootDescriptorTable(0, pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
 
-	list->OMSetRenderTargets(1, pDstRtv, false, nullptr);
+	list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
 
 	{
 		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
@@ -41,8 +41,8 @@ HRESULT Bloom::render(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTO
 	}
 
 	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-//	list->IASetVertexBuffers(0, 1, nullptr);
-//	list->DrawInstanced(4, 1, 0, 0);
+	list->IASetVertexBuffers(0, 1, &m_vbView);
+	list->DrawInstanced(4, 1, 0, 0);
 
 	return S_OK;
 }
@@ -90,22 +90,71 @@ HRESULT Bloom::compileShaders()
 
 HRESULT Bloom::createResource(UINT64 width, UINT height)
 {
-    const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-    const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, height);
-
-	for (auto& resource : m_buffers)
+	struct VertexBuffer
 	{
+		DirectX::XMFLOAT3 pos = { };
+		DirectX::XMFLOAT2 uv = { };
+	};
+
+	constexpr VertexBuffer vb[] = {
+		{{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}},
+		{{-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{ 1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
+		{{ 1.0f,  1.0f, 0.0f}, {1.0f, 0.0f}},
+	};
+
+	{
+		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, height);
+
+		for (auto& resource : m_buffers)
+		{
+			auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+				&heapProp,
+				D3D12_HEAP_FLAG_NONE,
+				&resourceDesc,
+				D3D12_RESOURCE_STATE_COMMON,
+				nullptr,
+				IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
+			ThrowIfFailed(result);
+
+			result = resource.Get()->SetName(Util::getWideStringFromString("bloomBuffer").c_str());
+			ThrowIfFailed(result);
+		}
+	}
+
+	{
+
+		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(vb));
+
 		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_COMMON,
-			nullptr,
-			IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
+            &heapProp,
+            D3D12_HEAP_FLAG_NONE,
+            &resourceDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+			IID_PPV_ARGS(m_vertexBuffer.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = resource.Get()->SetName(Util::getWideStringFromString("bloomBuffer").c_str());
+		result = m_vertexBuffer.Get()->SetName(Util::getWideStringFromString("bloomVertexBuffer").c_str());
 		ThrowIfFailed(result);
+
+		m_vbView = {
+			.BufferLocation = m_vertexBuffer.Get()->GetGPUVirtualAddress(),
+			.SizeInBytes = sizeof(vb),
+			.StrideInBytes = sizeof(VertexBuffer),
+		};
+	}
+
+	{
+		VertexBuffer* data = nullptr;
+		auto result = m_vertexBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&data));
+		ThrowIfFailed(result);
+
+		std::copy(std::begin(vb), std::end(vb), data);
+
+		m_vertexBuffer.Get()->Unmap(0, nullptr);
 	}
 
 	return S_OK;
@@ -195,7 +244,7 @@ HRESULT Bloom::createPipelineState()
 		.GS = { nullptr, 0 },
 		.StreamOutput = { nullptr, 0, nullptr, 0, 0 },
 		.BlendState = CD3DX12_BLEND_DESC(CD3DX12_DEFAULT()),
-		.SampleMask = 0,
+		.SampleMask = D3D12_DEFAULT_SAMPLE_MASK,
 		.RasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT()),
 		.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(CD3DX12_DEFAULT()),
 		.InputLayout = { inputElementDesc, _countof(inputElementDesc) },

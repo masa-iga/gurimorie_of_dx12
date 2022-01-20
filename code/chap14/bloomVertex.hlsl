@@ -1,6 +1,11 @@
 #include "bloomHeader.hlsli"
 
-float4 main( float4 pos : POSITION ) : SV_POSITION
+VsOut main(float4 pos : POSITION, float2 uv : TEXCOORD)
 {
-	return pos;
+	VsOut vsOut;
+	{
+		vsOut.svpos = pos;
+		vsOut.uv = uv;
+	}
+	return vsOut;
 }

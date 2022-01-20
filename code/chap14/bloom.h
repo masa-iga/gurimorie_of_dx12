@@ -12,7 +12,7 @@ class Bloom
 {
 public:
 	HRESULT init(UINT64 width, UINT height);
-	HRESULT render(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE *pDstRtv, ID3D12DescriptorHeap *pSrcTexDescHeap);
+	HRESULT render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap *pSrcTexDescHeap);
 
 private:
 	static constexpr LPCWSTR kVsFile = L"bloomVertex.hlsl";
@@ -26,6 +26,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob = nullptr;
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_buffers = { };
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer = { };
+	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
 };

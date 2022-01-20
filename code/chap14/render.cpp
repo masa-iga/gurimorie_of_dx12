@@ -183,12 +183,14 @@ HRESULT Render::render()
 
 	// post process: bloom
 	{
-		m_bloom.render(list, &rtvH, m_baseSrvHeap.Get());
+		//m_bloom.render(list, &rtvH, m_baseSrvHeap.Get());
+		m_bloom.render(list, m_postRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), m_baseSrvHeap.Get());
 	}
 
 	// post process: pera (render to display buffer)
 	{
-		m_pera.render(&rtvH, m_baseSrvHeap.Get());
+		//m_pera.render(&rtvH, m_baseSrvHeap.Get());
+		m_pera.render(&rtvH, m_postSrvHeap.Get());
 	}
 
 	constexpr bool bDebugRenderShadowMap = true;
@@ -504,7 +506,7 @@ HRESULT Render::createBaseView()
 				IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
 			ThrowIfFailed(result);
 
-			result = resource.Get()->SetName(Util::getWideStringFromString("peraBuffer" + std::to_string(i++)).c_str());
+			result = resource.Get()->SetName(Util::getWideStringFromString("baseBuffer" + std::to_string(i++)).c_str());
 		}
 	}
 
@@ -542,7 +544,7 @@ HRESULT Render::createBaseView()
 			IID_PPV_ARGS(m_baseRtvHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_baseRtvHeap.Get()->SetName(Util::getWideStringFromString("peraRtvHeap").c_str());
+		result = m_baseRtvHeap.Get()->SetName(Util::getWideStringFromString("baseRtvHeap").c_str());
 		ThrowIfFailed(result);
 	}
 	// create RTV views
@@ -580,7 +582,7 @@ HRESULT Render::createBaseView()
 			IID_PPV_ARGS(m_baseSrvHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_baseSrvHeap.Get()->SetName(Util::getWideStringFromString("peraSrvHeap").c_str());
+		result = m_baseSrvHeap.Get()->SetName(Util::getWideStringFromString("baseSrvHeap").c_str());
 		ThrowIfFailed(result);
 	}
 	// create SRV views
@@ -613,6 +615,90 @@ HRESULT Render::createBaseView()
 
 HRESULT Render::createPostView()
 {
+	{
+		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		const D3D12_RESOURCE_DESC resourceDesc = Resource::instance()->getFrameBuffer(0)->GetDesc();
+		const D3D12_CLEAR_VALUE clearColor = CD3DX12_CLEAR_VALUE(resourceDesc.Format, kClearColorPeraRenderTarget);
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_COMMON,
+			&clearColor,
+			IID_PPV_ARGS(m_postResource.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_postResource.Get()->SetName(Util::getWideStringFromString("postBuffer").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+			.NumDescriptors = 1,
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+			.NodeMask = 0,
+		};
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_postRtvHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_postRtvHeap.Get()->SetName(Util::getWideStringFromString("postRtvHeap").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.NumDescriptors = 1,
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+			.NodeMask = 0,
+		};
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_postSrvHeap.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_postSrvHeap.Get()->SetName(Util::getWideStringFromString("postSrvHeap").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		const D3D12_RENDER_TARGET_VIEW_DESC rtViewDesc = {
+			.Format = m_postResource.Get()->GetDesc().Format,
+			.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
+			.Texture2D = { 0, 0 },
+		};
+
+		Resource::instance()->getDevice()->CreateRenderTargetView(
+			m_postResource.Get(),
+			&rtViewDesc,
+			m_postRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	{
+		const D3D12_SHADER_RESOURCE_VIEW_DESC srViewDesc = {
+			.Format = m_postResource.Get()->GetDesc().Format,
+			.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+			.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+			.Texture2D = {
+				.MostDetailedMip = 0,
+				.MipLevels = 1,
+				.PlaneSlice = 0,
+				.ResourceMinLODClamp = 0.0f,
+			},
+		};
+
+		Resource::instance()->getDevice()->CreateShaderResourceView(
+			m_postResource.Get(),
+            &srViewDesc,
+            m_postSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
 	return S_OK;
 }
 
