@@ -88,7 +88,7 @@ HRESULT Bloom::compileShaders()
 	return S_OK;
 }
 
-HRESULT Bloom::createResource(UINT64 width, UINT height)
+HRESULT Bloom::createResource(UINT64 dstWidth, UINT dstHeight)
 {
 	struct VertexBuffer
 	{
@@ -104,27 +104,24 @@ HRESULT Bloom::createResource(UINT64 width, UINT height)
 	};
 
 	{
+		const UINT64 width = dstWidth / 2;
 		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, height);
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, dstHeight);
 
-		for (auto& resource : m_buffers)
-		{
-			auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-				&heapProp,
-				D3D12_HEAP_FLAG_NONE,
-				&resourceDesc,
-				D3D12_RESOURCE_STATE_COMMON,
-				nullptr,
-				IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
-			ThrowIfFailed(result);
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_COMMON,
+			nullptr,
+			IID_PPV_ARGS(m_workBuffer.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
 
-			result = resource.Get()->SetName(Util::getWideStringFromString("bloomBuffer").c_str());
-			ThrowIfFailed(result);
-		}
+		result = m_workBuffer.Get()->SetName(Util::getWideStringFromString("bloomWorkBuffer").c_str());
+		ThrowIfFailed(result);
 	}
 
 	{
-
 		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(vb));
 

@@ -19,13 +19,13 @@ private:
 	static constexpr LPCWSTR kPsFile = L"bloomPixel.hlsl";
 
 	HRESULT compileShaders();
-	HRESULT createResource(UINT64 width, UINT height);
+	HRESULT createResource(UINT64 dstWidth, UINT dstHeight);
 	HRESULT createRootSignature();
 	HRESULT createPipelineState();
 
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob = nullptr;
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_buffers = { };
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_workBuffer = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer = { };
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
