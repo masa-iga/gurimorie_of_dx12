@@ -183,13 +183,23 @@ HRESULT Render::render()
 
 	// post process: bloom
 	{
-		//m_bloom.render(list, &rtvH, m_baseSrvHeap.Get());
+		const D3D12_RESOURCE_BARRIER b = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_postResource.Get(),
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+		list->ResourceBarrier(1, &b);
+
 		m_bloom.render(list, m_postRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), m_baseSrvHeap.Get());
 	}
 
 	// post process: pera (render to display buffer)
 	{
-		//m_pera.render(&rtvH, m_baseSrvHeap.Get());
+		const D3D12_RESOURCE_BARRIER b = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_postResource.Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		list->ResourceBarrier(1, &b);
+
 		m_pera.render(&rtvH, m_postSrvHeap.Get());
 	}
 
@@ -624,7 +634,7 @@ HRESULT Render::createPostView()
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_COMMON,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			&clearColor,
 			IID_PPV_ARGS(m_postResource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
