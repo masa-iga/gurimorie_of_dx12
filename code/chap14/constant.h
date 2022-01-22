@@ -10,4 +10,5 @@ namespace Constant {
 	constexpr size_t kD3D12ConstantBufferAlignment = 256; // bytes
 	constexpr LPCSTR kVsShaderModel = "vs_5_0";
 	constexpr LPCSTR kPsShaderModel = "ps_5_0";
+	constexpr DXGI_FORMAT kDefaultRtFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 }
