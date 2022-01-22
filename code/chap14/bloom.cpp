@@ -105,20 +105,92 @@ HRESULT Bloom::createResource(UINT64 dstWidth, UINT dstHeight)
 
 	{
 		const UINT64 width = dstWidth / 2;
+		constexpr float clearValue[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, width, dstHeight);
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+			DXGI_FORMAT_R8G8B8A8_UNORM,
+			width,
+			dstHeight,
+			1,
+			0,
+			1,
+			0,
+			D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+		const D3D12_CLEAR_VALUE clearColor = CD3DX12_CLEAR_VALUE(resourceDesc.Format, clearValue);
 
 		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_COMMON,
-			nullptr,
-			IID_PPV_ARGS(m_workBuffer.ReleaseAndGetAddressOf()));
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			&clearColor,
+			IID_PPV_ARGS(m_workResource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_workBuffer.Get()->SetName(Util::getWideStringFromString("bloomWorkBuffer").c_str());
+		result = m_workResource.Get()->SetName(Util::getWideStringFromString("bloomWorkBuffer").c_str());
 		ThrowIfFailed(result);
+	}
+
+	{
+		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+			.NumDescriptors = 1,
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+			.NodeMask = 0,
+		};
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_workDescHeapRtv.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_workDescHeapRtv.Get()->SetName(Util::getWideStringFromString("bloomWorkRtvHeap").c_str());
+		ThrowIfFailed(result);
+
+		const D3D12_RENDER_TARGET_VIEW_DESC rtViewDesc = {
+			.Format = m_workResource.Get()->GetDesc().Format,
+			.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
+			.Texture2D = { 0, 0 },
+		};
+
+		Resource::instance()->getDevice()->CreateRenderTargetView(
+			m_workResource.Get(),
+            &rtViewDesc,
+            m_workDescHeapRtv.Get()->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	{
+		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.NumDescriptors = 1,
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+			.NodeMask = 0,
+		};
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_workDescHeapSrv.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_workDescHeapSrv.Get()->SetName(Util::getWideStringFromString("bloomWorkSrvHeap").c_str());
+		ThrowIfFailed(result);
+
+		const D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
+			.Format = m_workResource.Get()->GetDesc().Format,
+			.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+			.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+			.Texture2D = {
+				.MostDetailedMip = 1,
+				.MipLevels = 1,
+				.PlaneSlice = 0,
+				.ResourceMinLODClamp = 1,
+			},
+		};
+
+		Resource::instance()->getDevice()->CreateShaderResourceView(
+			m_workResource.Get(),
+            &srvDesc,
+            m_workDescHeapSrv.Get()->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	{
