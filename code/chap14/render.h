@@ -88,9 +88,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneMatrixResource = nullptr;
 	SceneMatrix* m_sceneMatrix = nullptr;
 	DirectX::XMFLOAT3 m_parallelLightVec = { };
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_baseResources = { }; // render target ([0] color, [1] normal)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseRtvHeap = nullptr; // RT view ([0] color, [1] normal)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseSrvHeap = nullptr; // SR view ([0] color, [1] normal)
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 3> m_baseResources = { }; // MRT (0=color, 1=normal, 2=luminance)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseRtvHeap = nullptr; // RT views (0:color, 1:normal, 2=luminance)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseSrvHeap = nullptr; // SR views (0:color, 1:normal, 2=luminance)
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_postResource = nullptr; // TODO: imple
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postRtvHeap = nullptr; // TODO: imple
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postSrvHeap = nullptr; // TODO: imple

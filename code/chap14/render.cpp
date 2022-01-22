@@ -168,7 +168,7 @@ HRESULT Render::render()
 		}
 	}
 
-	// render to off screen buffer : albedo, normal, depth
+	// base pass: RT0=albedo, RT1=normal, RT2=luminance, depth
 	preProcessForOffscreenRendering(list);
 	{
 		m_floor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
@@ -516,7 +516,9 @@ HRESULT Render::createBaseView()
 				IID_PPV_ARGS(resource.ReleaseAndGetAddressOf()));
 			ThrowIfFailed(result);
 
-			result = resource.Get()->SetName(Util::getWideStringFromString("baseBuffer" + std::to_string(i++)).c_str());
+			result = resource.Get()->SetName(Util::getWideStringFromString("baseBuffer" + std::to_string(i)).c_str());
+
+			++i;
 		}
 	}
 
@@ -546,7 +548,7 @@ HRESULT Render::createBaseView()
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = Resource::instance()->getRtvHeaps()->GetDesc();
 		{
-			heapDesc.NumDescriptors = 2;
+			heapDesc.NumDescriptors = 3;
 		}
 
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
@@ -582,7 +584,7 @@ HRESULT Render::createBaseView()
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
 		{
 			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = 2;
+			heapDesc.NumDescriptors = 3;
 			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			heapDesc.NodeMask = 0;
 		}
@@ -595,7 +597,7 @@ HRESULT Render::createBaseView()
 		result = m_baseSrvHeap.Get()->SetName(Util::getWideStringFromString("baseSrvHeap").c_str());
 		ThrowIfFailed(result);
 	}
-	// create SRV views
+	// create SR views
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
 		{
@@ -817,15 +819,18 @@ HRESULT Render::clearBaseRenderTargets(ID3D12GraphicsCommandList* list)
 
 HRESULT Render::preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list)
 {
-	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[] = {
+	const UINT incSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+	std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 3> rtvHandles = {
 		m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(),
-		m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart().ptr + Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV),
+		m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart().ptr + incSize,
+		m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart().ptr + 2 * incSize,
 	};
 	const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
 	list->OMSetRenderTargets(
-		2,
-		rtvHandles,
+		static_cast<UINT>(rtvHandles.size()),
+		rtvHandles.data(),
 		false,
 		&dsvHandle);
 
