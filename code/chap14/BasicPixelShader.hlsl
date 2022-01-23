@@ -4,6 +4,7 @@ struct PixelOutput
 {
 	float4 col : SV_TARGET0;
 	float4 normal : SV_TARGET1;
+	float4 highLum : SV_TARGET2;
 };
 
 Texture2D<float4> tex : register(t0);
@@ -137,9 +138,14 @@ PixelOutput MrtWithShadowMapPs(Output input)
 		, float4(texColor.rgb * ambient, 1)); // (ambient)
 
 	PixelOutput output;
-	output.col = float4(ret.rgb * shadowWeight, ret.a);
-	output.normal.rgb = float3((input.normal.xyz + 1.0f) / 2.0f);
-	output.normal.a = 1;
+	{
+		output.col = float4(ret.rgb * shadowWeight, ret.a);
+		output.normal.rgb = float3((input.normal.xyz + 1.0f) / 2.0f);
+		output.normal.a = 1;
+
+		const float y = dot(float3(0.299f, 0.587f, 0.114f), output.col.xyz);
+		output.highLum = (y > 0.99f) ? output.col : 0.0f;
+	}
 
 	return output;
 }

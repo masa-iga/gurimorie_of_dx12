@@ -30,7 +30,7 @@ namespace {
 	HRESULT createFence(UINT64 initVal, ComPtr<ID3D12Fence>* fence);
 	HRESULT createDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* descHeap, ComPtr<ID3D12DescriptorHeap>* srvDescHeap);
 	HRESULT createLightDepthBuffer(ComPtr<ID3D12Resource>* resource, ComPtr<ID3D12DescriptorHeap>* dsvHeap, ComPtr<ID3D12DescriptorHeap>* srvHeap);
-	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE handle);
+	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE handle, const float col[4]);
 	DirectX::XMFLOAT3 getAutoMoveEyePos(bool update, bool reverse);
 	DirectX::XMFLOAT3 getAutoMoveLightPos();
 	void moveForward(DirectX::XMFLOAT3* focus, DirectX::XMFLOAT3* eye, float amplitude);
@@ -152,7 +152,7 @@ HRESULT Render::render()
 	// clear buffers
 	{
 		m_imguif.newFrame();
-		clearRenderTarget(list, rtvH);
+		clearRenderTarget(list, rtvH, kClearColorRenderTarget);
 		clearDepthRenderTarget(list, dsvH);
 		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 		clearBaseRenderTargets(list);
@@ -800,16 +800,16 @@ HRESULT Render::clearBaseRenderTargets(ID3D12GraphicsCommandList* list)
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE handle = m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
-	for (auto& resource : m_baseResources)
+	for (size_t i = 0; i < m_baseResources.size(); ++i)
 	{
 		const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			resource.Get(),
+			m_baseResources.at(i).Get(),
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
 			0);
 		list->ResourceBarrier(1, &barrier);
 
-		clearRenderTarget(list, handle);
+		clearRenderTarget(list, handle, kbaseResourceClearColor.at(i));
 
 		handle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
@@ -821,7 +821,7 @@ HRESULT Render::preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list)
 {
 	const UINT incSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-	std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 3> rtvHandles = {
+	const std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 3> rtvHandles = {
 		m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(),
 		m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart().ptr + incSize,
 		m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart().ptr + 2 * incSize,
@@ -1097,9 +1097,9 @@ namespace {
 		return S_OK;
 	}
 
-	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE handle)
+	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE handle, const float col[4])
 	{
-		list->ClearRenderTargetView(handle, kClearColorPeraRenderTarget, 0, nullptr);
+		list->ClearRenderTargetView(handle, col, 0, nullptr);
 		return S_OK;
 	}
 

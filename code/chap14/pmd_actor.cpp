@@ -574,9 +574,10 @@ HRESULT PmdActor::createPipelineState()
 		gpipeDesc.InputLayout = { kInputLayout, static_cast<UINT>(_countof(kInputLayout)) };
 		gpipeDesc.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 		gpipeDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		gpipeDesc.NumRenderTargets = 2;
+		gpipeDesc.NumRenderTargets = 3;
 		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		gpipeDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		gpipeDesc.RTVFormats[2] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		gpipeDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 		gpipeDesc.SampleDesc = {
 			1 /* count */,
@@ -600,6 +601,7 @@ HRESULT PmdActor::createPipelineState()
 		gpipeDesc.NumRenderTargets = 0;
 		gpipeDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
 		gpipeDesc.RTVFormats[1] = DXGI_FORMAT_UNKNOWN;
+		gpipeDesc.RTVFormats[2] = DXGI_FORMAT_UNKNOWN;
 	}
 
 	ret = Resource::instance()->getDevice()->CreateGraphicsPipelineState(

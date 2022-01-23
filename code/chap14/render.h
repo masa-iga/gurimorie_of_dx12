@@ -59,6 +59,12 @@ public:
 	void moveEye(MoveEye moveEye);
 
 private:
+	const std::array<float[4], 3> kbaseResourceClearColor = {
+		1.0f, 1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f, 1.0f,
+		0.0f, 0.0f, 0.0f, 1.0f,
+	};
+
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
 	HRESULT createBaseView();
