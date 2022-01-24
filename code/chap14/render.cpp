@@ -227,17 +227,17 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> BaseResource::getSrvHeap() const
 	return m_baseSrvHeap;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE BaseResource::getRtvDescHandle(Type type) const
+D3D12_CPU_DESCRIPTOR_HANDLE BaseResource::getRtvCpuDescHandle(Type type) const
 {
 	const UINT incSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	const CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), static_cast<INT>(type), incSize);
 	return handle;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE BaseResource::getSrvDescHandle(Type type) const
+D3D12_GPU_DESCRIPTOR_HANDLE BaseResource::getSrvGpuDescHandle(Type type) const
 {
 	const UINT incSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	const CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_baseSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), static_cast<INT>(type), incSize);
+	const CD3DX12_GPU_DESCRIPTOR_HANDLE handle(m_baseSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart(), static_cast<INT>(type), incSize);
 	return handle;
 }
 
@@ -408,6 +408,7 @@ HRESULT Render::render()
 	}
 
 	constexpr bool bDebugRenderShadowMap = true;
+	constexpr bool bDebugBloomLuminance = true;
 	constexpr bool bDebugRenderDepth = true;
 	constexpr bool bDebugNormal = true;
 	constexpr bool bDebugGraph = true;
@@ -416,19 +417,44 @@ HRESULT Render::render()
 	if (bDebugRenderShadowMap)
 	{
 		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
-			0.f,
-			0.f,
+			0.0f,
+			0.0f,
 			Config::kWindowWidth / 4,
 			Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
 		m_shadow.render(list, &rtvH, m_lightDepthSrvHeap, viewport, scissorRect);
 	}
 
+	if (bDebugBloomLuminance)
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
+			0.0f,
+			Config::kWindowHeight / 4,
+			Config::kWindowWidth / 4,
+			Config::kWindowHeight / 4);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+		const D3D12_GPU_DESCRIPTOR_HANDLE texGpuDesc = m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kLuminance);
+
+		m_shadow.renderRgba(list, &rtvH, m_baseResource.getSrvHeap(), texGpuDesc, viewport, scissorRect);
+	}
+
+	if (bDebugGraph)
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
+			0.f,
+			Config::kWindowHeight - Config::kWindowHeight / 8,
+			Config::kWindowWidth / 4,
+			Config::kWindowHeight / 8);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+
+		m_graph.render(list, viewport, scissorRect);
+	}
+
 	if (bDebugRenderDepth)
 	{
 		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
 			Config::kWindowWidth * 3 / 4,
-			0,
+			0.0f,
 			Config::kWindowWidth / 4,
 			Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
@@ -449,18 +475,6 @@ HRESULT Render::render()
 			Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
 		m_shadow.renderRgba(list, &rtvH, m_baseResource.getSrvHeap(), texGpuDesc, viewport, scissorRect);
-	}
-
-	if (bDebugGraph)
-	{
-		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
-			Config::kWindowWidth * 3 / 4,
-			Config::kWindowHeight / 2,
-			Config::kWindowWidth / 4,
-			Config::kWindowHeight / 8);
-		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
-
-		m_graph.render(list, viewport, scissorRect);
 	}
 
 	// UI: render imgui
@@ -861,9 +875,9 @@ HRESULT Render::preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list)
 	const UINT incSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 	const std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 3> rtvHandles = {
-		m_baseResource.getRtvDescHandle(BaseResource::Type::kColor),
-		m_baseResource.getRtvDescHandle(BaseResource::Type::kNormal),
-		m_baseResource.getRtvDescHandle(BaseResource::Type::kLuminance),
+		m_baseResource.getRtvCpuDescHandle(BaseResource::Type::kColor),
+		m_baseResource.getRtvCpuDescHandle(BaseResource::Type::kNormal),
+		m_baseResource.getRtvCpuDescHandle(BaseResource::Type::kLuminance),
 	};
 	const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 

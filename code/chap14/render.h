@@ -54,8 +54,8 @@ public:
 	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getRtvHeap() const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getSrvHeap() const;
-	D3D12_CPU_DESCRIPTOR_HANDLE getRtvDescHandle(Type type) const;
-	D3D12_CPU_DESCRIPTOR_HANDLE getSrvDescHandle(Type type) const;
+	D3D12_CPU_DESCRIPTOR_HANDLE getRtvCpuDescHandle(Type type) const;
+	D3D12_GPU_DESCRIPTOR_HANDLE getSrvGpuDescHandle(Type type) const;
 
 private:
 	const std::array<float[4], 3> kClearColor = {
