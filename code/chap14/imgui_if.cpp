@@ -116,8 +116,6 @@ void ImguiIf::build()
 		}
 	}
 	ImGui::End();
-
-	buildTestWindow();
 }
 
 void ImguiIf::render(ID3D12GraphicsCommandList* list)
