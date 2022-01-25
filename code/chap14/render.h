@@ -94,6 +94,7 @@ private:
 	HRESULT updateMvpMatrix(bool animationReversed);
 	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
 	HRESULT preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list);
+	void renderDebugBuffers(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle);
 
 	static Toolkit s_toolkit;
 
