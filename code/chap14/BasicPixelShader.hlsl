@@ -146,7 +146,7 @@ PixelOutput MrtWithShadowMapPs(Output input)
 		output.normal.a = 1;
 
 		const float y = convertYuvFromRgb(output.col.xyz).x;
-		output.highLum = (y > 0.99f) ? output.col : 0.0f;
+		output.highLum.xyz = (y > 0.99f) ? output.col.xyz : 0.0f;
 		output.highLum.a = 1.0f;
 	}
 

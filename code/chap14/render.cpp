@@ -731,7 +731,8 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	XMFLOAT3 eyePos(0, 0, 0);
 	XMFLOAT3 focusPos(0, 0, 0);
 
-	XMFLOAT3 lightPos(0, 50, -10);
+	//XMFLOAT3 lightPos(0, 50, -10);
+	XMFLOAT3 lightPos(0, 10, -20);
 	XMFLOAT3 lightFocusPos(0, 0, 0);
 
 	if (m_bAutoMoveEyePos)
