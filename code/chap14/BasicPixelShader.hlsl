@@ -18,6 +18,8 @@ SamplerComparisonState smpShadow : register(s2);
 
 static const float kBias = 0.005f;
 
+static float3 convertYuvFromRgb(float3 rgb);
+
 float4 BasicPs(Output input) : SV_TARGET
 {
 	const float3 light = normalize(float3(1, -1, 1));
@@ -143,9 +145,22 @@ PixelOutput MrtWithShadowMapPs(Output input)
 		output.normal.rgb = float3((input.normal.xyz + 1.0f) / 2.0f);
 		output.normal.a = 1;
 
-		const float y = dot(float3(0.299f, 0.587f, 0.114f), output.col.xyz);
+		const float y = convertYuvFromRgb(output.col.xyz).x;
 		output.highLum = (y > 0.99f) ? output.col : 0.0f;
+		output.highLum.a = 1.0f;
 	}
 
 	return output;
+}
+
+static float3 convertYuvFromRgb(float3 rgb)
+{
+	// assume input RGB is fully scaled (0 to 255)
+	const matrix<float, 3, 3> k = {
+		 0.299f,  0.587f,  0.114f,
+		-0.147f, -0.289f,  0.436f,
+		 0.615f, -0.515f, -0.100f,
+	};
+
+	return mul(k, rgb);
 }
