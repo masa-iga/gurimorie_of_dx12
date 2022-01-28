@@ -64,6 +64,9 @@
       <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>imgui.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -84,6 +87,9 @@
       <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>imgui.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bloom.cpp" />
