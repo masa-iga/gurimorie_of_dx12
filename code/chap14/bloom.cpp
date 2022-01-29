@@ -51,6 +51,12 @@ HRESULT Bloom::compileShaders()
 {
 	for (uint32_t i = 0; i < m_vsBlobs.size(); ++i)
 	{
+		if (static_cast<size_t>(kType::kBlur) == i)
+		{
+			m_vsBlobs.at(static_cast<size_t>(kType::kBlur)) = m_vsBlobs.at(static_cast<size_t>(kType::kMain));
+			continue;
+		}
+
 		ComPtr<ID3DBlob> errorBlob = nullptr;
 
 		auto result = D3DCompileFromFile(
