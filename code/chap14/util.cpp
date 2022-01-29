@@ -58,9 +58,9 @@ TimeCounter::~TimeCounter()
 	elapsed /= freq.QuadPart;
 
 	if (m_str.empty())
-		DebugOutputFormatString("%zd usec\n", elapsed);
+		Debug::debugOutputFormatString("%zd usec\n", elapsed);
 	else
-		DebugOutputFormatString("%s %zd usec\n", m_str.c_str(), elapsed);
+		Debug::debugOutputFormatString("%s %zd usec\n", m_str.c_str(), elapsed);
 }
 
 size_t alignmentedSize(size_t size, size_t alignment)

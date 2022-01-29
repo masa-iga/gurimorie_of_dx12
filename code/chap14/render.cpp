@@ -246,7 +246,7 @@ void Render::onNotify(UiEvent uiEvent, bool flag)
 	switch (uiEvent) {
 	case UiEvent::kUpdateAutoMovePos: m_bAutoMoveEyePos = flag; break;
 	case UiEvent::kUpdateAutoLightPos: m_bAutoMoveLightPos = flag; break;
-	default: DebugOutputFormatString("unhandled UI event. (%d)\n", uiEvent); ThrowIfFalse(false);
+	default: Debug::debugOutputFormatString("unhandled UI event. (%d)\n", uiEvent); ThrowIfFalse(false);
 	}
 }
 
@@ -470,7 +470,7 @@ HRESULT Render::waitForEndOfRendering()
 
 		if (!ret2)
 		{
-			DebugOutputFormatString("failed to close handle. (ret %d error %d)\n", ret2, GetLastError());
+			Debug::debugOutputFormatString("failed to close handle. (ret %d error %d)\n", ret2, GetLastError());
 			ThrowIfFalse(FALSE);
 		}
 	}

@@ -43,7 +43,7 @@ HRESULT TimeStamp::init()
 		Resource::instance()->getCommandQueue()->GetTimestampFrequency(&m_gpuFreq);
 		ThrowIfFalse(m_gpuFreq >= 1'000'000); // The counter frequency must be over 1 MHz
 
-		DebugOutputFormatString("Time stamp freq: %zd Hz\n", m_gpuFreq);
+		Debug::debugOutputFormatString("Time stamp freq: %zd Hz\n", m_gpuFreq);
 	}
 
 	clear();
@@ -109,7 +109,7 @@ float TimeStamp::getInUsec(Index index0, Index index1)
 
 	m_tsResource->Unmap(0, nullptr);
 
-	//DebugOutputFormatString("[%d %d] %6.1f us (%zd %zd %zd)\n", idx0, idx1, time_us, m_gpuFreq, pData[idx1], pData[idx0]);
+	//debugOutputFormatString("[%d %d] %6.1f us (%zd %zd %zd)\n", idx0, idx1, time_us, m_gpuFreq, pData[idx1], pData[idx0]);
 	return time_us;
 }
 

@@ -191,7 +191,7 @@ void ImguiIf::buildTestWindow()
 
 				if (bUpdated)
 				{
-					//DebugOutputFormatString("Radio button updated. (%d)\n", radio);
+					//debugOutputFormatString("Radio button updated. (%d)\n", radio);
 				}
 			}
 

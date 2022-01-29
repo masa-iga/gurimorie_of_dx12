@@ -490,7 +490,7 @@ HRESULT PmdActor::loadShaders()
 
 	if (FAILED(ret))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 	}
 	ThrowIfFailed(ret);
 
@@ -509,7 +509,7 @@ HRESULT PmdActor::loadShaders()
 
 	if (FAILED(ret))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 	}
 	ThrowIfFailed(ret);
 
@@ -527,7 +527,7 @@ HRESULT PmdActor::loadShaders()
 
 	if (FAILED(ret))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 	}
 	ThrowIfFailed(ret);
 
@@ -733,7 +733,7 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 
 	if (FAILED(ret))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 	}
 	ThrowIfFailed(ret);
 
@@ -993,10 +993,10 @@ HRESULT PmdActor::loadPmd(Model model)
 
 	ThrowIfFailed(createResources());
 
-	DebugOutputFormatString("Vertex num  : %d\n", m_vertNum);
-	DebugOutputFormatString("Index num   : %d\n", m_indicesNum);
-	DebugOutputFormatString("Material num: %zd\n", m_materials.size());
-	DebugOutputFormatString("Bone num    : %zd\n", m_boneMatrices.size());
+	Debug::debugOutputFormatString("Vertex num  : %d\n", m_vertNum);
+	Debug::debugOutputFormatString("Index num   : %d\n", m_indicesNum);
+	Debug::debugOutputFormatString("Material num: %zd\n", m_materials.size());
+	Debug::debugOutputFormatString("Bone num    : %zd\n", m_boneMatrices.size());
 
 #define PRINT_DEBUG_IK_DATA (1)
 #if PRINT_DEBUG_IK_DATA
@@ -1017,11 +1017,11 @@ HRESULT PmdActor::loadPmd(Model model)
 
 		for (const auto& ik : m_pmdIks)
 		{
-			DebugOutputFormatString("IK bone # = %d : %s\n", ik.boneIdx, getNameFromIdx(ik.boneIdx).c_str());
+			Debug::debugOutputFormatString("IK bone # = %d : %s\n", ik.boneIdx, getNameFromIdx(ik.boneIdx).c_str());
 
 			for (const auto& node : ik.nodeIdxes)
 			{
-				DebugOutputFormatString("\tNode bone = %d : %s\n", node, getNameFromIdx(node).c_str());
+				Debug::debugOutputFormatString("\tNode bone = %d : %s\n", node, getNameFromIdx(node).c_str());
 			}
 		}
 	}
@@ -1122,8 +1122,8 @@ HRESULT PmdActor::loadVmd()
 				});
 		}
 
-		DebugOutputFormatString("Motion num  : %d\n", motionDataNum);
-		DebugOutputFormatString("Duration    : %d\n", m_duration);
+		Debug::debugOutputFormatString("Motion num  : %d\n", motionDataNum);
+		Debug::debugOutputFormatString("Duration    : %d\n", m_duration);
 	}
 	ThrowIfFalse(fclose(fp) == 0);
 

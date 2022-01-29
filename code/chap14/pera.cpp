@@ -42,7 +42,7 @@ HRESULT Pera::compileShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
 	}
 	ThrowIfFailed(result);
 
@@ -59,7 +59,7 @@ HRESULT Pera::compileShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
 	}
 	ThrowIfFailed(result);
 
@@ -76,7 +76,7 @@ HRESULT Pera::compileShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
 	}
 	ThrowIfFailed(result);
 
@@ -93,7 +93,7 @@ HRESULT Pera::compileShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
 	}
 	ThrowIfFailed(result);
 
@@ -192,7 +192,7 @@ HRESULT Pera::createPipelineState()
 
 		if (FAILED(result))
 		{
-			outputDebugMessage(errBlob.Get());
+			Debug::outputDebugMessage(errBlob.Get());
 		}
 		ThrowIfFailed(result);
 
@@ -248,7 +248,7 @@ HRESULT Pera::createPipelineState()
 
 		if (FAILED(result))
 		{
-			outputDebugMessage(errBlob.Get());
+			Debug::outputDebugMessage(errBlob.Get());
 		}
 		ThrowIfFailed(result);
 

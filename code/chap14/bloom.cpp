@@ -66,7 +66,7 @@ HRESULT Bloom::compileShaders()
 
 		if (FAILED(result))
 		{
-			outputDebugMessage(errorBlob.Get());
+			Debug::outputDebugMessage(errorBlob.Get());
 			return E_FAIL;
 		}
 	}
@@ -88,7 +88,7 @@ HRESULT Bloom::compileShaders()
 
 		if (FAILED(result))
 		{
-			outputDebugMessage(errorBlob.Get());
+			Debug::outputDebugMessage(errorBlob.Get());
 			return E_FAIL;
 		}
 	}
@@ -269,7 +269,7 @@ HRESULT Bloom::createRootSignature()
 
 	if (FAILED(ret))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 	}
 	ThrowIfFailed(ret);
 
