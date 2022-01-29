@@ -22,8 +22,8 @@ HRESULT Bloom::init(UINT64 width, UINT height)
 
 HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap *pSrcTexDescHeap)
 {
-	list->SetGraphicsRootSignature(m_rootSignature.Get());
-	list->SetPipelineState(m_pipelineState.Get());
+	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(kType::kMain)).Get());
+	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kMain)).Get());
 
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
 	list->SetGraphicsRootDescriptorTable(0, pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
@@ -49,40 +49,48 @@ HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HAND
 
 HRESULT Bloom::compileShaders()
 {
-	ComPtr<ID3DBlob> errorBlob = nullptr;
-
-	auto result = D3DCompileFromFile(
-		kVsFile,
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main",
-		Constant::kVsShaderModel,
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
-		0,
-		m_vsBlob.ReleaseAndGetAddressOf(),
-		errorBlob.ReleaseAndGetAddressOf());
-
-	if (FAILED(result))
+	for (uint32_t i = 0; i < m_vsBlobs.size(); ++i)
 	{
-		outputDebugMessage(errorBlob.Get());
-		return E_FAIL;
+		ComPtr<ID3DBlob> errorBlob = nullptr;
+
+		auto result = D3DCompileFromFile(
+			kVsFile,
+			nullptr,
+			D3D_COMPILE_STANDARD_FILE_INCLUDE,
+			kVsEntryPoints.at(i),
+			Constant::kVsShaderModel,
+			D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+			0,
+			m_vsBlobs.at(i).ReleaseAndGetAddressOf(),
+			errorBlob.ReleaseAndGetAddressOf());
+
+		if (FAILED(result))
+		{
+			outputDebugMessage(errorBlob.Get());
+			return E_FAIL;
+		}
 	}
 
-	result = D3DCompileFromFile(
-		kPsFile,
-		nullptr,
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,
-		"main",
-		Constant::kPsShaderModel,
-		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
-		0,
-		m_psBlob.ReleaseAndGetAddressOf(),
-		errorBlob.ReleaseAndGetAddressOf());
-
-	if (FAILED(result))
+	for (uint32_t i = 0; i < m_psBlobs.size(); ++i)
 	{
-		outputDebugMessage(errorBlob.Get());
-		return E_FAIL;
+		ComPtr<ID3DBlob> errorBlob = nullptr;
+
+		auto result = D3DCompileFromFile(
+			kPsFile,
+			nullptr,
+			D3D_COMPILE_STANDARD_FILE_INCLUDE,
+			kPsEntryPoints.at(i),
+			Constant::kPsShaderModel,
+			D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
+			0,
+			m_psBlobs.at(i).ReleaseAndGetAddressOf(),
+			errorBlob.ReleaseAndGetAddressOf());
+
+		if (FAILED(result))
+		{
+			outputDebugMessage(errorBlob.Get());
+			return E_FAIL;
+		}
 	}
 
 	return S_OK;
@@ -266,15 +274,23 @@ HRESULT Bloom::createRootSignature()
 	ThrowIfFailed(ret);
 
 
-	ret = Resource::instance()->getDevice()->CreateRootSignature(
-		0 /* nodeMask */,
-		rootSigBlob.Get()->GetBufferPointer(),
-		rootSigBlob.Get()->GetBufferSize(),
-		IID_PPV_ARGS(m_rootSignature.ReleaseAndGetAddressOf()));
-	ThrowIfFailed(ret);
+	{
+		ret = Resource::instance()->getDevice()->CreateRootSignature(
+			0 /* nodeMask */,
+			rootSigBlob.Get()->GetBufferPointer(),
+			rootSigBlob.Get()->GetBufferSize(),
+			IID_PPV_ARGS(m_rootSignatures.at(static_cast<size_t>(kType::kMain)).ReleaseAndGetAddressOf()));
+		ThrowIfFailed(ret);
 
-	ret = m_rootSignature.Get()->SetName(Util::getWideStringFromString("bloomRootSignature").c_str());
-	ThrowIfFailed(ret);
+		ret = m_rootSignatures.at(static_cast<size_t>(kType::kMain)).Get()->SetName(Util::getWideStringFromString("bloomMainRootSignature").c_str());
+		ThrowIfFailed(ret);
+	}
+
+	{
+		m_rootSignatures.at(static_cast<size_t>(kType::kBlur)) = m_rootSignatures.at(static_cast<size_t>(kType::kMain));
+
+		ret = m_rootSignatures.at(static_cast<size_t>(kType::kBlur)).Get()->SetName(Util::getWideStringFromString("bloomBlurRootSignature").c_str());
+	}
 
 	return S_OK;
 }
@@ -305,9 +321,13 @@ HRESULT Bloom::createPipelineState()
 	};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = {
-		.pRootSignature = m_rootSignature.Get(),
-		.VS = { m_vsBlob.Get()->GetBufferPointer(), m_vsBlob.Get()->GetBufferSize() },
-		.PS = { m_psBlob.Get()->GetBufferPointer(), m_psBlob.Get()->GetBufferSize() },
+		.pRootSignature = m_rootSignatures.at(static_cast<size_t>(kType::kMain)).Get(),
+		.VS = {
+			m_vsBlobs.at(static_cast<size_t>(kType::kMain)).Get()->GetBufferPointer(),
+			m_vsBlobs.at(static_cast<size_t>(kType::kMain)).Get()->GetBufferSize() },
+		.PS = {
+			m_psBlobs.at(static_cast<size_t>(kType::kMain)).Get()->GetBufferPointer(),
+			m_psBlobs.at(static_cast<size_t>(kType::kMain)).Get()->GetBufferSize() },
 		.DS = { nullptr, 0 },
 		.HS = { nullptr, 0 },
 		.GS = { nullptr, 0 },
@@ -330,13 +350,33 @@ HRESULT Bloom::createPipelineState()
 	gpDesc.DepthStencilState.DepthEnable = false;
 	gpDesc.RTVFormats[0] = Constant::kDefaultRtFormat;
 
-	auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
-		&gpDesc,
-		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
-	ThrowIfFailed(result);
+	{
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&gpDesc,
+			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(kType::kMain)).ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
 
-	result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("bloomPipelineState").c_str());
-	ThrowIfFailed(result);
+		result = m_pipelineStates.at(static_cast<size_t>(kType::kMain)).Get()->SetName(Util::getWideStringFromString("bloomMainPipelineState").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		gpDesc.pRootSignature = m_rootSignatures.at(static_cast<size_t>(kType::kBlur)).Get();
+		gpDesc.VS = {
+			m_vsBlobs.at(static_cast<size_t>(kType::kBlur)).Get()->GetBufferPointer(),
+			m_vsBlobs.at(static_cast<size_t>(kType::kBlur)).Get()->GetBufferSize() };
+		gpDesc.PS = {
+			m_psBlobs.at(static_cast<size_t>(kType::kBlur)).Get()->GetBufferPointer(),
+			m_psBlobs.at(static_cast<size_t>(kType::kBlur)).Get()->GetBufferSize() };
+
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&gpDesc,
+			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(kType::kBlur)).ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_pipelineStates.at(static_cast<size_t>(kType::kBlur)).Get()->SetName(Util::getWideStringFromString("bloomBlurPipelineState").c_str());
+		ThrowIfFailed(result);
+	}
 
 	return S_OK;
 }

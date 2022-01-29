@@ -7,17 +7,14 @@ static float4 Get5x5GaussianBlur(Texture2D<float4> tex, SamplerState smp, float2
 
 float4 main(VsOut vsOut) : SV_TARGET
 {
-#if 1
 	return float4(tex.Sample(smp, vsOut.uv).xyz, 1.0f);
-#else
+}
+
+float4 blurPs(VsOut vsOut) : SV_TARGET
+{
 	float w = 0.0f, h = 0.0f;
 	tex.GetDimensions(w, h);
-
-	float dx = 1.0f / w;
-	float dy = 1.0f / h;
-
-	return Get5x5GaussianBlur(tex, smp, vsOut.uv, dx, dy);
-#endif
+	return Get5x5GaussianBlur(tex, smp, vsOut.uv, 1.0f / w, 1.0f / h);
 }
 
 static float4 Get5x5GaussianBlur(Texture2D<float4> tex, SamplerState smp, float2 uv, float dx, float dy)
