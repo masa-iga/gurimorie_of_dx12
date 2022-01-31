@@ -258,6 +258,7 @@
     <None Include="bloomHeader.hlsli">
       <Filter>シェーダ ファイル</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\resource\Model\ao.bmp">
