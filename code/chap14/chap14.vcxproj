@@ -102,6 +102,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="observer.cpp" />
     <ClCompile Include="pera.cpp" />
+    <ClCompile Include="pixif.cpp" />
     <ClCompile Include="pmd_actor.cpp" />
     <ClCompile Include="render.cpp" />
     <ClCompile Include="shadow.cpp" />
@@ -121,6 +122,7 @@
     <ClInclude Include="loader.h" />
     <ClInclude Include="observer.h" />
     <ClInclude Include="pera.h" />
+    <ClInclude Include="pixif.h" />
     <ClInclude Include="pmd_actor.h" />
     <ClInclude Include="render.h" />
     <ClInclude Include="shadow.h" />

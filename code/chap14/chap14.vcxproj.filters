@@ -78,6 +78,9 @@
     <ClCompile Include="bloom.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="pixif.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="init.h">
@@ -130,6 +133,9 @@
     </ClInclude>
     <ClInclude Include="bloom.h">
       <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="pixif.h">
+      <Filter>シェーダ ファイル</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

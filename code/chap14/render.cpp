@@ -11,6 +11,7 @@
 #include "constant.h"
 #include "debug.h"
 #include "init.h"
+#include "pixif.h"
 #include "pmd_actor.h"
 #include "util.h"
 
@@ -363,6 +364,8 @@ HRESULT Render::render()
 
 	// shadow map: render light depth map
 	{
+		const PixScopedEvent pixScopedEvent(list, "ShadowMap");
+
 		m_floor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
 
 		for (const auto& actor : m_pmdActors)
@@ -374,6 +377,8 @@ HRESULT Render::render()
 	// base pass: RT0=albedo, RT1=normal, RT2=luminance, depth
 	preProcessForOffscreenRendering(list);
 	{
+		const PixScopedEvent pixScopedEvent(list, "BasePass");
+
 		m_floor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
 		m_floor.renderAxis(list, m_sceneDescHeap.Get());
 
@@ -385,6 +390,8 @@ HRESULT Render::render()
 
 	// post process: bloom
 	{
+		const PixScopedEvent pixScopedEvent(list, "PostProcess : bloom");
+
 		m_baseResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		const D3D12_RESOURCE_BARRIER b = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -398,6 +405,8 @@ HRESULT Render::render()
 
 	// post process: pera (render to display buffer)
 	{
+		const PixScopedEvent pixScopedEvent(list, "PostProcess : pera");
+
 		const D3D12_RESOURCE_BARRIER b = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_postResource.Get(),
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -414,6 +423,7 @@ HRESULT Render::render()
 
 	// UI: render imgui
 	{
+		const PixScopedEvent pixScopedEvent(list, "IMGUI");
 		m_imguif.build();
 		m_imguif.render(list);
 	}
@@ -833,6 +843,8 @@ void Render::renderDebugBuffers(ID3D12GraphicsCommandList* list, const D3D12_CPU
 	constexpr bool bDebugRenderDepth = true;
 	constexpr bool bDebugNormal = true;
 	constexpr bool bDebugGraph = true;
+
+	const PixScopedEvent pixScopedEvent(list, __func__);
 
 	// Debug
 	if (bDebugRenderShadowMap)
