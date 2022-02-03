@@ -362,6 +362,7 @@ HRESULT Render::render()
 		clearDepthRenderTarget(list, dsvH);
 		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 		m_baseResource.clearBaseRenderTargets(list);
+		m_bloom.clearWorkRenderTarget(list);
 	}
 
 	// shadow map: render light depth map
@@ -403,6 +404,7 @@ HRESULT Render::render()
 		list->ResourceBarrier(1, &b);
 
 		m_bloom.render(list, m_postRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), m_baseResource.getSrvHeap().Get());
+		m_bloom.renderShrinkTextureForBlur(list, m_baseResource.getSrvHeap().Get());
 	}
 
 	// post process: pera (render to display buffer)
