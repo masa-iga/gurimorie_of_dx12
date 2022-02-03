@@ -17,6 +17,7 @@ SamplerState smpToon : register(s1);
 SamplerComparisonState smpShadow : register(s2);
 
 static const float kBias = 0.005f;
+static const float kHighLuminanceThreshold = 0.99f;
 
 static float3 convertYuvFromRgb(float3 rgb);
 
@@ -146,7 +147,7 @@ PixelOutput MrtWithShadowMapPs(Output input)
 		output.normal.a = 1;
 
 		const float y = convertYuvFromRgb(output.col.xyz).x;
-		output.highLum.xyz = (y > 0.99f) ? output.col.xyz : 0.0f;
+		output.highLum.xyz = (y > kHighLuminanceThreshold) ? output.col.xyz : 0.0f;
 		output.highLum.a = 1.0f;
 	}
 
