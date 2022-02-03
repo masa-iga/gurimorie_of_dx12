@@ -12,7 +12,11 @@ class Bloom
 {
 public:
 	HRESULT init(UINT64 width, UINT height);
-	HRESULT render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap *pSrcTexDescHeap);
+	HRESULT clearWorkRenderTarget(ID3D12GraphicsCommandList* list);
+	HRESULT render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pSrcTexDescHeap);
+	HRESULT renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pSrcTexDescHeap);
+	Microsoft::WRL::ComPtr<ID3D12Resource> getWorkResource();
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getSrvWorkDescriptorHeap();
 
 private:
 	static constexpr LPCWSTR kVsFile = L"bloomVertex.hlsl";

@@ -12,6 +12,8 @@
 
 using namespace Microsoft::WRL;
 
+constexpr FLOAT kClearColor[] = {0.0f, 0.0f, 0.0f, 0.0f};
+
 HRESULT Bloom::init(UINT64 width, UINT height)
 {
 	ThrowIfFailed(compileShaders());
@@ -20,7 +22,19 @@ HRESULT Bloom::init(UINT64 width, UINT height)
 	return S_OK;
 }
 
-HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap *pSrcTexDescHeap)
+HRESULT Bloom::clearWorkRenderTarget(ID3D12GraphicsCommandList* list)
+{
+	list->ClearRenderTargetView(
+		m_workDescHeapRtv.Get()->GetCPUDescriptorHandleForHeapStart(),
+		kClearColor,
+		0,
+		nullptr
+	);
+
+	return S_OK;
+}
+
+HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pSrcTexDescHeap)
 {
 	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(kType::kMain)).Get());
 	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kMain)).Get());
@@ -45,6 +59,51 @@ HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HAND
 	list->DrawInstanced(4, 1, 0, 0);
 
 	return S_OK;
+}
+
+HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pSrcTexDescHeap)
+{
+	// TODO: barrier‚ð‚±‚±‚É“ü‚ê‚é‚×‚«‚©H
+	//   input: high luminance buffer
+	//   output: shrink buffer
+
+	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(kType::kBlur)).Get());
+	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kBlur)).Get());
+
+	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
+	list->SetGraphicsRootDescriptorTable(0, pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	list->IASetVertexBuffers(0, 1, &m_vbView);
+
+	{
+		const D3D12_CPU_DESCRIPTOR_HANDLE rtDescHandle[] = { m_workDescHeapRtv.Get()->GetCPUDescriptorHandleForHeapStart() };
+		list->OMSetRenderTargets(1, rtDescHandle, false, nullptr);
+	}
+
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
+		list->RSSetViewports(1, &viewport);
+	}
+
+	{
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+		list->RSSetScissorRects(1, &scissorRect);
+	}
+
+	list->DrawInstanced(4, 1, 0, 0);
+
+	return S_OK;
+}
+
+Microsoft::WRL::ComPtr<ID3D12Resource> Bloom::getWorkResource()
+{
+	return m_workResource;
+}
+
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> Bloom::getSrvWorkDescriptorHeap()
+{
+	return m_workDescHeapSrv;
 }
 
 HRESULT Bloom::compileShaders()
@@ -136,7 +195,7 @@ HRESULT Bloom::createResource(UINT64 dstWidth, UINT dstHeight)
 			&heapProp,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
 			&clearColor,
 			IID_PPV_ARGS(m_workResource.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
@@ -194,10 +253,10 @@ HRESULT Bloom::createResource(UINT64 dstWidth, UINT dstHeight)
 			.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
 			.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
 			.Texture2D = {
-				.MostDetailedMip = 1,
+				.MostDetailedMip = 0,
 				.MipLevels = 1,
 				.PlaneSlice = 0,
-				.ResourceMinLODClamp = 1,
+				.ResourceMinLODClamp = 0.0f,
 			},
 		};
 
