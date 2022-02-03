@@ -355,6 +355,8 @@ HRESULT Render::render()
 
 	// clear buffers
 	{
+		const PixScopedEvent pixScopedEvent(list, "clearBuffers");
+
 		m_imguif.newFrame();
 		clearRenderTarget(list, rtvH, kClearColorRenderTarget);
 		clearDepthRenderTarget(list, dsvH);
