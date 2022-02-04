@@ -67,6 +67,9 @@ HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D1
 	//   input: high luminance buffer
 	//   output: shrink buffer
 
+	const int32_t baseWidth = Config::kWindowWidth / 2;
+	const int32_t baseHeight = Config::kWindowHeight / 2;
+
 	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(kType::kBlur)).Get());
 	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kBlur)).Get());
 
@@ -81,17 +84,22 @@ HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D1
 		list->OMSetRenderTargets(1, rtDescHandle, false, nullptr);
 	}
 
+	D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(baseWidth), static_cast<float>(baseHeight));
+	D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, baseWidth, baseHeight);
+
+	for (uint32_t i = 0; i < 8; ++i)
 	{
-		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
 		list->RSSetViewports(1, &viewport);
-	}
-
-	{
-		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
 		list->RSSetScissorRects(1, &scissorRect);
-	}
+		list->DrawInstanced(4, 1, 0, 0);
 
-	list->DrawInstanced(4, 1, 0, 0);
+		scissorRect.top += static_cast<LONG>(viewport.Height);
+		viewport.TopLeftX = 0.0f;
+		viewport.TopLeftY = static_cast<float>(scissorRect.top);
+		viewport.Width /= 2.0f;
+		viewport.Height /= 2.0f;
+		scissorRect.bottom = scissorRect.top + static_cast<LONG>(viewport.Height);
+	}
 
 	return S_OK;
 }
