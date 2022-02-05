@@ -17,7 +17,7 @@ SamplerState smpToon : register(s1);
 SamplerComparisonState smpShadow : register(s2);
 
 static const float kBias = 0.005f;
-static const float kHighLuminanceThreshold = 0.99f;
+static const float kHighLuminanceThreshold = 0.85f;
 
 static float3 convertYuvFromRgb(float3 rgb);
 
