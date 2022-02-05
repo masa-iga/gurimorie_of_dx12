@@ -42,6 +42,9 @@ HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HAND
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
 	list->SetGraphicsRootDescriptorTable(0, pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
 
+	list->SetDescriptorHeaps(1, m_workDescHeapSrv.GetAddressOf());
+	list->SetGraphicsRootDescriptorTable(1, m_workDescHeapSrv.Get()->GetGPUDescriptorHandleForHeapStart());
+
 	list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
 
 	{
@@ -70,8 +73,8 @@ HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D1
 	const int32_t baseWidth = Config::kWindowWidth / 2;
 	const int32_t baseHeight = Config::kWindowHeight / 2;
 
-	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(kType::kBlur)).Get());
-	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kBlur)).Get());
+	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(kType::kTexCopy)).Get());
+	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kTexCopy)).Get());
 
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
 	list->SetGraphicsRootDescriptorTable(0, pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
@@ -118,9 +121,9 @@ HRESULT Bloom::compileShaders()
 {
 	for (uint32_t i = 0; i < m_vsBlobs.size(); ++i)
 	{
-		if (static_cast<size_t>(kType::kBlur) == i)
+		if (static_cast<size_t>(kType::kTexCopy) == i)
 		{
-			m_vsBlobs.at(static_cast<size_t>(kType::kBlur)) = m_vsBlobs.at(static_cast<size_t>(kType::kMain));
+			m_vsBlobs.at(static_cast<size_t>(kType::kTexCopy)) = m_vsBlobs.at(static_cast<size_t>(kType::kMain));
 			continue;
 		}
 
@@ -312,21 +315,27 @@ HRESULT Bloom::createResource(UINT64 dstWidth, UINT dstHeight)
 
 HRESULT Bloom::createRootSignature()
 {
-	const D3D12_DESCRIPTOR_RANGE descRange = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	const D3D12_DESCRIPTOR_RANGE descRange0 = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	const D3D12_DESCRIPTOR_RANGE descRange1 = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
 
-	const D3D12_ROOT_DESCRIPTOR_TABLE descTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRange);
-
-	const D3D12_ROOT_PARAMETER rootParam = {
-		.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-		.DescriptorTable = descTable,
-		.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+	const D3D12_ROOT_PARAMETER rootParams[] = {
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRange0),
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+		},
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRange1),
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+		},
 	};
 
 	const D3D12_STATIC_SAMPLER_DESC samplerDesc = CD3DX12_STATIC_SAMPLER_DESC(0, D3D12_FILTER_MIN_MAG_MIP_LINEAR);
 
 	const D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = CD3DX12_ROOT_SIGNATURE_DESC(
-		1,
-		&rootParam,
+		_countof(rootParams),
+		rootParams,
 		1,
 		&samplerDesc,
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -360,9 +369,9 @@ HRESULT Bloom::createRootSignature()
 	}
 
 	{
-		m_rootSignatures.at(static_cast<size_t>(kType::kBlur)) = m_rootSignatures.at(static_cast<size_t>(kType::kMain));
+		m_rootSignatures.at(static_cast<size_t>(kType::kTexCopy)) = m_rootSignatures.at(static_cast<size_t>(kType::kMain));
 
-		ret = m_rootSignatures.at(static_cast<size_t>(kType::kBlur)).Get()->SetName(Util::getWideStringFromString("bloomBlurRootSignature").c_str());
+		ret = m_rootSignatures.at(static_cast<size_t>(kType::kTexCopy)).Get()->SetName(Util::getWideStringFromString("bloomTexCopyRootSignature").c_str());
 	}
 
 	return S_OK;
@@ -434,20 +443,20 @@ HRESULT Bloom::createPipelineState()
 	}
 
 	{
-		gpDesc.pRootSignature = m_rootSignatures.at(static_cast<size_t>(kType::kBlur)).Get();
+		gpDesc.pRootSignature = m_rootSignatures.at(static_cast<size_t>(kType::kTexCopy)).Get();
 		gpDesc.VS = {
-			m_vsBlobs.at(static_cast<size_t>(kType::kBlur)).Get()->GetBufferPointer(),
-			m_vsBlobs.at(static_cast<size_t>(kType::kBlur)).Get()->GetBufferSize() };
+			m_vsBlobs.at(static_cast<size_t>(kType::kTexCopy)).Get()->GetBufferPointer(),
+			m_vsBlobs.at(static_cast<size_t>(kType::kTexCopy)).Get()->GetBufferSize() };
 		gpDesc.PS = {
-			m_psBlobs.at(static_cast<size_t>(kType::kBlur)).Get()->GetBufferPointer(),
-			m_psBlobs.at(static_cast<size_t>(kType::kBlur)).Get()->GetBufferSize() };
+			m_psBlobs.at(static_cast<size_t>(kType::kTexCopy)).Get()->GetBufferPointer(),
+			m_psBlobs.at(static_cast<size_t>(kType::kTexCopy)).Get()->GetBufferSize() };
 
 		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 			&gpDesc,
-			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(kType::kBlur)).ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(kType::kTexCopy)).ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_pipelineStates.at(static_cast<size_t>(kType::kBlur)).Get()->SetName(Util::getWideStringFromString("bloomBlurPipelineState").c_str());
+		result = m_pipelineStates.at(static_cast<size_t>(kType::kTexCopy)).Get()->SetName(Util::getWideStringFromString("bloomTexCopyPipelineState").c_str());
 		ThrowIfFailed(result);
 	}
 

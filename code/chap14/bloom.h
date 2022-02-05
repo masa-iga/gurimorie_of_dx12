@@ -24,12 +24,12 @@ private:
 
 	enum class kType {
 		kMain,
-		kBlur,
+		kTexCopy,
 		// increment kNumOfType if you are going to add a new field
 	};
 	static constexpr size_t kNumOfType = 2;
 	static constexpr std::array<LPCSTR, kNumOfType> kVsEntryPoints = { "main", "main" };
-	static constexpr std::array<LPCSTR, kNumOfType> kPsEntryPoints = { "main", "blurPs" };
+	static constexpr std::array<LPCSTR, kNumOfType> kPsEntryPoints = { "main", "texCopy" };
 
 	HRESULT compileShaders();
 	HRESULT createResource(UINT64 dstWidth, UINT dstHeight);
