@@ -36,8 +36,8 @@ HRESULT Bloom::clearWorkRenderTarget(ID3D12GraphicsCommandList* list)
 
 HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pSrcTexDescHeap)
 {
-	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(kType::kMain)).Get());
-	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kMain)).Get());
+	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(Type::kMain)).Get());
+	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kMain)).Get());
 
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
 	list->SetGraphicsRootDescriptorTable(static_cast<UINT>(Slot::kSrcTex), pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
@@ -73,8 +73,8 @@ HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D1
 	const int32_t baseWidth = Config::kWindowWidth / 2;
 	const int32_t baseHeight = Config::kWindowHeight / 2;
 
-	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(kType::kTexCopy)).Get());
-	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kTexCopy)).Get());
+	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(Type::kTexCopy)).Get());
+	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kTexCopy)).Get());
 
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
 	list->SetGraphicsRootDescriptorTable(static_cast<UINT>(Slot::kSrcLuminance), srcLumHandle);
@@ -121,9 +121,9 @@ HRESULT Bloom::compileShaders()
 {
 	for (uint32_t i = 0; i < m_vsBlobs.size(); ++i)
 	{
-		if (static_cast<size_t>(kType::kTexCopy) == i)
+		if (static_cast<size_t>(Type::kTexCopy) == i)
 		{
-			m_vsBlobs.at(static_cast<size_t>(kType::kTexCopy)) = m_vsBlobs.at(static_cast<size_t>(kType::kMain));
+			m_vsBlobs.at(static_cast<size_t>(Type::kTexCopy)) = m_vsBlobs.at(static_cast<size_t>(Type::kMain));
 			continue;
 		}
 
@@ -369,17 +369,17 @@ HRESULT Bloom::createRootSignature()
 			0 /* nodeMask */,
 			rootSigBlob.Get()->GetBufferPointer(),
 			rootSigBlob.Get()->GetBufferSize(),
-			IID_PPV_ARGS(m_rootSignatures.at(static_cast<size_t>(kType::kMain)).ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_rootSignatures.at(static_cast<size_t>(Type::kMain)).ReleaseAndGetAddressOf()));
 		ThrowIfFailed(ret);
 
-		ret = m_rootSignatures.at(static_cast<size_t>(kType::kMain)).Get()->SetName(Util::getWideStringFromString("bloomMainRootSignature").c_str());
+		ret = m_rootSignatures.at(static_cast<size_t>(Type::kMain)).Get()->SetName(Util::getWideStringFromString("bloomMainRootSignature").c_str());
 		ThrowIfFailed(ret);
 	}
 
 	{
-		m_rootSignatures.at(static_cast<size_t>(kType::kTexCopy)) = m_rootSignatures.at(static_cast<size_t>(kType::kMain));
+		m_rootSignatures.at(static_cast<size_t>(Type::kTexCopy)) = m_rootSignatures.at(static_cast<size_t>(Type::kMain));
 
-		ret = m_rootSignatures.at(static_cast<size_t>(kType::kTexCopy)).Get()->SetName(Util::getWideStringFromString("bloomTexCopyRootSignature").c_str());
+		ret = m_rootSignatures.at(static_cast<size_t>(Type::kTexCopy)).Get()->SetName(Util::getWideStringFromString("bloomTexCopyRootSignature").c_str());
 	}
 
 	return S_OK;
@@ -411,13 +411,13 @@ HRESULT Bloom::createPipelineState()
 	};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = {
-		.pRootSignature = m_rootSignatures.at(static_cast<size_t>(kType::kMain)).Get(),
+		.pRootSignature = m_rootSignatures.at(static_cast<size_t>(Type::kMain)).Get(),
 		.VS = {
-			m_vsBlobs.at(static_cast<size_t>(kType::kMain)).Get()->GetBufferPointer(),
-			m_vsBlobs.at(static_cast<size_t>(kType::kMain)).Get()->GetBufferSize() },
+			m_vsBlobs.at(static_cast<size_t>(Type::kMain)).Get()->GetBufferPointer(),
+			m_vsBlobs.at(static_cast<size_t>(Type::kMain)).Get()->GetBufferSize() },
 		.PS = {
-			m_psBlobs.at(static_cast<size_t>(kType::kMain)).Get()->GetBufferPointer(),
-			m_psBlobs.at(static_cast<size_t>(kType::kMain)).Get()->GetBufferSize() },
+			m_psBlobs.at(static_cast<size_t>(Type::kMain)).Get()->GetBufferPointer(),
+			m_psBlobs.at(static_cast<size_t>(Type::kMain)).Get()->GetBufferSize() },
 		.DS = { nullptr, 0 },
 		.HS = { nullptr, 0 },
 		.GS = { nullptr, 0 },
@@ -443,28 +443,28 @@ HRESULT Bloom::createPipelineState()
 	{
 		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 			&gpDesc,
-			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(kType::kMain)).ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(Type::kMain)).ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_pipelineStates.at(static_cast<size_t>(kType::kMain)).Get()->SetName(Util::getWideStringFromString("bloomMainPipelineState").c_str());
+		result = m_pipelineStates.at(static_cast<size_t>(Type::kMain)).Get()->SetName(Util::getWideStringFromString("bloomMainPipelineState").c_str());
 		ThrowIfFailed(result);
 	}
 
 	{
-		gpDesc.pRootSignature = m_rootSignatures.at(static_cast<size_t>(kType::kTexCopy)).Get();
+		gpDesc.pRootSignature = m_rootSignatures.at(static_cast<size_t>(Type::kTexCopy)).Get();
 		gpDesc.VS = {
-			m_vsBlobs.at(static_cast<size_t>(kType::kTexCopy)).Get()->GetBufferPointer(),
-			m_vsBlobs.at(static_cast<size_t>(kType::kTexCopy)).Get()->GetBufferSize() };
+			m_vsBlobs.at(static_cast<size_t>(Type::kTexCopy)).Get()->GetBufferPointer(),
+			m_vsBlobs.at(static_cast<size_t>(Type::kTexCopy)).Get()->GetBufferSize() };
 		gpDesc.PS = {
-			m_psBlobs.at(static_cast<size_t>(kType::kTexCopy)).Get()->GetBufferPointer(),
-			m_psBlobs.at(static_cast<size_t>(kType::kTexCopy)).Get()->GetBufferSize() };
+			m_psBlobs.at(static_cast<size_t>(Type::kTexCopy)).Get()->GetBufferPointer(),
+			m_psBlobs.at(static_cast<size_t>(Type::kTexCopy)).Get()->GetBufferSize() };
 
 		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 			&gpDesc,
-			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(kType::kTexCopy)).ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(Type::kTexCopy)).ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_pipelineStates.at(static_cast<size_t>(kType::kTexCopy)).Get()->SetName(Util::getWideStringFromString("bloomTexCopyPipelineState").c_str());
+		result = m_pipelineStates.at(static_cast<size_t>(Type::kTexCopy)).Get()->SetName(Util::getWideStringFromString("bloomTexCopyPipelineState").c_str());
 		ThrowIfFailed(result);
 	}
 

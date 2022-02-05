@@ -28,7 +28,7 @@ private:
 		kShrinkLuminance,
 	};
 
-	enum class kType {
+	enum class Type {
 		kMain,
 		kTexCopy,
 		// increment kNumOfType if you are going to add a new field
