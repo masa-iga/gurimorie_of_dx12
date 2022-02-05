@@ -34,13 +34,14 @@ HRESULT Bloom::clearWorkRenderTarget(ID3D12GraphicsCommandList* list)
 	return S_OK;
 }
 
-HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pSrcTexDescHeap)
+HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pSrcTexDescHeap, D3D12_GPU_DESCRIPTOR_HANDLE srcTexHandle, D3D12_GPU_DESCRIPTOR_HANDLE srcLumHandle)
 {
 	list->SetGraphicsRootSignature(m_rootSignatures.at(static_cast<size_t>(Type::kMain)).Get());
 	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kMain)).Get());
 
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
-	list->SetGraphicsRootDescriptorTable(static_cast<UINT>(Slot::kSrcTex), pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
+	list->SetGraphicsRootDescriptorTable(static_cast<UINT>(Slot::kSrcTex), srcTexHandle);
+	list->SetGraphicsRootDescriptorTable(static_cast<UINT>(Slot::kSrcLuminance), srcLumHandle);
 
 	list->SetDescriptorHeaps(1, m_workDescHeapSrv.GetAddressOf());
 	list->SetGraphicsRootDescriptorTable(static_cast<UINT>(Slot::kShrinkLuminance), m_workDescHeapSrv.Get()->GetGPUDescriptorHandleForHeapStart());

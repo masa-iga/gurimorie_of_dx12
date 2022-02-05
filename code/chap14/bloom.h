@@ -13,7 +13,7 @@ class Bloom
 public:
 	HRESULT init(UINT64 width, UINT height);
 	HRESULT clearWorkRenderTarget(ID3D12GraphicsCommandList* list);
-	HRESULT render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pSrcTexDescHeap);
+	HRESULT render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pSrcTexDescHeap, D3D12_GPU_DESCRIPTOR_HANDLE srcTexHandle, D3D12_GPU_DESCRIPTOR_HANDLE srcLumHandle);
 	HRESULT renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pSrcTexDescHeap, D3D12_GPU_DESCRIPTOR_HANDLE srcLumHandle);
 	Microsoft::WRL::ComPtr<ID3D12Resource> getWorkResource();
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getSrvWorkDescriptorHeap();

@@ -403,8 +403,16 @@ HRESULT Render::render()
 			D3D12_RESOURCE_STATE_RENDER_TARGET);
 		list->ResourceBarrier(1, &b);
 
-		m_bloom.render(list, m_postRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), m_baseResource.getSrvHeap().Get());
-		m_bloom.renderShrinkTextureForBlur(list, m_baseResource.getSrvHeap().Get());
+		m_bloom.renderShrinkTextureForBlur(
+			list,
+			m_baseResource.getSrvHeap().Get(),
+			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kLuminance));
+		m_bloom.render(
+			list,
+			m_postRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(),
+			m_baseResource.getSrvHeap().Get(),
+			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kColor),
+			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kLuminance));
 	}
 
 	// post process: pera (render to display buffer)
