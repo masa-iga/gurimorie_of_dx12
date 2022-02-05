@@ -77,7 +77,7 @@ HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D1
 	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kTexCopy)).Get());
 
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
-	list->SetGraphicsRootDescriptorTable(0, srcLumHandle);
+	list->SetGraphicsRootDescriptorTable(2, srcLumHandle);
 
 	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	list->IASetVertexBuffers(0, 1, &m_vbView);
@@ -315,18 +315,26 @@ HRESULT Bloom::createResource(UINT64 dstWidth, UINT dstHeight)
 
 HRESULT Bloom::createRootSignature()
 {
-	const D3D12_DESCRIPTOR_RANGE descRange0 = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
-	const D3D12_DESCRIPTOR_RANGE descRange1 = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+	const D3D12_DESCRIPTOR_RANGE descRanges[] = {
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0), // src tex
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1), // shrink luminance
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2), // src luminance
+	};
 
 	const D3D12_ROOT_PARAMETER rootParams[] = {
 		{
 			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-			.DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRange0),
+			.DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRanges[0]),
 			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
 		},
 		{
 			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-			.DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRange1),
+			.DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRanges[1]),
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+		},
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRanges[2]),
 			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
 		},
 	};

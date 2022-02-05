@@ -2,8 +2,9 @@
 
 static const uint kShrinkLevel = 8;
 
-Texture2D<float4> tex : register(t0);
-Texture2D<float4> texShrink : register(t1);
+Texture2D<float4> texColor : register(t0);
+Texture2D<float4> texLumShrink : register(t1);
+Texture2D<float4> texLum : register(t2);
 SamplerState smp : register(s0);
 
 static float4 Get5x5GaussianBlur(Texture2D<float4> tex, SamplerState smp, float2 uv, float dx, float dy);
@@ -11,7 +12,7 @@ static float4 Get5x5GaussianBlur(Texture2D<float4> tex, SamplerState smp, float2
 float4 main(VsOut vsOut) : SV_TARGET
 {
 	float w = 0.0f, h = 0.0f;
-	tex.GetDimensions(w, h);
+	texLum.GetDimensions(w, h);
 
     const float dx = 1.0f / w;
     const float dy = 1.0f / h;
@@ -24,15 +25,15 @@ float4 main(VsOut vsOut) : SV_TARGET
         for (uint i = 0; i < kShrinkLevel; ++i)
         {
             const float2 uv = vsOut.uv * uvSize + uvOfst;
-            bloomAccum += Get5x5GaussianBlur(texShrink, smp, uv, dx, dy);
+            bloomAccum += Get5x5GaussianBlur(texLumShrink, smp, uv, dx, dy);
 
             uvOfst.y += uvSize.y;
             uvSize *= 0.5f;
         }
     }
 
-    const float4 color = tex.Sample(smp, vsOut.uv);
-    const float4 blur = Get5x5GaussianBlur(tex, smp, vsOut.uv, dx, dy);
+    const float4 color = texColor.Sample(smp, vsOut.uv);
+    const float4 blur = Get5x5GaussianBlur(texLum, smp, vsOut.uv, dx, dy);
     const float4 shrinkBlur = saturate(bloomAccum);
 
     return color + blur + shrinkBlur;
@@ -40,7 +41,7 @@ float4 main(VsOut vsOut) : SV_TARGET
 
 float4 texCopy(VsOut vsOut) : SV_TARGET
 {
-    return tex.Sample(smp, vsOut.uv);
+    return texLum.Sample(smp, vsOut.uv);
 }
 
 static float4 Get5x5GaussianBlur(Texture2D<float4> tex, SamplerState smp, float2 uv, float dx, float dy)
