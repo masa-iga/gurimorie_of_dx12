@@ -64,7 +64,7 @@ HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HAND
 	return S_OK;
 }
 
-HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pSrcTexDescHeap)
+HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pSrcTexDescHeap, D3D12_GPU_DESCRIPTOR_HANDLE srcLumHandle)
 {
 	// TODO: barrier‚ð‚±‚±‚É“ü‚ê‚é‚×‚«‚©H
 	//   input: high luminance buffer
@@ -77,7 +77,7 @@ HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D1
 	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kTexCopy)).Get());
 
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
-	list->SetGraphicsRootDescriptorTable(0, pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
+	list->SetGraphicsRootDescriptorTable(0, srcLumHandle);
 
 	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	list->IASetVertexBuffers(0, 1, &m_vbView);
