@@ -40,10 +40,10 @@ HRESULT Bloom::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HAND
 	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kMain)).Get());
 
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
-	list->SetGraphicsRootDescriptorTable(0, pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
+	list->SetGraphicsRootDescriptorTable(static_cast<UINT>(Slot::kSrcTex), pSrcTexDescHeap->GetGPUDescriptorHandleForHeapStart());
 
 	list->SetDescriptorHeaps(1, m_workDescHeapSrv.GetAddressOf());
-	list->SetGraphicsRootDescriptorTable(1, m_workDescHeapSrv.Get()->GetGPUDescriptorHandleForHeapStart());
+	list->SetGraphicsRootDescriptorTable(static_cast<UINT>(Slot::kShrinkLuminance), m_workDescHeapSrv.Get()->GetGPUDescriptorHandleForHeapStart());
 
 	list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
 
@@ -77,7 +77,7 @@ HRESULT Bloom::renderShrinkTextureForBlur(ID3D12GraphicsCommandList* list, ID3D1
 	list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(kType::kTexCopy)).Get());
 
 	list->SetDescriptorHeaps(1, &pSrcTexDescHeap);
-	list->SetGraphicsRootDescriptorTable(2, srcLumHandle);
+	list->SetGraphicsRootDescriptorTable(static_cast<UINT>(Slot::kSrcLuminance), srcLumHandle);
 
 	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	list->IASetVertexBuffers(0, 1, &m_vbView);
@@ -316,9 +316,9 @@ HRESULT Bloom::createResource(UINT64 dstWidth, UINT dstHeight)
 HRESULT Bloom::createRootSignature()
 {
 	const D3D12_DESCRIPTOR_RANGE descRanges[] = {
-		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0), // src tex
-		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1), // shrink luminance
-		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 2), // src luminance
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, static_cast<UINT>(Slot::kSrcTex)),
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, static_cast<UINT>(Slot::kSrcLuminance)),
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, static_cast<UINT>(Slot::kShrinkLuminance)),
 	};
 
 	const D3D12_ROOT_PARAMETER rootParams[] = {

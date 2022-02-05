@@ -3,8 +3,8 @@
 static const uint kShrinkLevel = 8;
 
 Texture2D<float4> texColor : register(t0);
-Texture2D<float4> texLumShrink : register(t1);
-Texture2D<float4> texLum : register(t2);
+Texture2D<float4> texLum : register(t1);
+Texture2D<float4> texLumShrink : register(t2);
 SamplerState smp : register(s0);
 
 static float4 Get5x5GaussianBlur(Texture2D<float4> tex, SamplerState smp, float2 uv, float dx, float dy);

@@ -22,6 +22,12 @@ private:
 	static constexpr LPCWSTR kVsFile = L"bloomVertex.hlsl";
 	static constexpr LPCWSTR kPsFile = L"bloomPixel.hlsl";
 
+	enum class Slot {
+		kSrcTex,
+		kSrcLuminance,
+		kShrinkLuminance,
+	};
+
 	enum class kType {
 		kMain,
 		kTexCopy,
