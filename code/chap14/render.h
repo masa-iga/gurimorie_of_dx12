@@ -9,6 +9,7 @@
 #include <wrl.h>
 #pragma warning(pop)
 #include "bloom.h"
+#include "config.h"
 #include "floor.h"
 #include "graph.h"
 #include "observer.h"
@@ -19,13 +20,14 @@
 #include "timestamp.h"
 #include "toolkit.h"
 
-struct SceneMatrix
+struct SceneParam
 {
 	DirectX::XMMATRIX view = { };
 	DirectX::XMMATRIX proj = { };
 	DirectX::XMMATRIX lightCamera = { };
 	DirectX::XMMATRIX shadow = { };
 	DirectX::XMFLOAT3 eye = { };
+	float highLuminanceThreshold = 0.0f;
 };
 
 enum class MoveEye {
@@ -74,7 +76,7 @@ class Render : public Observer
 public:
 	static Toolkit& toolkitInsntace() { return s_toolkit; }
 
-	void onNotify(UiEvent uiEvent, bool flag);
+	void onNotify(UiEvent uiEvent, const void* uiEventData);
 
 	HRESULT init(HWND hwnd);
 	void teardown();
@@ -92,6 +94,7 @@ private:
 	HRESULT createViews();
 	HRESULT createPostView();
 	HRESULT updateMvpMatrix(bool animationReversed);
+	void updateHighLuminanceThreshold(float val);
 	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
 	HRESULT preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list);
 	void renderDebugBuffers(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle);
@@ -112,8 +115,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_lightDepthSrvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_lightDepthResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_sceneDescHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneMatrixResource = nullptr;
-	SceneMatrix* m_sceneMatrix = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneParamResource = nullptr;
+	SceneParam* m_sceneParam = nullptr;
 	DirectX::XMFLOAT3 m_parallelLightVec = { };
 	BaseResource m_baseResource;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_postResource = nullptr;

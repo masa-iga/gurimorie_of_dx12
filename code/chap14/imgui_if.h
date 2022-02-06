@@ -44,4 +44,5 @@ private:
 	DirectX::XMFLOAT3 m_eyePos = { };
 	DirectX::XMFLOAT3 m_focusPos = { };
 	DirectX::XMFLOAT3 m_lightPos = { };
+	float m_highLuminanceThreashold = Config::kDefaultHighLuminanceThreshold;
 };

@@ -14,4 +14,5 @@ namespace Config {
 
 	constexpr int32_t kShadowBufferWidth = 1024;
 	constexpr int32_t kShadowBufferHeight = 1024;
+	constexpr float kDefaultHighLuminanceThreshold = 0.85f;
 } // namespace Config

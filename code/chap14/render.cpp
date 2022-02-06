@@ -242,12 +242,21 @@ D3D12_GPU_DESCRIPTOR_HANDLE BaseResource::getSrvGpuDescHandle(Type type) const
 	return handle;
 }
 
-void Render::onNotify(UiEvent uiEvent, bool flag)
+void Render::onNotify(UiEvent uiEvent, const void* uiEventData)
 {
 	switch (uiEvent) {
-	case UiEvent::kUpdateAutoMovePos: m_bAutoMoveEyePos = flag; break;
-	case UiEvent::kUpdateAutoLightPos: m_bAutoMoveLightPos = flag; break;
-	default: Debug::debugOutputFormatString("unhandled UI event. (%d)\n", uiEvent); ThrowIfFalse(false);
+	case UiEvent::kUpdateAutoMovePos:
+		m_bAutoMoveEyePos = reinterpret_cast<const UiEventDataUpdateAutoMovePos*>(uiEventData)->flag;
+		break;
+	case UiEvent::kUpdateAutoLightPos:
+		m_bAutoMoveLightPos = reinterpret_cast<const UiEventDataUpdateAutoLightPos*>(uiEventData)->flag;
+		break;
+	case UiEvent::kUpdateHighLuminanceThreshold:
+		updateHighLuminanceThreshold(reinterpret_cast<const UiEventDataUpdateHighLuminanceThreshold*>(uiEventData)->val);
+		break;
+	default:
+		Debug::debugOutputFormatString("unhandled UI event. (%d)\n", uiEvent);
+		ThrowIfFalse(false);
 	}
 }
 
@@ -567,7 +576,7 @@ HRESULT Render::createSceneMatrixBuffer()
 	using namespace DirectX;
 
 	{
-		const size_t w = Util::alignmentedSize(sizeof(SceneMatrix), 256);
+		const size_t w = Util::alignmentedSize(sizeof(SceneParam), 256);
 
 		D3D12_HEAP_PROPERTIES heapProp = { };
 		{
@@ -598,21 +607,24 @@ HRESULT Render::createSceneMatrixBuffer()
 			&resourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(m_sceneMatrixResource.ReleaseAndGetAddressOf())
+			IID_PPV_ARGS(m_sceneParamResource.ReleaseAndGetAddressOf())
 		);
 		ThrowIfFailed(result);
 
-		result = m_sceneMatrixResource.Get()->SetName(Util::getWideStringFromString("renderSceneMatrixBuffer").c_str());
+		result = m_sceneParamResource.Get()->SetName(Util::getWideStringFromString("renderSceneParamBuffer").c_str());
 		ThrowIfFailed(result);
 	}
 
 	{
-		auto result = m_sceneMatrixResource->Map(
+		auto result = m_sceneParamResource->Map(
 			0,
 			nullptr,
-			reinterpret_cast<void**>(&m_sceneMatrix)
+			reinterpret_cast<void**>(&m_sceneParam)
 		);
 		ThrowIfFailed(result);
+
+		// init
+		m_sceneParam->highLuminanceThreshold = Config::kDefaultHighLuminanceThreshold;
 	}
 
 	return S_OK;
@@ -644,8 +656,8 @@ HRESULT Render::createViews()
 		auto basicHeapHandle = m_sceneDescHeap->GetCPUDescriptorHandleForHeapStart();
 		D3D12_CONSTANT_BUFFER_VIEW_DESC bvDesc = { };
 		{
-			bvDesc.BufferLocation = m_sceneMatrixResource->GetGPUVirtualAddress();
-			bvDesc.SizeInBytes = static_cast<UINT>(m_sceneMatrixResource->GetDesc().Width);
+			bvDesc.BufferLocation = m_sceneParamResource->GetGPUVirtualAddress();
+			bvDesc.SizeInBytes = static_cast<UINT>(m_sceneParamResource->GetDesc().Width);
 		}
 		Resource::instance()->getDevice()->CreateConstantBufferView(
 			&bvDesc,
@@ -779,7 +791,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 			XMLoadFloat3(&up)
 		);
 
-		m_sceneMatrix->view = viewMat;
+		m_sceneParam->view = viewMat;
 	}
 
 	{
@@ -790,7 +802,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 			150.0f
 		);
 
-		m_sceneMatrix->proj = projMat;
+		m_sceneParam->proj = projMat;
 	}
 
 	{
@@ -798,13 +810,13 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 		constexpr float viewHeight = 50.0f;
 		const XMVECTOR lightVec = XMLoadFloat3(&lightPos);
 
-		m_sceneMatrix->lightCamera =
+		m_sceneParam->lightCamera =
 			XMMatrixLookAtLH(lightVec, XMLoadFloat3(&lightFocusPos), XMLoadFloat3(&up)) *
 			XMMatrixOrthographicLH(viewWidth, viewHeight, 1.0f, 150.0f);
 	}
 
-	m_sceneMatrix->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
-	m_sceneMatrix->eye = eyePos;
+	m_sceneParam->shadow = XMMatrixShadow(XMLoadFloat4(&kPlaneVec), -XMLoadFloat3(&m_parallelLightVec));
+	m_sceneParam->eye = eyePos;
 
 	{
 		m_imguif.setEyePos(eyePos);
@@ -813,6 +825,11 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 	}
 
 	return S_OK;
+}
+
+void Render::updateHighLuminanceThreshold(float val)
+{
+	m_sceneParam->highLuminanceThreshold = val;
 }
 
 HRESULT Render::clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
