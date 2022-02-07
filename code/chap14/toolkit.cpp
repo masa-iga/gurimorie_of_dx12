@@ -124,7 +124,7 @@ HRESULT Toolkit::compileShaders()
 
 		if (FAILED(result))
 		{
-			outputDebugMessage(errBlob.Get());
+			Debug::outputDebugMessage(errBlob.Get());
 			ThrowIfFalse(false);
 		}
 
@@ -141,7 +141,7 @@ HRESULT Toolkit::compileShaders()
 
 		if (FAILED(result))
 		{
-			outputDebugMessage(errBlob.Get());
+			Debug::outputDebugMessage(errBlob.Get());
 			ThrowIfFalse(false);
 		}
 	}
@@ -162,7 +162,7 @@ HRESULT Toolkit::compileShaders()
 
 		if (FAILED(result))
 		{
-			outputDebugMessage(errBlob.Get());
+			Debug::outputDebugMessage(errBlob.Get());
 			ThrowIfFalse(false);
 		}
 #endif // HAVE_RECT_SHADER
@@ -287,7 +287,7 @@ HRESULT Toolkit::createPipelineState()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
 	}
 
 	result = Resource::instance()->getDevice()->CreateRootSignature(

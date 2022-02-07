@@ -8,6 +8,8 @@
 #include <vector>
 #include <wrl.h>
 #pragma warning(pop)
+#include "bloom.h"
+#include "config.h"
 #include "floor.h"
 #include "graph.h"
 #include "observer.h"
@@ -18,13 +20,14 @@
 #include "timestamp.h"
 #include "toolkit.h"
 
-struct SceneMatrix
+struct SceneParam
 {
 	DirectX::XMMATRIX view = { };
 	DirectX::XMMATRIX proj = { };
 	DirectX::XMMATRIX lightCamera = { };
 	DirectX::XMMATRIX shadow = { };
 	DirectX::XMFLOAT3 eye = { };
+	float highLuminanceThreshold = 0.0f;
 };
 
 enum class MoveEye {
@@ -39,12 +42,41 @@ enum class MoveEye {
 	kDown,
 };
 
+class BaseResource
+{
+public:
+	enum class Type {
+		kColor,
+		kNormal,
+		kLuminance,
+	};
+
+	HRESULT createResource(DXGI_FORMAT format);
+	HRESULT clearBaseRenderTargets(ID3D12GraphicsCommandList* list) const;
+	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getRtvHeap() const;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getSrvHeap() const;
+	D3D12_CPU_DESCRIPTOR_HANDLE getRtvCpuDescHandle(Type type) const;
+	D3D12_GPU_DESCRIPTOR_HANDLE getSrvGpuDescHandle(Type type) const;
+
+private:
+	const std::array<float[4], 3> kClearColor = {
+		1.0f, 1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f, 1.0f,
+		0.0f, 0.0f, 0.0f, 1.0f,
+	};
+
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 3> m_baseResources = { }; // MRT (0=color, 1=normal, 2=luminance)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseRtvHeap = nullptr; // RT views (0:color, 1:normal, 2=luminance)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseSrvHeap = nullptr; // SR views (0:color, 1:normal, 2=luminance)
+};
+
 class Render : public Observer
 {
 public:
 	static Toolkit& toolkitInsntace() { return s_toolkit; }
 
-	void onNotify(UiEvent uiEvent, bool flag);
+	void onNotify(UiEvent uiEvent, const void* uiEventData);
 
 	HRESULT init(HWND hwnd);
 	void teardown();
@@ -60,12 +92,12 @@ public:
 private:
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
-	HRESULT createPeraView();
+	HRESULT createPostView();
 	HRESULT updateMvpMatrix(bool animationReversed);
+	void updateHighLuminanceThreshold(float val);
 	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
-	HRESULT clearPeraRenderTargets(ID3D12GraphicsCommandList* list);
 	HRESULT preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list);
-	HRESULT postProcessForOffScreenRendering(ID3D12GraphicsCommandList* list);
+	void renderDebugBuffers(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle);
 
 	static Toolkit s_toolkit;
 
@@ -79,26 +111,26 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_dsvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_depthSrvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_depthResource = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_lightDepthDsvHeap = nullptr; // TODO: bundle the heaps into one
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_lightDepthDsvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_lightDepthSrvHeap = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_lightDepthResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_sceneDescHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneMatrixResource = nullptr;
-	SceneMatrix* m_sceneMatrix = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneParamResource = nullptr;
+	SceneParam* m_sceneParam = nullptr;
 	DirectX::XMFLOAT3 m_parallelLightVec = { };
+	BaseResource m_baseResource;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_postResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postRtvHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postSrvHeap = nullptr;
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
 
-	Floor m_floor;
-
 	std::vector<PmdActor> m_pmdActors;
 
 	Pera m_pera;
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2> m_peraResources; // render target ([0] albedo, [1] normal)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraRtvHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_peraSrvHeap = nullptr;
-
+	Floor m_floor;
+	Bloom m_bloom;
 	Shadow m_shadow;
 	RenderGraph m_graph;
 	ImguiIf m_imguif;

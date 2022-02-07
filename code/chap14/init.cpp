@@ -160,7 +160,7 @@ HRESULT Resource::listUpAdaptors(IDXGIFactory6* pDxgiFactory)
 		adapters.push_back(tmpAdapter);
 	}
 
-	DebugOutputFormatString("Available adapters:\n");
+	Debug::debugOutputFormatString("Available adapters:\n");
 
 	for (const auto& adpt : adapters)
 	{
@@ -169,9 +169,9 @@ HRESULT Resource::listUpAdaptors(IDXGIFactory6* pDxgiFactory)
 
 		const std::wstring &strDesc = adesc.Description;
 
-		DebugOutputFormatString(" - %ls\n", strDesc.c_str());
+		Debug::debugOutputFormatString(" - %ls\n", strDesc.c_str());
 	}
-	DebugOutputFormatString("\n");
+	Debug::debugOutputFormatString("\n");
 
 	return S_OK;
 }
@@ -200,7 +200,7 @@ HRESULT Resource::createDevice(ComPtr<ID3D12Device>* device, IUnknown* pAdapter)
 		}
 	}
 
-	DebugOutputFormatString("D3D feature level: 0x%x\n", featureLevel);
+	Debug::debugOutputFormatString("D3D feature level: 0x%x\n", featureLevel);
 
 	return S_OK;
 }

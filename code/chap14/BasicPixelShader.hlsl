@@ -4,6 +4,7 @@ struct PixelOutput
 {
 	float4 col : SV_TARGET0;
 	float4 normal : SV_TARGET1;
+	float4 highLum : SV_TARGET2;
 };
 
 Texture2D<float4> tex : register(t0);
@@ -16,6 +17,8 @@ SamplerState smpToon : register(s1);
 SamplerComparisonState smpShadow : register(s2);
 
 static const float kBias = 0.005f;
+
+static float3 convertYuvFromRgb(float3 rgb);
 
 float4 BasicPs(Output input) : SV_TARGET
 {
@@ -137,9 +140,27 @@ PixelOutput MrtWithShadowMapPs(Output input)
 		, float4(texColor.rgb * ambient, 1)); // (ambient)
 
 	PixelOutput output;
-	output.col = float4(ret.rgb * shadowWeight, ret.a);
-	output.normal.rgb = float3((input.normal.xyz + 1.0f) / 2.0f);
-	output.normal.a = 1;
+	{
+		output.col = float4(ret.rgb * shadowWeight, ret.a);
+		output.normal.rgb = float3((input.normal.xyz + 1.0f) / 2.0f);
+		output.normal.a = 1;
+
+		const float y = convertYuvFromRgb(output.col.xyz).x;
+		output.highLum.xyz = (y > highLuminanceThreshold) ? output.col.xyz : 0.0f;
+		output.highLum.a = 1.0f;
+	}
 
 	return output;
+}
+
+static float3 convertYuvFromRgb(float3 rgb)
+{
+	// assume input RGB is fully scaled (0 to 255)
+	const matrix<float, 3, 3> k = {
+		 0.299f,  0.587f,  0.114f,
+		-0.147f, -0.289f,  0.436f,
+		 0.615f, -0.515f, -0.100f,
+	};
+
+	return mul(k, rgb);
 }

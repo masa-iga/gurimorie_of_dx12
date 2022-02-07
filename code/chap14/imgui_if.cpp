@@ -94,6 +94,15 @@ void ImguiIf::build()
 		ImGui::Text("Eye   : %2.2f %2.2f %2.2f\n", m_eyePos.x, m_eyePos.y, m_eyePos.z);
 		ImGui::Text("Focus : %2.2f %2.2f %2.2f\n", m_focusPos.x, m_focusPos.y, m_focusPos.z);
 		ImGui::Text("Light : %2.2f %2.2f %2.2f\n", m_lightPos.x, m_lightPos.y, m_lightPos.z);
+		{
+			const bool bUpdated = ImGui::SliderFloat("high luminance threashold", &m_highLuminanceThreashold, 0.0f, 1.0f);
+
+			if (bUpdated)
+			{
+				const UiEventDataUpdateHighLuminanceThreshold uiEventData = { .val = m_highLuminanceThreashold };
+				notify(UiEvent::kUpdateHighLuminanceThreshold, &uiEventData);
+			}
+		}
 
 		{
 			static bool bCheck = false;
@@ -101,7 +110,8 @@ void ImguiIf::build()
 
 			if (bUpdated)
 			{
-				notify(UiEvent::kUpdateAutoMovePos, bCheck);
+				const UiEventDataUpdateAutoMovePos uiEventData = { .flag = bCheck };
+				notify(UiEvent::kUpdateAutoMovePos, &uiEventData);
 			}
 		}
 
@@ -111,13 +121,12 @@ void ImguiIf::build()
 
 			if (bUpdated)
 			{
-				notify(UiEvent::kUpdateAutoLightPos, bCheck);
+				const UiEventDataUpdateAutoLightPos uiEventData = { .flag = bCheck };
+				notify(UiEvent::kUpdateAutoLightPos, &uiEventData);
 			}
 		}
 	}
 	ImGui::End();
-
-	buildTestWindow();
 }
 
 void ImguiIf::render(ID3D12GraphicsCommandList* list)
@@ -193,7 +202,7 @@ void ImguiIf::buildTestWindow()
 
 				if (bUpdated)
 				{
-					//DebugOutputFormatString("Radio button updated. (%d)\n", radio);
+					//debugOutputFormatString("Radio button updated. (%d)\n", radio);
 				}
 			}
 

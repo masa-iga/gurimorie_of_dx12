@@ -96,7 +96,7 @@ HRESULT Shadow::compileShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
         ThrowIfFalse(false);
 	}
 
@@ -113,7 +113,7 @@ HRESULT Shadow::compileShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
         ThrowIfFalse(false);
 	}
 
@@ -130,7 +130,7 @@ HRESULT Shadow::compileShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
         ThrowIfFalse(false);
 	}
 
@@ -147,7 +147,7 @@ HRESULT Shadow::compileShaders()
 
     if (FAILED(result))
     {
-        outputDebugMessage(errBlob.Get());
+        Debug::outputDebugMessage(errBlob.Get());
         ThrowIfFalse(false);
     }
 
@@ -377,7 +377,7 @@ HRESULT Shadow::createPipelineState()
             errBlob.ReleaseAndGetAddressOf());
         if (FAILED(result))
         {
-            outputDebugMessage(errBlob.Get());
+            Debug::outputDebugMessage(errBlob.Get());
             ThrowIfFalse(false);
         }
 

@@ -30,42 +30,44 @@ private:
 	const BOOL m_bl;
 };
 
-void DebugOutputFormatString(const char* format, ...)
-{
+namespace Debug {
+	void debugOutputFormatString(const char* format, ...)
+	{
 #if ENABLE_DEBUG_MESSAGE
 #if OUTPUT_DEBUG_MESSAGE_TO_VS_WINDOW
-	va_list valist;
-	va_start(valist, format);
-	char tmp[256];
-	auto ret = vsprintf_s(tmp, format, valist);
-	ThrowIfFalse(ret >= 0);
-	OutputDebugStringA(tmp);
-	va_end(valist);
+		va_list valist;
+		va_start(valist, format);
+		char tmp[256];
+		auto ret = vsprintf_s(tmp, format, valist);
+		ThrowIfFalse(ret >= 0);
+		OutputDebugStringA(tmp);
+		va_end(valist);
 #else
-	va_list valist;
-	va_start(valist, format);
-	vprintf(format, valist);
-	va_end(valist);
+		va_list valist;
+		va_start(valist, format);
+		vprintf(format, valist);
+		va_end(valist);
 #endif // OUTPUT_DEBUG_MESSAGE_TO_VS_WINDOW
 #endif // ENABLE_DEBUG_MESSAGE
-}
+	}
 
-void outputDebugMessage(ID3DBlob* errorBlob)
-{
-	if (errorBlob == nullptr)
-		return;
+	void outputDebugMessage(ID3DBlob* errorBlob)
+	{
+		if (errorBlob == nullptr)
+			return;
 
-	std::string errStr;
-	errStr.resize(errorBlob->GetBufferSize());
+		std::string errStr;
+		errStr.resize(errorBlob->GetBufferSize());
 
-	std::copy_n(
-		static_cast<char*>(errorBlob->GetBufferPointer()),
-		errorBlob->GetBufferSize(),
-		errStr.begin());
-	errStr += "\n";
+		std::copy_n(
+			static_cast<char*>(errorBlob->GetBufferPointer()),
+			errorBlob->GetBufferSize(),
+			errStr.begin());
+		errStr += "\n";
 
-	OutputDebugStringA(errStr.c_str());
-}
+		OutputDebugStringA(errStr.c_str());
+	}
+} // namespace Debug
 
 void ThrowIfFailed(HRESULT hr)
 {

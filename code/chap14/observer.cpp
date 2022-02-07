@@ -28,10 +28,10 @@ void Subject::removeObserver(Observer* observer)
 	m_count--;
 }
 
-void Subject::notify(UiEvent uiEvent, bool flag)
+void Subject::notify(UiEvent uiEvent, const void* uiEventData)
 {
 	for (auto it = m_observers.cbegin(); it != m_observers.cend(); ++it)
 	{
-		(*it)->onNotify(uiEvent, flag);
+		(*it)->onNotify(uiEvent, uiEventData);
 	}
 }

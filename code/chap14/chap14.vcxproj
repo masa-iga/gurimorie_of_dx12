@@ -64,6 +64,9 @@
       <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>imgui.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -84,8 +87,12 @@
       <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>imgui.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="bloom.cpp" />
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="floor.cpp" />
     <ClCompile Include="graph.cpp" />
@@ -95,6 +102,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="observer.cpp" />
     <ClCompile Include="pera.cpp" />
+    <ClCompile Include="pixif.cpp" />
     <ClCompile Include="pmd_actor.cpp" />
     <ClCompile Include="render.cpp" />
     <ClCompile Include="shadow.cpp" />
@@ -103,6 +111,7 @@
     <ClCompile Include="timestamp.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="bloom.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="constant.h" />
     <ClInclude Include="debug.h" />
@@ -113,6 +122,7 @@
     <ClInclude Include="loader.h" />
     <ClInclude Include="observer.h" />
     <ClInclude Include="pera.h" />
+    <ClInclude Include="pixif.h" />
     <ClInclude Include="pmd_actor.h" />
     <ClInclude Include="render.h" />
     <ClInclude Include="shadow.h" />
@@ -136,6 +146,14 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">BasicVs</EntryPointName>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="bloomPixel.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="bloomVertex.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="floorPixel.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
@@ -223,7 +241,9 @@
     <None Include="..\resource\Motion\squat.vmd" />
     <None Include="..\resource\Motion\swing.vmd" />
     <None Include="BasicShaderHeader.hlsli" />
+    <None Include="bloomHeader.hlsli" />
     <None Include="floorHeader.hlsli" />
+    <None Include="packages.config" />
     <None Include="peraHeader.hlsli" />
   </ItemGroup>
   <ItemGroup>
@@ -253,5 +273,12 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\WinPixEventRuntime.1.0.210818001\build\WinPixEventRuntime.targets" Condition="Exists('..\packages\WinPixEventRuntime.1.0.210818001\build\WinPixEventRuntime.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>このプロジェクトは、このコンピューター上にない NuGet パッケージを参照しています。それらのパッケージをダウンロードするには、[NuGet パッケージの復元] を使用します。詳細については、http://go.microsoft.com/fwlink/?LinkID=322105 を参照してください。見つからないファイルは {0} です。</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\WinPixEventRuntime.1.0.210818001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\WinPixEventRuntime.1.0.210818001\build\WinPixEventRuntime.targets'))" />
+  </Target>
 </Project>

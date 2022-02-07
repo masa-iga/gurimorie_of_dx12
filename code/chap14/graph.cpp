@@ -75,7 +75,7 @@ HRESULT RenderGraph::compileShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
 		ThrowIfFalse(false);
 	}
 
@@ -92,7 +92,7 @@ HRESULT RenderGraph::compileShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
 		ThrowIfFalse(false);
 	}
 
@@ -146,7 +146,7 @@ HRESULT RenderGraph::createPipelineState()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errBlob.Get());
+		Debug::outputDebugMessage(errBlob.Get());
 	}
 
 	result = Resource::instance()->getDevice()->CreateRootSignature(

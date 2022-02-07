@@ -175,7 +175,7 @@ HRESULT Floor::loadShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 		return E_FAIL;
 	}
 
@@ -192,7 +192,7 @@ HRESULT Floor::loadShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 		return E_FAIL;
 	}
 
@@ -209,7 +209,7 @@ HRESULT Floor::loadShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 		return E_FAIL;
 	}
 
@@ -226,7 +226,7 @@ HRESULT Floor::loadShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 		return E_FAIL;
 	}
 
@@ -243,7 +243,7 @@ HRESULT Floor::loadShaders()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 		return E_FAIL;
 	}
 
@@ -365,7 +365,7 @@ HRESULT Floor::createTransformResource()
 
 	{
 		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC().Buffer(bufferSize);
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
 
 		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
@@ -468,7 +468,7 @@ HRESULT Floor::createRootSignature()
 
 	if (FAILED(result))
 	{
-		outputDebugMessage(errorBlob.Get());
+		Debug::outputDebugMessage(errorBlob.Get());
 		return E_FAIL;
 	}
 

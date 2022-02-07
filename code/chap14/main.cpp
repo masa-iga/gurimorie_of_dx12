@@ -39,7 +39,7 @@ int main()
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 #endif // _DEBUG
-	DebugOutputFormatString("[Debug window]\n");
+	Debug::debugOutputFormatString("[Debug window]\n");
 
 	WNDCLASSEX w = { };
 	{
@@ -186,7 +186,7 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 
 		if (ret == 0)
 		{
-			DebugOutputFormatString("failed to unregister class. (0x%zx)\n", GetLastError());
+			Debug::debugOutputFormatString("failed to unregister class. (0x%zx)\n", GetLastError());
 			ThrowIfFalse(false);
 		}
 	}
@@ -200,14 +200,14 @@ static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
 
 #ifdef _DEBUG
 	{
-		DebugOutputFormatString("---------------- Live objects report ----------------------\n");
+		Debug::debugOutputFormatString("---------------- Live objects report ----------------------\n");
 		ComPtr<IDXGIDebug1> dxgiDebug = nullptr;
 		auto ret = DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug));
 		ThrowIfFailed(ret);
 
 		ret = dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_DETAIL | DXGI_DEBUG_RLO_IGNORE_INTERNAL));
 		ThrowIfFailed(ret);
-		DebugOutputFormatString("-----------------------------------------------------------\n");
+		Debug::debugOutputFormatString("-----------------------------------------------------------\n");
 	}
 #endif // _DEBUG
 }

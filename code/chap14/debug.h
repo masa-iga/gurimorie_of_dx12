@@ -8,7 +8,10 @@
 #include <Windows.h>
 #pragma warning(pop)
 
-void DebugOutputFormatString(const char* format, ...);
-void outputDebugMessage(ID3DBlob* errorBlob);
+namespace Debug {
+	void debugOutputFormatString(const char* format, ...);
+	void outputDebugMessage(ID3DBlob* errorBlob);
+} // namespace Debug
+
 void ThrowIfFailed(HRESULT hr);
 void ThrowIfFalse(BOOL b);

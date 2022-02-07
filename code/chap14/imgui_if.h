@@ -36,7 +36,7 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> createDescriptorHeap() const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getDescHeap();
-	void buildTestWindow();
+	[[maybe_unused]] void buildTestWindow();
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap = nullptr;
 	float m_fps = 0.0f;
@@ -44,4 +44,5 @@ private:
 	DirectX::XMFLOAT3 m_eyePos = { };
 	DirectX::XMFLOAT3 m_focusPos = { };
 	DirectX::XMFLOAT3 m_lightPos = { };
+	float m_highLuminanceThreashold = Config::kDefaultHighLuminanceThreshold;
 };
