@@ -4,6 +4,7 @@
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <d3dcompiler.h>
 #pragma warning(pop)
+#include "config.h"
 #include "constant.h"
 #include "debug.h"
 #include "init.h"
@@ -347,6 +348,8 @@ HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap*
     list->SetDescriptorHeaps();
     list->SetGraphicsRootDescriptorTable();
 #endif
+    constexpr int32_t baseWidth = Config::kWindowWidth / 2;
+    constexpr int32_t baseHeight = Config::kWindowHeight / 2;
 
     const D3D12_CPU_DESCRIPTOR_HANDLE dstRtvs[] = { m_workDescRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart() };
     list->OMSetRenderTargets(_countof(dstRtvs), dstRtvs, false, nullptr);
@@ -354,7 +357,24 @@ HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap*
     list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
     list->IASetVertexBuffers(0, 1, &m_vbView);
 
-    list->DrawInstanced(_countof(vb), 1, 0, 0);
+    D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(baseWidth), static_cast<float>(baseHeight));
+    D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, baseWidth, baseHeight);
+
+    for (uint32_t i = 0; i < 8; ++i)
+    {
+        list->RSSetViewports(1, &viewport);
+        list->RSSetScissorRects(1, &scissorRect);
+        list->DrawInstanced(_countof(vb), 1, 0, 0);
+
+        viewport.TopLeftY += viewport.Height;
+        viewport.Width /= 2;
+        viewport.Height /= 2;
+
+        const auto h = scissorRect.bottom - scissorRect.top;
+        scissorRect.top += h;
+        scissorRect.bottom += h / 2;
+        scissorRect.right /= 2;
+    }
 
     return S_OK;
 }
