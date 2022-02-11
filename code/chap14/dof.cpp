@@ -34,24 +34,19 @@ HRESULT DoF::init(UINT64 width, UINT height)
 
 HRESULT DoF::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle)
 {
-    list->SetGraphicsRootSignature(m_rootSignature.Get());
-    list->SetPipelineState(m_pipelineState.Get());
-
-#if 0
-    list->SetDescriptorHeaps();
-    list->SetGraphicsRootDescriptorTable();
-#endif
-
-    list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
-
-    list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-    list->IASetVertexBuffers(0, 1, &m_vbView);
-
-#if 1
-    list->DrawInstanced(_countof(vb), 1, 0, 0);
-#endif
+    renderShrink(list, pBaseSrvHeap, baseSrvHandle);
 
 	return S_OK;
+}
+
+ComPtr<ID3D12DescriptorHeap> DoF::getWorkDescSrvHeap() const
+{
+    return m_workDescSrvHeap;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE DoF::getWorkResourceSrcHandle() const
+{
+    return m_workDescSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart();
 }
 
 HRESULT DoF::compileShaders()
@@ -339,6 +334,27 @@ HRESULT DoF::createPipelineState()
 
     result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("dofPipelineState").c_str());
     ThrowIfFailed(result);
+
+    return S_OK;
+}
+
+HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle)
+{
+    list->SetGraphicsRootSignature(m_rootSignature.Get());
+    list->SetPipelineState(m_pipelineState.Get());
+
+#if 0
+    list->SetDescriptorHeaps();
+    list->SetGraphicsRootDescriptorTable();
+#endif
+
+    const D3D12_CPU_DESCRIPTOR_HANDLE dstRtvs[] = { m_workDescRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart() };
+    list->OMSetRenderTargets(_countof(dstRtvs), dstRtvs, false, nullptr);
+
+    list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    list->IASetVertexBuffers(0, 1, &m_vbView);
+
+    list->DrawInstanced(_countof(vb), 1, 0, 0);
 
     return S_OK;
 }

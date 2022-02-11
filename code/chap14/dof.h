@@ -11,6 +11,8 @@ class DoF {
 public:
 	HRESULT init(UINT64 width, UINT height);
 	HRESULT render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle);
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getWorkDescSrvHeap() const;
+	D3D12_GPU_DESCRIPTOR_HANDLE getWorkResourceSrcHandle() const;
 
 private:
     static constexpr LPCWSTR kVsFile = L"dofVertex.hlsl";
@@ -22,7 +24,7 @@ private:
 	HRESULT createResource(UINT64 dstWidth, UINT dstHeight);
 	HRESULT createRootSignature();
 	HRESULT createPipelineState();
-	HRESULT renderShrink(/* input: base, output: shrink */);
+	HRESULT renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle);
 	HRESULT renderDof(/* input: base, shrink, depth, output: rtv*/);
 
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob = nullptr;
