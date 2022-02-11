@@ -10,6 +10,7 @@
 #pragma warning(pop)
 #include "bloom.h"
 #include "config.h"
+#include "dof.h"
 #include "floor.h"
 #include "graph.h"
 #include "observer.h"
@@ -131,6 +132,7 @@ private:
 	Pera m_pera;
 	Floor m_floor;
 	Bloom m_bloom;
+	DoF m_dof;
 	Shadow m_shadow;
 	RenderGraph m_graph;
 	ImguiIf m_imguif;

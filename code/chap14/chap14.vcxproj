@@ -94,6 +94,7 @@
   <ItemGroup>
     <ClCompile Include="bloom.cpp" />
     <ClCompile Include="debug.cpp" />
+    <ClCompile Include="dof.cpp" />
     <ClCompile Include="floor.cpp" />
     <ClCompile Include="graph.cpp" />
     <ClCompile Include="imgui_if.cpp" />
@@ -115,6 +116,7 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="constant.h" />
     <ClInclude Include="debug.h" />
+    <ClInclude Include="dof.h" />
     <ClInclude Include="floor.h" />
     <ClInclude Include="graph.h" />
     <ClInclude Include="imgui_if.h" />
@@ -152,6 +154,14 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="bloomVertex.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="dofPixel.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="dofVertex.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>

@@ -288,6 +288,7 @@ HRESULT Render::init(HWND hwnd)
 
 	ThrowIfFailed(m_floor.init());
 	ThrowIfFailed(m_bloom.init(Config::kWindowWidth, Config::kWindowHeight));
+	ThrowIfFailed(m_dof.init(Config::kWindowWidth, Config::kWindowHeight));
 	ThrowIfFailed(m_shadow.init());
 	ThrowIfFailed(m_graph.init());
 	ThrowIfFailed(m_imguif.init(hwnd));
@@ -422,6 +423,19 @@ HRESULT Render::render()
 			m_baseResource.getSrvHeap().Get(),
 			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kColor),
 			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kLuminance));
+	}
+
+	// post process: depth of field
+	{
+		const PixScopedEvent pixScopedEvent(list, "PostProcess : DoF");
+
+		m_dof.render(
+			list,
+			rtvH,
+			m_baseResource.getSrvHeap().Get(),
+			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kNormal),
+			m_depthSrvHeap.Get(),
+			m_depthSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	// post process: pera (render to display buffer)
