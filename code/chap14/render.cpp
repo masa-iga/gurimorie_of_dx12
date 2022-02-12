@@ -433,7 +433,7 @@ HRESULT Render::render()
 			list,
 			rtvH,
 			m_baseResource.getSrvHeap().Get(),
-			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kNormal),
+			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kColor),
 			m_depthSrvHeap.Get(),
 			m_depthSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	}

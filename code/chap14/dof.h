@@ -20,6 +20,10 @@ private:
     static constexpr LPCSTR kVsEntrypoint = "main";
     static constexpr LPCSTR kPsEntrypoint = "main";
 
+    enum class SrvSlot {
+        kBaseColor = 0,
+    };
+
 	HRESULT compileShaders();
 	HRESULT createResource(UINT64 dstWidth, UINT dstHeight);
 	HRESULT createRootSignature();

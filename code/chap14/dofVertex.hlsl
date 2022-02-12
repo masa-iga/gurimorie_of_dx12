@@ -1,4 +1,10 @@
-float4 main( float4 pos : POSITION ) : SV_POSITION
+#include "dofHeader.hlsli"
+
+VsOut main(float4 pos : POSITION, float2 uv : TEXCOORD)
 {
-	return pos;
+    VsOut vsOut;
+    vsOut.svpos = pos;
+    vsOut.uv = uv;
+
+    return vsOut;
 }

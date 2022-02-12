@@ -227,7 +227,7 @@ HRESULT DoF::createResource(UINT64 dstWidth, UINT dstHeight)
 HRESULT DoF::createRootSignature()
 {
     const D3D12_DESCRIPTOR_RANGE descRanges[] = {
-        CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0 /* baseShaderRegister */),
+        CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, static_cast<UINT>(SrvSlot::kBaseColor)),
     };
 
     const D3D12_ROOT_PARAMETER rootParams[] = {
@@ -285,7 +285,7 @@ HRESULT DoF::createPipelineState()
         {
 		    .SemanticName = "POSITION",
 		    .SemanticIndex = 0,
-			.Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+			.Format = DXGI_FORMAT_R32G32B32_FLOAT,
 			.InputSlot = 0,
 			.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
 			.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
@@ -341,15 +341,14 @@ HRESULT DoF::createPipelineState()
 
 HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle)
 {
+    constexpr int32_t baseWidth = Config::kWindowWidth / 2;
+    constexpr int32_t baseHeight = Config::kWindowHeight / 2;
+
     list->SetGraphicsRootSignature(m_rootSignature.Get());
     list->SetPipelineState(m_pipelineState.Get());
 
-#if 0
-    list->SetDescriptorHeaps();
-    list->SetGraphicsRootDescriptorTable();
-#endif
-    constexpr int32_t baseWidth = Config::kWindowWidth / 2;
-    constexpr int32_t baseHeight = Config::kWindowHeight / 2;
+    list->SetDescriptorHeaps(1, &pBaseSrvHeap);
+    list->SetGraphicsRootDescriptorTable(static_cast<UINT>(SrvSlot::kBaseColor), baseSrvHandle);
 
     const D3D12_CPU_DESCRIPTOR_HANDLE dstRtvs[] = { m_workDescRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart() };
     list->OMSetRenderTargets(_countof(dstRtvs), dstRtvs, false, nullptr);

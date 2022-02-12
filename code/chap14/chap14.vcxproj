@@ -252,6 +252,7 @@
     <None Include="..\resource\Motion\swing.vmd" />
     <None Include="BasicShaderHeader.hlsli" />
     <None Include="bloomHeader.hlsli" />
+    <None Include="dofHeader.hlsli" />
     <None Include="floorHeader.hlsli" />
     <None Include="packages.config" />
     <None Include="peraHeader.hlsli" />
