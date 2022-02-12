@@ -12,6 +12,8 @@
 
 using namespace Microsoft::WRL;
 
+constexpr FLOAT kClearColor[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
 struct VertexBuffer
 {
 	DirectX::XMFLOAT3 pos = { };
@@ -31,6 +33,12 @@ HRESULT DoF::init(UINT64 width, UINT height)
 	ThrowIfFailed(createResource(width, height));
     ThrowIfFailed(createPipelineState());
 	return S_OK;
+}
+
+HRESULT DoF::clearWorkRenderTarget(ID3D12GraphicsCommandList* list)
+{
+    list->ClearRenderTargetView(m_workDescRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), kClearColor, 0, nullptr);
+    return S_OK;
 }
 
 HRESULT DoF::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle)
@@ -129,7 +137,6 @@ HRESULT DoF::createResource(UINT64 dstWidth, UINT dstHeight)
         {
             const UINT64 width = dstWidth / 2;
             const UINT height = dstHeight;
-            constexpr float clearVal[] = { 0.0f, 0.0f, 0.0f, 0.0f };
             const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
             const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
                 Constant::kDefaultRtFormat,
@@ -140,7 +147,7 @@ HRESULT DoF::createResource(UINT64 dstWidth, UINT dstHeight)
                 1,
                 0,
                 D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
-            const D3D12_CLEAR_VALUE clearValue = CD3DX12_CLEAR_VALUE(resourceDesc.Format, clearVal);
+            const D3D12_CLEAR_VALUE clearValue = CD3DX12_CLEAR_VALUE(resourceDesc.Format, kClearColor);
 
             auto result = Resource::instance()->getDevice()->CreateCommittedResource(
                 &heapProp,

@@ -373,6 +373,7 @@ HRESULT Render::render()
 		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
 		m_baseResource.clearBaseRenderTargets(list);
 		m_bloom.clearWorkRenderTarget(list);
+		m_dof.clearWorkRenderTarget(list);
 	}
 
 	// shadow map: render light depth map

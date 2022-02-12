@@ -10,6 +10,7 @@
 class DoF {
 public:
 	HRESULT init(UINT64 width, UINT height);
+	HRESULT clearWorkRenderTarget(ID3D12GraphicsCommandList* list);
 	HRESULT render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle);
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getWorkDescSrvHeap() const;
 	D3D12_GPU_DESCRIPTOR_HANDLE getWorkResourceSrcHandle() const;
