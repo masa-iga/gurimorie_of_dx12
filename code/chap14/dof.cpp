@@ -370,9 +370,9 @@ HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap*
         viewport.Height /= 2;
 
         const auto h = scissorRect.bottom - scissorRect.top;
-        scissorRect.top += h;
-        scissorRect.bottom += h / 2;
-        scissorRect.right /= 2;
+        scissorRect.top = static_cast<UINT>(viewport.TopLeftY);
+        scissorRect.bottom = static_cast<UINT>(viewport.TopLeftY + viewport.Height);
+        scissorRect.right = static_cast<UINT>(viewport.Width);
     }
 
     return S_OK;
