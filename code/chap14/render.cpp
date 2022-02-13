@@ -383,86 +383,13 @@ HRESULT Render::render()
 		m_dof.clearWorkRenderTarget(list);
 	}
 
-	// shadow map: render light depth map
-	{
-		const PixScopedEvent pixScopedEvent(list, "ShadowMap");
+	renderShadowPass(list);
 
-		m_floor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
+	renderBasePass(list);
 
-		for (const auto& actor : m_pmdActors)
-		{
-			actor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
-		}
-	}
+	renderPostPass(list, rtvH);
 
-	// base pass: RT0=albedo, RT1=normal, RT2=luminance, depth
-	preProcessForOffscreenRendering(list);
-	{
-		const PixScopedEvent pixScopedEvent(list, "BasePass");
-
-		m_floor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
-		m_floor.renderAxis(list, m_sceneDescHeap.Get());
-
-		for (const auto& actor : m_pmdActors)
-		{
-			actor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
-		}
-	}
-
-	// post process: bloom
-	{
-		const PixScopedEvent pixScopedEvent(list, "PostProcess : bloom");
-
-		m_offScreenResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-		m_offScreenResource.buildBarrier(
-			list,
-			OffScreenResource::Type::kPostBloom,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-			D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-		m_bloom.renderShrinkTextureForBlur(
-			list,
-			m_offScreenResource.getSrvHeap().Get(),
-			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance));
-		m_bloom.render(
-			list,
-			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kPostBloom),
-			m_offScreenResource.getSrvHeap().Get(),
-			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
-			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance));
-	}
-
-	// post process: depth of field
-	{
-		const PixScopedEvent pixScopedEvent(list, "PostProcess : DoF");
-
-		m_dof.render(
-			list,
-			rtvH,
-			m_offScreenResource.getSrvHeap().Get(),
-			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
-			m_depthSrvHeap.Get(),
-			m_depthSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
-	}
-
-	// post process: pera (render to display buffer)
-	{
-		const PixScopedEvent pixScopedEvent(list, "PostProcess : pera");
-
-		m_offScreenResource.buildBarrier(
-			list,
-			OffScreenResource::Type::kPostBloom,
-			D3D12_RESOURCE_STATE_RENDER_TARGET,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-		m_pera.render(&rtvH, m_offScreenResource.getSrvHeap().Get());
-	}
-
-	// render debug buffers
-	{
-		renderDebugBuffers(list, &rtvH);
-	}
+	renderDebugPass(list, &rtvH);
 
 	// UI: render imgui
 	{
@@ -778,27 +705,104 @@ HRESULT Render::clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CP
 	return S_OK;
 }
 
-HRESULT Render::preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list)
+void Render::renderShadowPass(ID3D12GraphicsCommandList* list)
 {
-	const UINT incSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	// shadow map: render light depth map
+	const PixScopedEvent pixScopedEvent(list, "ShadowMap");
 
-	const std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 3> rtvHandles = {
-		m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kColor),
-		m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kNormal),
-		m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kLuminance),
-	};
-	const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+	m_floor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
 
-	list->OMSetRenderTargets(
-		static_cast<UINT>(rtvHandles.size()),
-		rtvHandles.data(),
-		false,
-		&dsvHandle);
-
-	return S_OK;
+	for (const auto& actor : m_pmdActors)
+	{
+		actor.renderShadow(list, m_sceneDescHeap.Get(), m_lightDepthDsvHeap.Get());
+	}
 }
 
-void Render::renderDebugBuffers(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle)
+void Render::renderBasePass(ID3D12GraphicsCommandList* list)
+{
+	const PixScopedEvent pixScopedEvent(list, "BasePass");
+
+	// base pass: RT0=albedo, RT1=normal, RT2=luminance, depth
+	{
+		const std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 3> rtvHandles = {
+			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kColor),
+			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kNormal),
+			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kLuminance),
+		};
+		const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+		list->OMSetRenderTargets(
+			static_cast<UINT>(rtvHandles.size()),
+			rtvHandles.data(),
+			false,
+			&dsvHandle);
+	}
+
+	{
+		m_floor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
+		m_floor.renderAxis(list, m_sceneDescHeap.Get());
+
+		for (const auto& actor : m_pmdActors)
+		{
+			actor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
+		}
+	}
+}
+
+void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE fbRtvHandle)
+{
+	// post process: bloom
+	{
+		const PixScopedEvent pixScopedEvent(list, "PostProcess : bloom");
+
+		m_offScreenResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		m_offScreenResource.buildBarrier(
+			list,
+			OffScreenResource::Type::kPostBloom,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+		m_bloom.renderShrinkTextureForBlur(
+			list,
+			m_offScreenResource.getSrvHeap().Get(),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance));
+		m_bloom.render(
+			list,
+			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kPostBloom),
+			m_offScreenResource.getSrvHeap().Get(),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance));
+	}
+
+	// post process: depth of field
+	{
+		const PixScopedEvent pixScopedEvent(list, "PostProcess : DoF");
+
+		m_dof.render(
+			list,
+			fbRtvHandle,
+			m_offScreenResource.getSrvHeap().Get(),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
+			m_depthSrvHeap.Get(),
+			m_depthSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+	}
+
+	// post process: pera (render to display buffer)
+	{
+		const PixScopedEvent pixScopedEvent(list, "PostProcess : pera");
+
+		m_offScreenResource.buildBarrier(
+			list,
+			OffScreenResource::Type::kPostBloom,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		m_pera.render(&fbRtvHandle, m_offScreenResource.getSrvHeap().Get());
+	}
+}
+
+void Render::renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle)
 {
 	constexpr bool bDebugRenderShadowMap = true;
 	constexpr bool bDebugBloomLuminance = true;

@@ -102,8 +102,10 @@ private:
 	HRESULT updateMvpMatrix(bool animationReversed);
 	void updateHighLuminanceThreshold(float val);
 	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
-	HRESULT preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list);
-	void renderDebugBuffers(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle);
+	void renderShadowPass(ID3D12GraphicsCommandList* list);
+	void renderBasePass(ID3D12GraphicsCommandList* list);
+	void renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE fbRtvHandle);
+	void renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle);
 
 	static Toolkit s_toolkit;
 
