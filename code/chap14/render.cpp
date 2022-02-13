@@ -183,7 +183,7 @@ HRESULT OffScreenResource::createResource(DXGI_FORMAT format)
 	return S_OK;
 }
 
-HRESULT OffScreenResource::clearBaseRenderTargets(ID3D12GraphicsCommandList* list) const
+HRESULT OffScreenResource::clearRenderTargets(ID3D12GraphicsCommandList* list) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
@@ -378,7 +378,7 @@ HRESULT Render::render()
 		clearRenderTarget(list, rtvH, kClearColorRenderTarget);
 		clearDepthRenderTarget(list, dsvH);
 		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
-		m_offScreenResource.clearBaseRenderTargets(list);
+		m_offScreenResource.clearRenderTargets(list);
 		m_bloom.clearWorkRenderTarget(list);
 		m_dof.clearWorkRenderTarget(list);
 	}
@@ -751,11 +751,11 @@ void Render::renderBasePass(ID3D12GraphicsCommandList* list)
 
 void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE fbRtvHandle)
 {
+	m_offScreenResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
 	// post process: bloom
 	{
 		const PixScopedEvent pixScopedEvent(list, "PostProcess : bloom");
-
-		m_offScreenResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		m_offScreenResource.buildBarrier(
 			list,

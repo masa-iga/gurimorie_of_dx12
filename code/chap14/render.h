@@ -51,13 +51,13 @@ public:
 		kNormal,
 		kLuminance,
 		kPostBloom,
-		//kPostDof,
+		kPostDof,
 		// Do not forget increase kNumResource if you add a new field
 	};
-	static constexpr size_t kNumResource = 4;
+	static constexpr size_t kNumResource = 5;
 
 	HRESULT createResource(DXGI_FORMAT format);
-	HRESULT clearBaseRenderTargets(ID3D12GraphicsCommandList* list) const;
+	HRESULT clearRenderTargets(ID3D12GraphicsCommandList* list) const;
 	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, Type type, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
 	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getRtvHeap() const;
@@ -71,11 +71,12 @@ private:
 		1.0f, 1.0f, 1.0f, 1.0f,
 		0.0f, 0.0f, 0.0f, 1.0f,
 		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
 	};
 
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kNumResource> m_resources = { }; // MRT (0=color, 1=normal, 2=luminance)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap = nullptr; // RT views (0:color, 1:normal, 2=luminance)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap = nullptr; // SR views (0:color, 1:normal, 2=luminance)
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kNumResource> m_resources = { };
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap = nullptr;
 };
 
 class Render : public Observer
