@@ -40,7 +40,7 @@ namespace {
 	DirectX::XMFLOAT3 computeRotation(DirectX::XMFLOAT3 dst, DirectX::XMFLOAT3 src, DirectX::XMFLOAT3 axis, float angle);
 } // namespace anonymous
 
-HRESULT BaseResource::createResource(DXGI_FORMAT format)
+HRESULT OffScreenResource::createResource(DXGI_FORMAT format)
 {
 	// create resource for render-to-texture
 	{
@@ -61,7 +61,7 @@ HRESULT BaseResource::createResource(DXGI_FORMAT format)
 
 		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getFrameBuffer(0)->GetDesc();
 
-		for (size_t i = 0; auto& resource : m_baseResources)
+		for (size_t i = 0; auto& resource : m_resources)
 		{
 			const D3D12_CLEAR_VALUE clearValue = CD3DX12_CLEAR_VALUE(format, kClearColor.at(i));
 
@@ -106,15 +106,15 @@ HRESULT BaseResource::createResource(DXGI_FORMAT format)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = Resource::instance()->getRtvHeaps()->GetDesc();
 		{
-			heapDesc.NumDescriptors = 3;
+			heapDesc.NumDescriptors = kNumResource;
 		}
 
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
-			IID_PPV_ARGS(m_baseRtvHeap.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_rtvHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_baseRtvHeap.Get()->SetName(Util::getWideStringFromString("baseRtvHeap").c_str());
+		result = m_rtvHeap.Get()->SetName(Util::getWideStringFromString("baseRtvHeap").c_str());
 		ThrowIfFailed(result);
 	}
 	// create RTV views
@@ -125,9 +125,9 @@ HRESULT BaseResource::createResource(DXGI_FORMAT format)
 			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 		}
 
-		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
-		for (auto& resource : m_baseResources)
+		for (auto& resource : m_resources)
 		{
 			Resource::instance()->getDevice()->CreateRenderTargetView(
 				resource.Get(),
@@ -142,17 +142,17 @@ HRESULT BaseResource::createResource(DXGI_FORMAT format)
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
 		{
 			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = 3;
+			heapDesc.NumDescriptors = kNumResource;
 			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			heapDesc.NodeMask = 0;
 		}
 
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
-			IID_PPV_ARGS(m_baseSrvHeap.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_srvHeap.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_baseSrvHeap.Get()->SetName(Util::getWideStringFromString("baseSrvHeap").c_str());
+		result = m_srvHeap.Get()->SetName(Util::getWideStringFromString("baseSrvHeap").c_str());
 		ThrowIfFailed(result);
 	}
 	// create SR views
@@ -168,9 +168,9 @@ HRESULT BaseResource::createResource(DXGI_FORMAT format)
 			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 		}
 
-		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_baseSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_srvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
-		for (auto& resource : m_baseResources)
+		for (auto& resource : m_resources)
 		{
 			Resource::instance()->getDevice()->CreateShaderResourceView(
 				resource.Get(),
@@ -183,14 +183,14 @@ HRESULT BaseResource::createResource(DXGI_FORMAT format)
 	return S_OK;
 }
 
-HRESULT BaseResource::clearBaseRenderTargets(ID3D12GraphicsCommandList* list) const
+HRESULT OffScreenResource::clearBaseRenderTargets(ID3D12GraphicsCommandList* list) const
 {
-	D3D12_CPU_DESCRIPTOR_HANDLE handle = m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+	D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
-	for (size_t i = 0; i < m_baseResources.size(); ++i)
+	for (size_t i = 0; i < m_resources.size(); ++i)
 	{
 		const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_baseResources.at(i).Get(),
+			m_resources.at(i).Get(),
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
 			0);
@@ -204,41 +204,49 @@ HRESULT BaseResource::clearBaseRenderTargets(ID3D12GraphicsCommandList* list) co
 	return S_OK;
 }
 
-HRESULT BaseResource::buildBarrier(ID3D12GraphicsCommandList* list, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const
+HRESULT OffScreenResource::buildBarrier(ID3D12GraphicsCommandList* list, Type type, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter) const
 {
-	for (auto& resource : m_baseResources)
+	const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		m_resources.at(static_cast<size_t>(type)).Get(),
+		stateBefore,
+		stateAfter);
+	list->ResourceBarrier(1, &barrier);
+
+	return S_OK;
+}
+
+HRESULT OffScreenResource::buildBarrier(ID3D12GraphicsCommandList* list, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter) const
+{
+	for (size_t i = 0; i < kNumResource; ++i)
 	{
-		const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			resource.Get(),
-			StateBefore,
-			StateAfter);
-		list->ResourceBarrier(1, &barrier);
+		auto result = buildBarrier(list, static_cast<Type>(i), stateBefore, stateAfter);
+		ThrowIfFailed(result);
 	}
 
 	return S_OK;
 }
 
-Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> BaseResource::getRtvHeap() const
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> OffScreenResource::getRtvHeap() const
 {
-	return m_baseRtvHeap;
+	return m_rtvHeap;
 }
 
-Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> BaseResource::getSrvHeap() const
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> OffScreenResource::getSrvHeap() const
 {
-	return m_baseSrvHeap;
+	return m_srvHeap;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE BaseResource::getRtvCpuDescHandle(Type type) const
+D3D12_CPU_DESCRIPTOR_HANDLE OffScreenResource::getRtvCpuDescHandle(Type type) const
 {
 	const UINT incSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	const CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_baseRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), static_cast<INT>(type), incSize);
+	const CD3DX12_CPU_DESCRIPTOR_HANDLE handle(m_rtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), static_cast<INT>(type), incSize);
 	return handle;
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE BaseResource::getSrvGpuDescHandle(Type type) const
+D3D12_GPU_DESCRIPTOR_HANDLE OffScreenResource::getSrvGpuDescHandle(Type type) const
 {
 	const UINT incSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	const CD3DX12_GPU_DESCRIPTOR_HANDLE handle(m_baseSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart(), static_cast<INT>(type), incSize);
+	const CD3DX12_GPU_DESCRIPTOR_HANDLE handle(m_srvHeap.Get()->GetGPUDescriptorHandleForHeapStart(), static_cast<INT>(type), incSize);
 	return handle;
 }
 
@@ -280,8 +288,7 @@ HRESULT Render::init(HWND hwnd)
 		actor.enableAnimation(m_bAnimationEnabled);
 	}
 
-	ThrowIfFailed(m_baseResource.createResource(Constant::kDefaultRtFormat));
-	ThrowIfFailed(createPostView());
+	ThrowIfFailed(m_offScreenResource.createResource(Constant::kDefaultRtFormat));
 	ThrowIfFailed(m_pera.createResources());
 	ThrowIfFailed(m_pera.compileShaders());
 	ThrowIfFailed(m_pera.createPipelineState());
@@ -371,7 +378,7 @@ HRESULT Render::render()
 		clearRenderTarget(list, rtvH, kClearColorRenderTarget);
 		clearDepthRenderTarget(list, dsvH);
 		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
-		m_baseResource.clearBaseRenderTargets(list);
+		m_offScreenResource.clearBaseRenderTargets(list);
 		m_bloom.clearWorkRenderTarget(list);
 		m_dof.clearWorkRenderTarget(list);
 	}
@@ -406,24 +413,24 @@ HRESULT Render::render()
 	{
 		const PixScopedEvent pixScopedEvent(list, "PostProcess : bloom");
 
-		m_baseResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		m_offScreenResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-		const D3D12_RESOURCE_BARRIER b = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_postResource.Get(),
+		m_offScreenResource.buildBarrier(
+			list,
+			OffScreenResource::Type::kPostBloom,
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			D3D12_RESOURCE_STATE_RENDER_TARGET);
-		list->ResourceBarrier(1, &b);
 
 		m_bloom.renderShrinkTextureForBlur(
 			list,
-			m_baseResource.getSrvHeap().Get(),
-			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kLuminance));
+			m_offScreenResource.getSrvHeap().Get(),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance));
 		m_bloom.render(
 			list,
-			m_postRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(),
-			m_baseResource.getSrvHeap().Get(),
-			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kColor),
-			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kLuminance));
+			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kPostBloom),
+			m_offScreenResource.getSrvHeap().Get(),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance));
 	}
 
 	// post process: depth of field
@@ -433,8 +440,8 @@ HRESULT Render::render()
 		m_dof.render(
 			list,
 			rtvH,
-			m_baseResource.getSrvHeap().Get(),
-			m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kColor),
+			m_offScreenResource.getSrvHeap().Get(),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
 			m_depthSrvHeap.Get(),
 			m_depthSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 	}
@@ -443,13 +450,13 @@ HRESULT Render::render()
 	{
 		const PixScopedEvent pixScopedEvent(list, "PostProcess : pera");
 
-		const D3D12_RESOURCE_BARRIER b = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_postResource.Get(),
+		m_offScreenResource.buildBarrier(
+			list,
+			OffScreenResource::Type::kPostBloom,
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		list->ResourceBarrier(1, &b);
 
-		m_pera.render(&rtvH, m_postSrvHeap.Get());
+		m_pera.render(&rtvH, m_offScreenResource.getSrvHeap().Get());
 	}
 
 	// render debug buffers
@@ -683,95 +690,6 @@ HRESULT Render::createViews()
 	return S_OK;
 }
 
-HRESULT Render::createPostView()
-{
-	{
-		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-		const D3D12_RESOURCE_DESC resourceDesc = Resource::instance()->getFrameBuffer(0)->GetDesc();
-		const D3D12_CLEAR_VALUE clearColor = CD3DX12_CLEAR_VALUE(resourceDesc.Format, kClearColorPeraRenderTarget);
-
-		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
-			&heapProp,
-			D3D12_HEAP_FLAG_NONE,
-			&resourceDesc,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-			&clearColor,
-			IID_PPV_ARGS(m_postResource.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
-
-		result = m_postResource.Get()->SetName(Util::getWideStringFromString("postBuffer").c_str());
-		ThrowIfFailed(result);
-	}
-
-	{
-		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
-			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-			.NumDescriptors = 1,
-			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
-			.NodeMask = 0,
-		};
-
-		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
-			&heapDesc,
-			IID_PPV_ARGS(m_postRtvHeap.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
-
-		result = m_postRtvHeap.Get()->SetName(Util::getWideStringFromString("postRtvHeap").c_str());
-		ThrowIfFailed(result);
-	}
-
-	{
-		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
-			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-			.NumDescriptors = 1,
-			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
-			.NodeMask = 0,
-		};
-
-		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
-			&heapDesc,
-			IID_PPV_ARGS(m_postSrvHeap.ReleaseAndGetAddressOf()));
-		ThrowIfFailed(result);
-
-		result = m_postSrvHeap.Get()->SetName(Util::getWideStringFromString("postSrvHeap").c_str());
-		ThrowIfFailed(result);
-	}
-
-	{
-		const D3D12_RENDER_TARGET_VIEW_DESC rtViewDesc = {
-			.Format = m_postResource.Get()->GetDesc().Format,
-			.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
-			.Texture2D = { 0, 0 },
-		};
-
-		Resource::instance()->getDevice()->CreateRenderTargetView(
-			m_postResource.Get(),
-			&rtViewDesc,
-			m_postRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
-	}
-
-	{
-		const D3D12_SHADER_RESOURCE_VIEW_DESC srViewDesc = {
-			.Format = m_postResource.Get()->GetDesc().Format,
-			.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
-			.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-			.Texture2D = {
-				.MostDetailedMip = 0,
-				.MipLevels = 1,
-				.PlaneSlice = 0,
-				.ResourceMinLODClamp = 0.0f,
-			},
-		};
-
-		Resource::instance()->getDevice()->CreateShaderResourceView(
-			m_postResource.Get(),
-            &srViewDesc,
-            m_postSrvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
-	}
-
-	return S_OK;
-}
-
 HRESULT Render::updateMvpMatrix(bool animationReversed)
 {
 	using namespace DirectX;
@@ -865,9 +783,9 @@ HRESULT Render::preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list)
 	const UINT incSize = Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 	const std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 3> rtvHandles = {
-		m_baseResource.getRtvCpuDescHandle(BaseResource::Type::kColor),
-		m_baseResource.getRtvCpuDescHandle(BaseResource::Type::kNormal),
-		m_baseResource.getRtvCpuDescHandle(BaseResource::Type::kLuminance),
+		m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kColor),
+		m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kNormal),
+		m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kLuminance),
 	};
 	const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
@@ -911,9 +829,9 @@ void Render::renderDebugBuffers(ID3D12GraphicsCommandList* list, const D3D12_CPU
 			Config::kWindowWidth / 4,
 			Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
-		const D3D12_GPU_DESCRIPTOR_HANDLE texGpuDesc = m_baseResource.getSrvGpuDescHandle(BaseResource::Type::kLuminance);
+		const D3D12_GPU_DESCRIPTOR_HANDLE texGpuDesc = m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance);
 
-		m_shadow.renderRgba(list, pRtCpuDescHandle, m_baseResource.getSrvHeap(), texGpuDesc, viewport, scissorRect);
+		m_shadow.renderRgba(list, pRtCpuDescHandle, m_offScreenResource.getSrvHeap(), texGpuDesc, viewport, scissorRect);
 	}
 #else
 	{
@@ -960,11 +878,11 @@ void Render::renderDebugBuffers(ID3D12GraphicsCommandList* list, const D3D12_CPU
 			Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
 		const CD3DX12_GPU_DESCRIPTOR_HANDLE texGpuDesc(
-			m_baseResource.getSrvHeap().Get()->GetGPUDescriptorHandleForHeapStart(),
+			m_offScreenResource.getSrvHeap().Get()->GetGPUDescriptorHandleForHeapStart(),
 			1,
 			Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
-		m_shadow.renderRgba(list, pRtCpuDescHandle, m_baseResource.getSrvHeap(), texGpuDesc, viewport, scissorRect);
+		m_shadow.renderRgba(list, pRtCpuDescHandle, m_offScreenResource.getSrvHeap(), texGpuDesc, viewport, scissorRect);
 	}
 }
 

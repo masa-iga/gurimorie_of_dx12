@@ -30,7 +30,7 @@ private:
 	HRESULT createRootSignature();
 	HRESULT createPipelineState();
 	HRESULT renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle);
-	HRESULT renderDof(/* input: base, shrink, depth, output: rtv*/);
+	HRESULT renderDof(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle);
 
 	Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob = nullptr;

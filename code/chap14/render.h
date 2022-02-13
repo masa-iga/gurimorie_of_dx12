@@ -43,17 +43,22 @@ enum class MoveEye {
 	kDown,
 };
 
-class BaseResource
+class OffScreenResource
 {
 public:
 	enum class Type {
 		kColor,
 		kNormal,
 		kLuminance,
+		kPostBloom,
+		//kPostDof,
+		// Do not forget increase kNumResource if you add a new field
 	};
+	static constexpr size_t kNumResource = 4;
 
 	HRESULT createResource(DXGI_FORMAT format);
 	HRESULT clearBaseRenderTargets(ID3D12GraphicsCommandList* list) const;
+	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, Type type, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
 	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getRtvHeap() const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getSrvHeap() const;
@@ -61,15 +66,16 @@ public:
 	D3D12_GPU_DESCRIPTOR_HANDLE getSrvGpuDescHandle(Type type) const;
 
 private:
-	const std::array<float[4], 3> kClearColor = {
+	const std::array<float[4], kNumResource> kClearColor = {
 		1.0f, 1.0f, 1.0f, 1.0f,
 		1.0f, 1.0f, 1.0f, 1.0f,
 		0.0f, 0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
 	};
 
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 3> m_baseResources = { }; // MRT (0=color, 1=normal, 2=luminance)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseRtvHeap = nullptr; // RT views (0:color, 1:normal, 2=luminance)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseSrvHeap = nullptr; // SR views (0:color, 1:normal, 2=luminance)
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kNumResource> m_resources = { }; // MRT (0=color, 1=normal, 2=luminance)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap = nullptr; // RT views (0:color, 1:normal, 2=luminance)
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap = nullptr; // SR views (0:color, 1:normal, 2=luminance)
 };
 
 class Render : public Observer
@@ -93,7 +99,6 @@ public:
 private:
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
-	HRESULT createPostView();
 	HRESULT updateMvpMatrix(bool animationReversed);
 	void updateHighLuminanceThreshold(float val);
 	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
@@ -119,10 +124,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneParamResource = nullptr;
 	SceneParam* m_sceneParam = nullptr;
 	DirectX::XMFLOAT3 m_parallelLightVec = { };
-	BaseResource m_baseResource;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_postResource = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postRtvHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postSrvHeap = nullptr;
+	OffScreenResource m_offScreenResource;
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;

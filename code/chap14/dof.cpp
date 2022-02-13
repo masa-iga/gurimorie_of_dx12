@@ -44,6 +44,7 @@ HRESULT DoF::clearWorkRenderTarget(ID3D12GraphicsCommandList* list)
 HRESULT DoF::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle)
 {
     renderShrink(list, pBaseSrvHeap, baseSrvHandle);
+    renderDof(list, dstRtv, pBaseSrvHeap, baseSrvHandle, pDepthSrvHeap, depthSrvHandle);
 
 	return S_OK;
 }
@@ -382,5 +383,10 @@ HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap*
         scissorRect.right = static_cast<UINT>(viewport.Width);
     }
 
+    return S_OK;
+}
+
+HRESULT DoF::renderDof(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle)
+{
     return S_OK;
 }
