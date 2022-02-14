@@ -22,7 +22,9 @@ private:
     static constexpr LPCSTR kPsEntrypoint = "main";
 
     enum class SrvSlot {
-        kBaseColor = 0,
+        kBaseColor,
+		kShrinkColor,
+		kDepth,
     };
 
 	HRESULT compileShaders();

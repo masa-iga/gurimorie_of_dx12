@@ -236,12 +236,24 @@ HRESULT DoF::createRootSignature()
 {
     const D3D12_DESCRIPTOR_RANGE descRanges[] = {
         CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, static_cast<UINT>(SrvSlot::kBaseColor)),
+        CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, static_cast<UINT>(SrvSlot::kShrinkColor)),
+        CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, static_cast<UINT>(SrvSlot::kDepth)),
     };
 
     const D3D12_ROOT_PARAMETER rootParams[] = {
         {
             .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
-            .DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(_countof(descRanges), descRanges),
+            .DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRanges[0]),
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        },
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            .DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRanges[1]),
+            .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+        },
+        {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            .DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRanges[2]),
             .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
         },
     };
@@ -388,5 +400,34 @@ HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap*
 
 HRESULT DoF::renderDof(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle)
 {
+    list->SetGraphicsRootSignature(m_rootSignature.Get());
+    list->SetPipelineState(m_pipelineState.Get()); // TODO: to be updated
+
+    list->SetDescriptorHeaps(1, &pBaseSrvHeap);
+    list->SetGraphicsRootDescriptorTable(static_cast<UINT>(SrvSlot::kBaseColor), baseSrvHandle);
+
+    list->SetDescriptorHeaps(1, m_workDescSrvHeap.GetAddressOf());
+    list->SetGraphicsRootDescriptorTable(static_cast<UINT>(SrvSlot::kShrinkColor), m_workDescSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+
+    list->SetDescriptorHeaps(1, &pDepthSrvHeap);
+    list->SetGraphicsRootDescriptorTable(static_cast<UINT>(SrvSlot::kDepth), depthSrvHandle);
+
+    list->OMSetRenderTargets(1, &dstRtv, 0, nullptr);
+
+    list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+    list->IASetVertexBuffers(0, 1, &m_vbView);
+
+    {
+        const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
+        list->RSSetViewports(1, &viewport);
+    }
+
+    {
+        const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+        list->RSSetScissorRects(1, &scissorRect);
+    }
+
+    list->DrawInstanced(_countof(vb), 1, 0, 0);
+
     return S_OK;
 }

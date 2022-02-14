@@ -14,15 +14,15 @@ public:
 	HRESULT createResources();
 	HRESULT compileShaders();
 	HRESULT createPipelineState();
-	HRESULT render(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, ID3D12DescriptorHeap *pSrvDescHeap);
+	HRESULT render(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12DescriptorHeap* pSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle);
 
 private:
 	HRESULT createVertexBufferResource();
 	HRESULT createBokehResource();
 	HRESULT createOffscreenResource();
 	HRESULT createEffectBufferAndView();
-	HRESULT renderBokeh(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, ID3D12DescriptorHeap *pSrvDescHeap);
-	HRESULT renderEffect(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, ID3D12DescriptorHeap *pSrvDescHeap);
+	HRESULT renderBokeh(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12DescriptorHeap* pSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle);
+	HRESULT renderEffect(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12DescriptorHeap* pSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle);
 
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature_bokeh = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature_effect = nullptr;

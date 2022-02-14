@@ -751,6 +751,8 @@ void Render::renderBasePass(ID3D12GraphicsCommandList* list)
 
 void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE fbRtvHandle)
 {
+	const PixScopedEvent pixScopedEvent(list, "PostProcess");
+
 	m_offScreenResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	// post process: bloom
@@ -773,32 +775,47 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 			m_offScreenResource.getSrvHeap().Get(),
 			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
 			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance));
-	}
-
-	// post process: depth of field
-	{
-		const PixScopedEvent pixScopedEvent(list, "PostProcess : DoF");
-
-		m_dof.render(
-			list,
-			fbRtvHandle,
-			m_offScreenResource.getSrvHeap().Get(),
-			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
-			m_depthSrvHeap.Get(),
-			m_depthSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
-	}
-
-	// post process: pera (render to display buffer)
-	{
-		const PixScopedEvent pixScopedEvent(list, "PostProcess : pera");
 
 		m_offScreenResource.buildBarrier(
 			list,
 			OffScreenResource::Type::kPostBloom,
 			D3D12_RESOURCE_STATE_RENDER_TARGET,
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	}
 
-		m_pera.render(&fbRtvHandle, m_offScreenResource.getSrvHeap().Get());
+	// post process: depth of field
+	{
+		const PixScopedEvent pixScopedEvent(list, "PostProcess : DoF");
+
+		m_offScreenResource.buildBarrier(
+			list,
+			OffScreenResource::Type::kPostDof,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+		m_dof.render(
+			list,
+			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kPostDof),
+			m_offScreenResource.getSrvHeap().Get(),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
+			m_depthSrvHeap.Get(),
+			m_depthSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+
+		m_offScreenResource.buildBarrier(
+			list,
+			OffScreenResource::Type::kPostDof,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	}
+
+	// post process: pera (render to display buffer)
+	{
+		const PixScopedEvent pixScopedEvent(list, "PostProcess : pera");
+
+		m_pera.render(
+			&fbRtvHandle,
+			m_offScreenResource.getSrvHeap().Get(),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kPostBloom));
 	}
 }
 

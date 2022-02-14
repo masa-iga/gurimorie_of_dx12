@@ -331,17 +331,17 @@ HRESULT Pera::createPipelineState()
 	return S_OK;
 }
 
-HRESULT Pera::render(const D3D12_CPU_DESCRIPTOR_HANDLE *pRtvHeap, ID3D12DescriptorHeap *pSrvDescHeap)
+HRESULT Pera::render(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12DescriptorHeap* pSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle)
 {
 	constexpr bool bBokehMode = true;
 
 	if (bBokehMode)
 	{
-		ThrowIfFailed(renderBokeh(pRtvHeap, pSrvDescHeap));
+		ThrowIfFailed(renderBokeh(pRtvHeap, pSrvHeap, srvGpuHandle));
 	}
 	else
 	{
-		ThrowIfFailed(renderEffect(pRtvHeap, pSrvDescHeap));
+		ThrowIfFailed(renderEffect(pRtvHeap, pSrvHeap, srvGpuHandle));
 	}
 
 	return S_OK;
@@ -641,10 +641,10 @@ HRESULT Pera::createEffectBufferAndView()
 	return S_OK;
 }
 
-HRESULT Pera::renderBokeh(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12DescriptorHeap* pSrvDescHeap)
+HRESULT Pera::renderBokeh(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12DescriptorHeap* pSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle)
 {
 	ThrowIfFalse(pRtvHeap != nullptr);
-	ThrowIfFalse(pSrvDescHeap != nullptr);
+	ThrowIfFalse(pSrvHeap != nullptr);
 
 	ID3D12GraphicsCommandList* commandList = Resource::instance()->getCommandList();
 
@@ -652,11 +652,8 @@ HRESULT Pera::renderBokeh(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12Des
 	commandList->SetGraphicsRootSignature(m_rootSignature_bokeh.Get());
 	commandList->SetPipelineState(m_pipelineState_bokehH.Get());
 
-	commandList->SetDescriptorHeaps(1, &pSrvDescHeap);
-	{
-		D3D12_GPU_DESCRIPTOR_HANDLE handle = pSrvDescHeap->GetGPUDescriptorHandleForHeapStart();
-		commandList->SetGraphicsRootDescriptorTable(0, handle);
-	}
+	commandList->SetDescriptorHeaps(1, &pSrvHeap);
+	commandList->SetGraphicsRootDescriptorTable(0, srvGpuHandle);
 
 	commandList->SetDescriptorHeaps(1, m_cbvHeap.GetAddressOf());
 	{
@@ -701,21 +698,19 @@ HRESULT Pera::renderBokeh(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12Des
 	return S_OK;
 }
 
-HRESULT Pera::renderEffect(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12DescriptorHeap* pSrvDescHeap)
+HRESULT Pera::renderEffect(const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, ID3D12DescriptorHeap* pSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle)
 {
 	ThrowIfFalse(pRtvHeap != nullptr);
-	ThrowIfFalse(pSrvDescHeap != nullptr);
+	ThrowIfFalse(pSrvHeap != nullptr);
 
 	ID3D12GraphicsCommandList* commandList = Resource::instance()->getCommandList();
 
 	commandList->SetGraphicsRootSignature(m_rootSignature_effect.Get());
 	commandList->SetPipelineState(m_pipelineState_effect.Get());
 
-	commandList->SetDescriptorHeaps(1, &pSrvDescHeap);
-	{
-		D3D12_GPU_DESCRIPTOR_HANDLE handle = pSrvDescHeap->GetGPUDescriptorHandleForHeapStart();
-		commandList->SetGraphicsRootDescriptorTable(0, handle);
-	}
+	commandList->SetDescriptorHeaps(1, &pSrvHeap);
+	commandList->SetGraphicsRootDescriptorTable(0, srvGpuHandle);
+
 	commandList->SetDescriptorHeaps(1, m_effectSrvHeap.GetAddressOf());
 	{
 		D3D12_GPU_DESCRIPTOR_HANDLE handle = m_effectSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart();
