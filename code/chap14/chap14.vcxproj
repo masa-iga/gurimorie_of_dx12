@@ -256,6 +256,7 @@
     <None Include="floorHeader.hlsli" />
     <None Include="packages.config" />
     <None Include="peraHeader.hlsli" />
+    <None Include="util.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\resource\Model\ao.bmp" />
