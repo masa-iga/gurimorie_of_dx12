@@ -63,39 +63,70 @@ HRESULT DoF::compileShaders()
 {
     ComPtr<ID3DBlob> errorBlob = nullptr;
 
-    auto result = D3DCompileFromFile(
-        kVsFile,
-        Constant::kCompileShaderDefines,
-        D3D_COMPILE_STANDARD_FILE_INCLUDE,
-        kVsEntrypoint,
-        Constant::kVsShaderModel,
-        Constant::kCompileShaderFlags1,
-        Constant::kCompileShaderFlags2,
-        m_vsBlob.ReleaseAndGetAddressOf(),
-        errorBlob.ReleaseAndGetAddressOf());
+    for (size_t i = 0; i < kVsEntrypoints.size(); ++i)
+    {
+        for (size_t j = 0; j < i; ++j)
+        {
+            if (kVsEntrypoints.at(i) == kVsEntrypoints.at(j))
+            {
+                m_vsBlobs.at(i) = m_vsBlobs.at(j);
+                break;
+            }
+        }
 
-    if (FAILED(result))
-	{
-		Debug::outputDebugMessage(errorBlob.Get());
-		return E_FAIL;
-	}
+        if (m_vsBlobs.at(i))
+            continue;
 
-    result = D3DCompileFromFile(
-        kPsFile,
-        Constant::kCompileShaderDefines,
-        D3D_COMPILE_STANDARD_FILE_INCLUDE,
-        kPsEntrypoint,
-        Constant::kPsShaderModel,
-        Constant::kCompileShaderFlags1,
-        Constant::kCompileShaderFlags2,
-        m_psBlob.ReleaseAndGetAddressOf(),
-        errorBlob.ReleaseAndGetAddressOf());
+        auto result = D3DCompileFromFile(
+            kVsFile,
+            Constant::kCompileShaderDefines,
+            D3D_COMPILE_STANDARD_FILE_INCLUDE,
+            kVsEntrypoints.at(i),
+            Constant::kVsShaderModel,
+            Constant::kCompileShaderFlags1,
+            Constant::kCompileShaderFlags2,
+            m_vsBlobs.at(i).ReleaseAndGetAddressOf(),
+            errorBlob.ReleaseAndGetAddressOf());
 
-    if (FAILED(result))
-	{
-		Debug::outputDebugMessage(errorBlob.Get());
-		return E_FAIL;
-	}
+        if (FAILED(result))
+        {
+            Debug::outputDebugMessage(errorBlob.Get());
+            return E_FAIL;
+        }
+    }
+
+    for (size_t i = 0; i < kPsEntrypoints.size(); ++i)
+    {
+        for (size_t j = 0; j < i; ++j)
+        {
+            if (kPsEntrypoints.at(i) == kPsEntrypoints.at(j))
+            {
+                m_psBlobs.at(i) = m_psBlobs.at(j);
+                break;
+            }
+        }
+
+        if (m_psBlobs.at(i))
+            continue;
+
+        auto result = D3DCompileFromFile(
+            kPsFile,
+            Constant::kCompileShaderDefines,
+            D3D_COMPILE_STANDARD_FILE_INCLUDE,
+            kPsEntrypoints.at(i),
+            Constant::kPsShaderModel,
+            Constant::kCompileShaderFlags1,
+            Constant::kCompileShaderFlags2,
+            m_psBlobs.at(i).ReleaseAndGetAddressOf(),
+            errorBlob.ReleaseAndGetAddressOf());
+
+        if (FAILED(result))
+        {
+            Debug::outputDebugMessage(errorBlob.Get());
+            return E_FAIL;
+        }
+    }
+
 	return S_OK;
 }
 
@@ -299,12 +330,12 @@ HRESULT DoF::createRootSignature()
 
 HRESULT DoF::createPipelineState()
 {
-    ThrowIfFailed(createRootSignature());
+	ThrowIfFailed(createRootSignature());
 
-    constexpr D3D12_INPUT_ELEMENT_DESC inputElementDescs[] = {
-        {
-		    .SemanticName = "POSITION",
-		    .SemanticIndex = 0,
+	constexpr D3D12_INPUT_ELEMENT_DESC inputElementDescs[] = {
+		{
+			.SemanticName = "POSITION",
+			.SemanticIndex = 0,
 			.Format = DXGI_FORMAT_R32G32B32_FLOAT,
 			.InputSlot = 0,
 			.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
@@ -312,51 +343,68 @@ HRESULT DoF::createPipelineState()
 			.InstanceDataStepRate = 0,
 		},
 		{
-		    .SemanticName = "TEXCOORD",
-		    .SemanticIndex = 0,
+			.SemanticName = "TEXCOORD",
+			.SemanticIndex = 0,
 			.Format = DXGI_FORMAT_R32G32_FLOAT,
 			.InputSlot = 0,
 			.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
 			.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
 			.InstanceDataStepRate = 0,
-        },
+		},
 	};
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = {
-		.pRootSignature = m_rootSignature.Get(),
-	    .VS = { m_vsBlob.Get()->GetBufferPointer(), m_vsBlob.Get()->GetBufferSize() },
-		.PS = { m_psBlob.Get()->GetBufferPointer(), m_psBlob.Get()->GetBufferSize() },
-		.DS = { nullptr, 0 },
-        .HS = { nullptr, 0 },
-        .GS = { nullptr, 0 },
-		.StreamOutput = { nullptr, 0, nullptr, 0, 0 },
-        .BlendState = CD3DX12_BLEND_DESC(CD3DX12_DEFAULT()),
-        .SampleMask = D3D12_DEFAULT_SAMPLE_MASK,
-        .RasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT()),
-        .DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(CD3DX12_DEFAULT()),
-        .InputLayout = { inputElementDescs, _countof(inputElementDescs) },
-        .IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
-        .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-        .NumRenderTargets = 1,
-        .RTVFormats = { },
-        .DSVFormat = DXGI_FORMAT_UNKNOWN,
-		.SampleDesc = { 1, 0 },
-        .NodeMask = 0,
-        .CachedPSO = { nullptr, 0 },
-		.Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
-    };
-    gpDesc.DepthStencilState.DepthEnable = false;
-    gpDesc.RTVFormats[0] = Constant::kDefaultRtFormat;
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = { };
 
-	auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
-		&gpDesc,
-		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
-    ThrowIfFailed(result);
+	{
+		gpDesc = {
+			.pRootSignature = m_rootSignature.Get(),
+			.VS = { m_vsBlobs.at(static_cast<size_t>(Pass::kCopy)).Get()->GetBufferPointer(), m_vsBlobs.at(static_cast<size_t>(Pass::kCopy)).Get()->GetBufferSize() },
+			.PS = { m_psBlobs.at(static_cast<size_t>(Pass::kCopy)).Get()->GetBufferPointer(), m_psBlobs.at(static_cast<size_t>(Pass::kCopy)).Get()->GetBufferSize() },
+			.DS = { nullptr, 0 },
+			.HS = { nullptr, 0 },
+			.GS = { nullptr, 0 },
+			.StreamOutput = { nullptr, 0, nullptr, 0, 0 },
+			.BlendState = CD3DX12_BLEND_DESC(CD3DX12_DEFAULT()),
+			.SampleMask = D3D12_DEFAULT_SAMPLE_MASK,
+			.RasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT()),
+			.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(CD3DX12_DEFAULT()),
+			.InputLayout = { inputElementDescs, _countof(inputElementDescs) },
+			.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
+			.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+			.NumRenderTargets = 1,
+			.RTVFormats = { },
+			.DSVFormat = DXGI_FORMAT_UNKNOWN,
+			.SampleDesc = { 1, 0 },
+			.NodeMask = 0,
+			.CachedPSO = { nullptr, 0 },
+			.Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
+		};
+		gpDesc.DepthStencilState.DepthEnable = false;
+		gpDesc.RTVFormats[0] = Constant::kDefaultRtFormat;
 
-    result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("dofPipelineState").c_str());
-    ThrowIfFailed(result);
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&gpDesc,
+			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(Pass::kCopy)).ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
 
-    return S_OK;
+		result = m_pipelineStates.at(static_cast<size_t>(Pass::kCopy)).Get()->SetName(Util::getWideStringFromString("dofCopyPipelineState").c_str());
+		ThrowIfFailed(result);
+	}
+
+    {
+        gpDesc.VS = { m_vsBlobs.at(static_cast<size_t>(Pass::kDof)).Get()->GetBufferPointer(), m_vsBlobs.at(static_cast<size_t>(Pass::kDof)).Get()->GetBufferSize() };
+		gpDesc.PS = { m_psBlobs.at(static_cast<size_t>(Pass::kDof)).Get()->GetBufferPointer(), m_psBlobs.at(static_cast<size_t>(Pass::kDof)).Get()->GetBufferSize() };
+
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&gpDesc,
+			IID_PPV_ARGS(m_pipelineStates.at(static_cast<size_t>(Pass::kDof)).ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_pipelineStates.at(static_cast<size_t>(Pass::kDof)).Get()->SetName(Util::getWideStringFromString("dofPipelineState").c_str());
+		ThrowIfFailed(result);
+    }
+
+	return S_OK;
 }
 
 HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle)
@@ -365,7 +413,7 @@ HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap*
     constexpr int32_t baseHeight = Config::kWindowHeight / 2;
 
     list->SetGraphicsRootSignature(m_rootSignature.Get());
-    list->SetPipelineState(m_pipelineState.Get());
+    list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Pass::kCopy)).Get());
 
     list->SetDescriptorHeaps(1, &pBaseSrvHeap);
     list->SetGraphicsRootDescriptorTable(static_cast<UINT>(SrvSlot::kBaseColor), baseSrvHandle);
@@ -401,7 +449,7 @@ HRESULT DoF::renderShrink(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap*
 HRESULT DoF::renderDof(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle)
 {
     list->SetGraphicsRootSignature(m_rootSignature.Get());
-    list->SetPipelineState(m_pipelineState.Get()); // TODO: to be updated
+    list->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Pass::kDof)).Get());
 
     list->SetDescriptorHeaps(1, &pBaseSrvHeap);
     list->SetGraphicsRootDescriptorTable(static_cast<UINT>(SrvSlot::kBaseColor), baseSrvHandle);
