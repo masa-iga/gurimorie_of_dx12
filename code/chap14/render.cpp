@@ -376,8 +376,7 @@ HRESULT Render::render()
 
 		m_imguif.newFrame();
 		clearRenderTarget(list, rtvH, kClearColorRenderTarget);
-		clearDepthRenderTarget(list, dsvH);
-		clearDepthRenderTarget(list, m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart());
+		clearDepthRenderTargets(list);
 		m_offScreenResource.clearRenderTargets(list);
 		m_bloom.clearWorkRenderTarget(list);
 		m_dof.clearWorkRenderTarget(list);
@@ -692,15 +691,44 @@ void Render::updateHighLuminanceThreshold(float val)
 	m_sceneParam->highLuminanceThreshold = val;
 }
 
-HRESULT Render::clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH)
+HRESULT Render::clearDepthRenderTargets(ID3D12GraphicsCommandList* list)
 {
-	list->ClearDepthStencilView(
-		dsvH,
-		D3D12_CLEAR_FLAG_DEPTH,
-		1.0f,
-		0,
-		0,
-        nullptr);
+	const D3D12_CPU_DESCRIPTOR_HANDLE depthHandles[] = {
+		m_dsvHeap->GetCPUDescriptorHandleForHeapStart(),
+		m_lightDepthDsvHeap.Get()->GetCPUDescriptorHandleForHeapStart(),
+	};
+
+	{
+		const CD3DX12_RESOURCE_BARRIER barriers[] = {
+			{
+				CD3DX12_RESOURCE_BARRIER::Transition(
+				m_depthResource.Get(),
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_DEPTH_WRITE,
+				0)
+			},
+			{
+				CD3DX12_RESOURCE_BARRIER::Transition(
+				m_lightDepthResource.Get(),
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_DEPTH_WRITE,
+				0)
+			},
+		};
+
+		list->ResourceBarrier(_countof(barriers), barriers);
+	}
+
+	for (const auto &handle : depthHandles)
+	{
+		list->ClearDepthStencilView(
+			handle,
+			D3D12_CLEAR_FLAG_DEPTH,
+			1.0f,
+			0,
+			0,
+			nullptr);
+	}
 
 	return S_OK;
 }
@@ -723,6 +751,14 @@ void Render::renderBasePass(ID3D12GraphicsCommandList* list)
 	const PixScopedEvent pixScopedEvent(list, "BasePass");
 
 	// base pass: RT0=albedo, RT1=normal, RT2=luminance, depth
+	{
+		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_lightDepthResource.Get(),
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		list->ResourceBarrier(1, &barrier);
+	}
+
 	{
 		const std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 3> rtvHandles = {
 			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kColor),
@@ -786,6 +822,15 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 	// post process: depth of field
 	{
 		const PixScopedEvent pixScopedEvent(list, "PostProcess : DoF");
+
+		{
+			const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+				m_depthResource.Get(),
+				D3D12_RESOURCE_STATE_DEPTH_WRITE,
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				0);
+			list->ResourceBarrier(1, &barrier);
+		}
 
 		m_offScreenResource.buildBarrier(
 			list,
@@ -940,7 +985,7 @@ namespace {
 				&heapProp,
 				D3D12_HEAP_FLAG_NONE,
 				&resourceDesc,
-				D3D12_RESOURCE_STATE_DEPTH_WRITE,
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 				&clearVal,
 				IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
 			ThrowIfFailed(ret);
@@ -1059,7 +1104,7 @@ namespace {
 				&heapProp,
 				D3D12_HEAP_FLAG_NONE,
 				&resourceDesc,
-				D3D12_RESOURCE_STATE_DEPTH_WRITE,
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 				&clearVal,
 				IID_PPV_ARGS(resource->ReleaseAndGetAddressOf()));
 			ThrowIfFailed(result);

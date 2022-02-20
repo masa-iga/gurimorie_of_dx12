@@ -37,6 +37,15 @@ HRESULT DoF::init(UINT64 width, UINT height)
 
 HRESULT DoF::clearWorkRenderTarget(ID3D12GraphicsCommandList* list)
 {
+    {
+        const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            m_workResource.Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            0);
+        list->ResourceBarrier(1, &barrier);
+    }
+
     list->ClearRenderTargetView(m_workDescRtvHeap.Get()->GetCPUDescriptorHandleForHeapStart(), kClearColor, 0, nullptr);
     return S_OK;
 }
@@ -44,6 +53,16 @@ HRESULT DoF::clearWorkRenderTarget(ID3D12GraphicsCommandList* list)
 HRESULT DoF::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv, ID3D12DescriptorHeap* pBaseSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE baseSrvHandle, ID3D12DescriptorHeap* pDepthSrvHeap, D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle)
 {
     renderShrink(list, pBaseSrvHeap, baseSrvHandle);
+
+    {
+		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_workResource.Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            0);
+        list->ResourceBarrier(1, &barrier);
+    }
+
     renderDof(list, dstRtv, pBaseSrvHeap, baseSrvHandle, pDepthSrvHeap, depthSrvHandle);
 
 	return S_OK;
@@ -185,7 +204,7 @@ HRESULT DoF::createResource(UINT64 dstWidth, UINT dstHeight)
                 &heapProp,
                 D3D12_HEAP_FLAG_NONE,
                 &resourceDesc,
-                D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
                 &clearValue,
                 IID_PPV_ARGS(m_workResource.ReleaseAndGetAddressOf()));
             ThrowIfFailed(result);
