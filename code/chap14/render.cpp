@@ -482,16 +482,16 @@ void Render::setFpsInImgui(float fps)
 	m_imguif.setFps(fps);
 }
 
-void Render::moveEye(MoveEye moveEye)
+void Render::moveEye(MoveEye moveEye, float val)
 {
 	switch (moveEye) {
 	case MoveEye::kNone:
 		break;
 	case MoveEye::kForward:
-		moveForward(&m_focusPos, &m_eyePos, 0.5f);
+		moveForward(&m_focusPos, &m_eyePos, val);
 		break;
 	case MoveEye::kBackward:
-		moveForward(&m_focusPos, &m_eyePos, -0.5f);
+		moveForward(&m_focusPos, &m_eyePos, val);
 		break;
 	case MoveEye::kRight:
 		move(&m_focusPos, &m_eyePos, 90.f, 0.03f);

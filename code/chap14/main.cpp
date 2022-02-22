@@ -7,6 +7,7 @@
 #include <cassert>
 #include <dxgidebug.h>
 #include <tchar.h>
+#include <windowsx.h>
 #pragma warning(pop)
 #include "config.h"
 #include "debug.h"
@@ -27,10 +28,15 @@ enum class Action {
 };
 
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+static Action processInputEvent(const MSG& msg, Render* pRender);
 static Action processKeyInput(const MSG& msg, Render* pRender);
+static Action processMouseWheelInput(const MSG& msg, Render* pRender);
+static Action processMouseLbuttonInput(const MSG& msg, Render* pRender);
 static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd);
 static void trackFrameTime();
 static float getFps();
+
+static uint64_t s_frame = 0;
 
 #ifdef _DEBUG
 int main()
@@ -81,7 +87,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		MSG msg = {};
 
-		for (UINT i = 0; ; ++i)
+		for (s_frame = 0; ; ++s_frame)
 		{
 			render.setFpsInImgui(getFps());
 			ThrowIfFailed(render.update());
@@ -91,19 +97,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 			{
+				if (msg.message == WM_QUIT)
+					break;
+
+				if (processInputEvent(msg, &render) == Action::kQuit)
+				{
+					render.waitForEndOfRendering();
+					break;
+				}
+
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
-			}
-
-			if (msg.message == WM_QUIT)
-			{
-				break;
-			}
-
-			if (processKeyInput(msg, &render) == Action::kQuit)
-			{
-				render.waitForEndOfRendering();
-				break;
 			}
 
 			trackFrameTime();
@@ -129,49 +133,98 @@ LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
-static Action processKeyInput(const MSG& msg, Render* pRender)
+static Action processInputEvent(const MSG& msg, Render* pRender)
 {
 	switch (msg.message) {
 	case WM_KEYDOWN:
-		switch (msg.wParam) {
-		case VK_ESCAPE:
-			return Action::kQuit;
-		case VK_SPACE:
-			pRender->toggleAnimationEnable();
-			break;
-		case VK_LEFT:
-			pRender->moveEye(MoveEye::kCounterClockwise);
-			break;
-		case VK_UP:
-			pRender->moveEye(MoveEye::kUp);
-			break;
-		case VK_RIGHT:
-			pRender->moveEye(MoveEye::kClockwise);
-			break;
-		case VK_DOWN:
-			pRender->moveEye(MoveEye::kDown);
-			break;
-		case 'A':
-			pRender->moveEye(MoveEye::kLeft);
-			break;
-		case 'W':
-			pRender->moveEye(MoveEye::kForward);
-			break;
-		case 'D':
-			pRender->moveEye(MoveEye::kRight);
-			break;
-		case 'S':
-			pRender->moveEye(MoveEye::kBackward);
-			break;
-		case 'R':
-			pRender->toggleAnimationReverse();
-			break;
-		default:
-			break;
-		}
+		return processKeyInput(msg, pRender);
+	case WM_MOUSEWHEEL:
+		return processMouseWheelInput(msg, pRender);
+	case WM_LBUTTONDOWN:
+	case WM_LBUTTONUP:
+		return processMouseLbuttonInput(msg, pRender);
+	default:
+		break;
+	}
+
+	return Action::kNone;
+}
+
+static Action processKeyInput(const MSG& msg, Render* pRender)
+{
+	switch (msg.wParam) {
+	case VK_ESCAPE:
+		return Action::kQuit;
+	case VK_SPACE:
+		pRender->toggleAnimationEnable();
+		break;
+	case VK_LEFT:
+		pRender->moveEye(MoveEye::kCounterClockwise);
+		break;
+	case VK_UP:
+		pRender->moveEye(MoveEye::kUp);
+		break;
+	case VK_RIGHT:
+		pRender->moveEye(MoveEye::kClockwise);
+		break;
+	case VK_DOWN:
+		pRender->moveEye(MoveEye::kDown);
+		break;
+	case 'A':
+		pRender->moveEye(MoveEye::kLeft);
+		break;
+	case 'W':
+		pRender->moveEye(MoveEye::kForward, 0.5f);
+		break;
+	case 'D':
+		pRender->moveEye(MoveEye::kRight);
+		break;
+	case 'S':
+		pRender->moveEye(MoveEye::kBackward, -0.5f);
+		break;
+	case 'R':
+		pRender->toggleAnimationReverse();
 		break;
 	default:
 		break;
+	}
+
+	return Action::kNone;
+}
+
+static Action processMouseWheelInput(const MSG& msg, Render* pRender)
+{
+	constexpr float kBaseMovement = 0.5f;
+
+	const int32_t zDelta = GET_WHEEL_DELTA_WPARAM(msg.wParam);
+	const float z = (zDelta / WHEEL_DELTA) * kBaseMovement;
+
+	if (zDelta > 0)
+	{
+		pRender->moveEye(MoveEye::kForward, z);
+	}
+	else if (zDelta < 0)
+	{
+		pRender->moveEye(MoveEye::kBackward, z);
+	}
+
+	return Action::kNone;
+}
+
+Action processMouseLbuttonInput(const MSG& msg, Render* pRender)
+{
+	const int32_t x = GET_X_LPARAM(msg.lParam);
+	const int32_t y = GET_Y_LPARAM(msg.lParam);
+
+	//Debug::debugOutputFormatString("[%zd] %d %d %d\n", s_frame, msg.message, x, y);
+
+	if (msg.message == WM_LBUTTONDOWN)
+	{
+		;
+	}
+	else if (msg.message == WM_LBUTTONUP)
+	{
+		;
 	}
 
 	return Action::kNone;

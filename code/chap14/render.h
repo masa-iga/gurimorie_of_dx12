@@ -95,7 +95,7 @@ public:
 	void toggleAnimationEnable();
 	void toggleAnimationReverse();
 	void setFpsInImgui(float fps);
-	void moveEye(MoveEye moveEye);
+	void moveEye(MoveEye moveEye, float val = 0.0f);
 
 private:
 	HRESULT createSceneMatrixBuffer();
