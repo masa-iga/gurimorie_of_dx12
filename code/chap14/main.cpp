@@ -31,7 +31,9 @@ static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 static Action processInputEvent(const MSG& msg, Render* pRender);
 static Action processKeyInput(const MSG& msg, Render* pRender);
 static Action processMouseWheelInput(const MSG& msg, Render* pRender);
-static Action processMouseLbuttonInput(const MSG& msg, Render* pRender);
+static Action processMouseLbuttonInput(const MSG& msg, Render* pRender, int32_t srcx, int32_t srcy);
+static int32_t getCursorPosX();
+static int32_t getCursorPosY();
 static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd);
 static void trackFrameTime();
 static float getFps();
@@ -133,21 +135,101 @@ LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
-static Action processInputEvent(const MSG& msg, Render* pRender)
+class InputState
 {
+public:
+	virtual ~InputState() { }
+	virtual std::pair<Action, InputState*> handleEvent(const MSG& msg, Render* pRender) = 0;
+
+protected:
+	void setX(int32_t x) { m_x = x; }
+	void setY(int32_t y) { m_y = y; }
+	int32_t getX() const { return m_x; }
+	int32_t getY() const { return m_y; }
+
+private:
+	static int32_t m_x;
+	static int32_t m_y;
+};
+int32_t InputState::m_x = 0;
+int32_t InputState::m_y = 0;
+
+class DefaultInputState : public InputState
+{
+public:
+	~DefaultInputState() { }
+	std::pair<Action, InputState*> handleEvent(const MSG& msg, Render* pRender) override;
+};
+
+class LbDownInputState : public InputState
+{
+public:
+	~LbDownInputState() { }
+	std::pair<Action, InputState*> handleEvent(const MSG& msg, Render* pRender) override;
+};
+
+struct StaticInstance {
+	static DefaultInputState m_default;
+	static LbDownInputState m_lbDown;
+};
+DefaultInputState StaticInstance::m_default = { };
+LbDownInputState StaticInstance::m_lbDown = { };
+
+std::pair<Action, InputState*> DefaultInputState::handleEvent(const MSG& msg, Render* pRender)
+{
+	Action action = Action::kNone;
+	InputState* nextState = nullptr;
+
 	switch (msg.message) {
 	case WM_KEYDOWN:
-		return processKeyInput(msg, pRender);
+		action = processKeyInput(msg, pRender);
+		break;
 	case WM_MOUSEWHEEL:
-		return processMouseWheelInput(msg, pRender);
+		action = processMouseWheelInput(msg, pRender);
+		break;
 	case WM_LBUTTONDOWN:
-	case WM_LBUTTONUP:
-		return processMouseLbuttonInput(msg, pRender);
+		nextState = &StaticInstance::m_lbDown;
+		setX(getCursorPosX());
+		setY(getCursorPosY());
+		break;
 	default:
 		break;
 	}
 
-	return Action::kNone;
+	return { action, nextState };
+}
+
+std::pair<Action, InputState*> LbDownInputState::handleEvent(const MSG& msg, Render* pRender)
+{
+	Action action = Action::kNone;
+	InputState* nextState = nullptr;
+
+	switch (msg.message) {
+	case WM_LBUTTONUP:
+		nextState = &StaticInstance::m_default;
+		break;
+	default:
+		action = processMouseLbuttonInput(msg, pRender, getX(), getY());
+		setX(getCursorPosX());
+		setY(getCursorPosY());
+		break;
+	}
+
+	return { action, nextState };
+}
+
+static Action processInputEvent(const MSG& msg, Render* pRender)
+{
+	static InputState* s_inputState = &StaticInstance::m_default;
+
+	const auto [action, nextState] = s_inputState->handleEvent(msg, pRender);
+
+	if (nextState != nullptr)
+	{
+		s_inputState = nextState;
+	}
+
+	return action;
 }
 
 static Action processKeyInput(const MSG& msg, Render* pRender)
@@ -159,13 +241,13 @@ static Action processKeyInput(const MSG& msg, Render* pRender)
 		pRender->toggleAnimationEnable();
 		break;
 	case VK_LEFT:
-		pRender->moveEye(MoveEye::kCounterClockwise);
+		pRender->moveEye(MoveEye::kCounterClockwise, -0.03f);
 		break;
 	case VK_UP:
 		pRender->moveEye(MoveEye::kUp);
 		break;
 	case VK_RIGHT:
-		pRender->moveEye(MoveEye::kClockwise);
+		pRender->moveEye(MoveEye::kClockwise, 0.03f);
 		break;
 	case VK_DOWN:
 		pRender->moveEye(MoveEye::kDown);
@@ -211,23 +293,35 @@ static Action processMouseWheelInput(const MSG& msg, Render* pRender)
 	return Action::kNone;
 }
 
-Action processMouseLbuttonInput(const MSG& msg, Render* pRender)
+#include <numbers>
+Action processMouseLbuttonInput(const MSG& msg, Render* pRender, int32_t prevx, int32_t prevy)
 {
-	const int32_t x = GET_X_LPARAM(msg.lParam);
-	const int32_t y = GET_Y_LPARAM(msg.lParam);
+	const int32_t curx = getCursorPosX();
+	const int32_t cury = getCursorPosY();
+	const int32_t dx = curx - prevx;
+	const int32_t dy = -(cury - prevy);
+	const float fx = static_cast<float>(dx) / static_cast<float>(Config::kWindowWidth) * static_cast<float>(std::numbers::pi);
 
-	//Debug::debugOutputFormatString("[%zd] %d %d %d\n", s_frame, msg.message, x, y);
+	//Debug::debugOutputFormatString("[%zd] fx=%f dx=%d prevx=%d curx=%d\n", s_frame, fx, dx, prevx, curx);
 
-	if (msg.message == WM_LBUTTONDOWN)
-	{
-		;
-	}
-	else if (msg.message == WM_LBUTTONUP)
-	{
-		;
-	}
+	pRender->moveEye(MoveEye::kClockwise, fx);
 
 	return Action::kNone;
+}
+
+#include <WinUser.h>
+static int32_t getCursorPosX()
+{
+	POINT point = { };
+	GetCursorPos(&point);
+	return point.x;
+}
+
+static int32_t getCursorPosY()
+{
+	POINT point = { };
+	GetCursorPos(&point);
+	return point.y;
 }
 
 static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)

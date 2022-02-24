@@ -500,10 +500,10 @@ void Render::moveEye(MoveEye moveEye, float val)
 		move(&m_focusPos, &m_eyePos, -90.f, 0.03f);
 		break;
 	case MoveEye::kClockwise:
-		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), 0.03f);
+		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), val);
 		break;
 	case MoveEye::kCounterClockwise:
-		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), -0.03f);
+		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), val);
 		break;
 	case MoveEye::kUp:
 		m_eyePos.y += 0.5f;
