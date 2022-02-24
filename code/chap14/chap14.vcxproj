@@ -99,6 +99,7 @@
     <ClCompile Include="graph.cpp" />
     <ClCompile Include="imgui_if.cpp" />
     <ClCompile Include="init.cpp" />
+    <ClCompile Include="input.cpp" />
     <ClCompile Include="loader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="observer.cpp" />
@@ -121,6 +122,7 @@
     <ClInclude Include="graph.h" />
     <ClInclude Include="imgui_if.h" />
     <ClInclude Include="init.h" />
+    <ClInclude Include="input.h" />
     <ClInclude Include="loader.h" />
     <ClInclude Include="observer.h" />
     <ClInclude Include="pera.h" />
