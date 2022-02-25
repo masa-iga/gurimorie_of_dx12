@@ -89,28 +89,28 @@ namespace {
 			pRender->toggleAnimationEnable();
 			break;
 		case VK_LEFT:
-			pRender->moveEye(MoveEye::kCounterClockwise, -0.03f);
+			pRender->moveEye(MoveEye::kFocusX, -0.03f);
 			break;
 		case VK_UP:
-			pRender->moveEye(MoveEye::kUp);
+			pRender->moveEye(MoveEye::kPosY, 0.5f);
 			break;
 		case VK_RIGHT:
-			pRender->moveEye(MoveEye::kClockwise, 0.03f);
+			pRender->moveEye(MoveEye::kFocusX, 0.03f);
 			break;
 		case VK_DOWN:
-			pRender->moveEye(MoveEye::kDown);
+			pRender->moveEye(MoveEye::kPosY, -0.5f);
 			break;
 		case 'A':
-			pRender->moveEye(MoveEye::kLeft);
+			pRender->moveEye(MoveEye::kPosX, -0.03f);
 			break;
 		case 'W':
-			pRender->moveEye(MoveEye::kForward, 0.5f);
+			pRender->moveEye(MoveEye::kPosZ, 0.5f);
 			break;
 		case 'D':
-			pRender->moveEye(MoveEye::kRight);
+			pRender->moveEye(MoveEye::kPosX, 0.03f);
 			break;
 		case 'S':
-			pRender->moveEye(MoveEye::kBackward, -0.5f);
+			pRender->moveEye(MoveEye::kPosZ, -0.5f);
 			break;
 		case 'R':
 			pRender->toggleAnimationReverse();
@@ -129,14 +129,7 @@ namespace {
 		const int32_t zDelta = GET_WHEEL_DELTA_WPARAM(msg.wParam);
 		const float z = (zDelta / WHEEL_DELTA) * kBaseMovement;
 
-		if (zDelta > 0)
-		{
-			pRender->moveEye(MoveEye::kForward, z);
-		}
-		else if (zDelta < 0)
-		{
-			pRender->moveEye(MoveEye::kBackward, z);
-		}
+		pRender->moveEye(MoveEye::kPosZ, z);
 
 		return Action::kNone;
 	}
@@ -148,10 +141,12 @@ namespace {
 		const int32_t dx = curx - prevx;
 		const int32_t dy = -(cury - prevy);
 		const float fx = static_cast<float>(dx) / static_cast<float>(Config::kWindowWidth) * static_cast<float>(std::numbers::pi);
+		const float fy = static_cast<float>(dy) / static_cast<float>(Config::kWindowHeight) * static_cast<float>(std::numbers::pi);
 
 		//Debug::debugOutputFormatString("[%zd] fx=%f dx=%d prevx=%d curx=%d\n", s_frame, fx, dx, prevx, curx);
 
-		pRender->moveEye(MoveEye::kClockwise, fx);
+		pRender->moveEye(MoveEye::kFocusX, fx);
+		pRender->moveEye(MoveEye::kFocusY, fy);
 
 		return Action::kNone;
 	}

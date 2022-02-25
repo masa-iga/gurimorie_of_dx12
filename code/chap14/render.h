@@ -33,14 +33,11 @@ struct SceneParam
 
 enum class MoveEye {
 	kNone,
-	kForward,
-	kBackward,
-	kRight,
-	kLeft,
-	kClockwise,
-	kCounterClockwise,
-	kUp,
-	kDown,
+	kPosX,
+	kPosY,
+	kPosZ,
+	kFocusX,
+	kFocusY,
 };
 
 class OffScreenResource

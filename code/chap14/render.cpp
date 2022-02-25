@@ -487,31 +487,21 @@ void Render::moveEye(MoveEye moveEye, float val)
 	switch (moveEye) {
 	case MoveEye::kNone:
 		break;
-	case MoveEye::kForward:
+	case MoveEye::kPosX:
+		move(&m_focusPos, &m_eyePos, (val >= 0.0f) ? 90.0f : -90.f, std::abs(val));
+		break;
+	case MoveEye::kPosY:
+		m_eyePos.y += val;
+		m_focusPos.y += val;
+		break;
+	case MoveEye::kPosZ:
 		moveForward(&m_focusPos, &m_eyePos, val);
 		break;
-	case MoveEye::kBackward:
-		moveForward(&m_focusPos, &m_eyePos, val);
-		break;
-	case MoveEye::kRight:
-		move(&m_focusPos, &m_eyePos, 90.f, 0.03f);
-		break;
-	case MoveEye::kLeft:
-		move(&m_focusPos, &m_eyePos, -90.f, 0.03f);
-		break;
-	case MoveEye::kClockwise:
+	case MoveEye::kFocusX:
 		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), val);
 		break;
-	case MoveEye::kCounterClockwise:
-		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(0, 1, 0), val);
-		break;
-	case MoveEye::kUp:
-		m_eyePos.y += 0.5f;
-		m_focusPos.y += 0.5f;
-		break;
-	case MoveEye::kDown:
-		m_eyePos.y -= 0.5f;
-		m_focusPos.y -= 0.5f;
+	case MoveEye::kFocusY:
+		m_focusPos = computeRotation(m_focusPos, m_eyePos, DirectX::XMFLOAT3(-1, 0, 0), val);
 		break;
 	default:
 		ThrowIfFalse(false);
