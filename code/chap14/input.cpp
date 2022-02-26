@@ -101,13 +101,13 @@ namespace {
 			pRender->moveEye(MoveEye::kPosY, -0.5f);
 			break;
 		case 'A':
-			pRender->moveEye(MoveEye::kPosX, -0.03f);
+			pRender->moveEye(MoveEye::kPosX, -0.5f);
 			break;
 		case 'W':
 			pRender->moveEye(MoveEye::kPosZ, 0.5f);
 			break;
 		case 'D':
-			pRender->moveEye(MoveEye::kPosX, 0.03f);
+			pRender->moveEye(MoveEye::kPosX, 0.5f);
 			break;
 		case 'S':
 			pRender->moveEye(MoveEye::kPosZ, -0.5f);
