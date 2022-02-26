@@ -10,6 +10,7 @@
 #pragma warning(pop)
 #include "bloom.h"
 #include "config.h"
+#include "dof.h"
 #include "floor.h"
 #include "graph.h"
 #include "observer.h"
@@ -32,27 +33,29 @@ struct SceneParam
 
 enum class MoveEye {
 	kNone,
-	kForward,
-	kBackward,
-	kRight,
-	kLeft,
-	kClockwise,
-	kCounterClockwise,
-	kUp,
-	kDown,
+	kPosX,
+	kPosY,
+	kPosZ,
+	kFocusX,
+	kFocusY,
 };
 
-class BaseResource
+class OffScreenResource
 {
 public:
 	enum class Type {
 		kColor,
 		kNormal,
 		kLuminance,
+		kPostBloom,
+		kPostDof,
+		// Do not forget increase kNumResource if you add a new field
 	};
+	static constexpr size_t kNumResource = 5;
 
 	HRESULT createResource(DXGI_FORMAT format);
-	HRESULT clearBaseRenderTargets(ID3D12GraphicsCommandList* list) const;
+	HRESULT clearRenderTargets(ID3D12GraphicsCommandList* list) const;
+	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, Type type, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
 	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getRtvHeap() const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getSrvHeap() const;
@@ -60,15 +63,17 @@ public:
 	D3D12_GPU_DESCRIPTOR_HANDLE getSrvGpuDescHandle(Type type) const;
 
 private:
-	const std::array<float[4], 3> kClearColor = {
+	const std::array<float[4], kNumResource> kClearColor = {
 		1.0f, 1.0f, 1.0f, 1.0f,
 		1.0f, 1.0f, 1.0f, 1.0f,
 		0.0f, 0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
 	};
 
-	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 3> m_baseResources = { }; // MRT (0=color, 1=normal, 2=luminance)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseRtvHeap = nullptr; // RT views (0:color, 1:normal, 2=luminance)
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_baseSrvHeap = nullptr; // SR views (0:color, 1:normal, 2=luminance)
+	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kNumResource> m_resources = { };
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_rtvHeap = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvHeap = nullptr;
 };
 
 class Render : public Observer
@@ -87,17 +92,18 @@ public:
 	void toggleAnimationEnable();
 	void toggleAnimationReverse();
 	void setFpsInImgui(float fps);
-	void moveEye(MoveEye moveEye);
+	void moveEye(MoveEye moveEye, float val = 0.0f);
 
 private:
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
-	HRESULT createPostView();
 	HRESULT updateMvpMatrix(bool animationReversed);
 	void updateHighLuminanceThreshold(float val);
-	HRESULT clearDepthRenderTarget(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dsvH);
-	HRESULT preProcessForOffscreenRendering(ID3D12GraphicsCommandList* list);
-	void renderDebugBuffers(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle);
+	HRESULT clearDepthRenderTargets(ID3D12GraphicsCommandList* list);
+	void renderShadowPass(ID3D12GraphicsCommandList* list);
+	void renderBasePass(ID3D12GraphicsCommandList* list);
+	void renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE fbRtvHandle);
+	void renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle);
 
 	static Toolkit s_toolkit;
 
@@ -118,10 +124,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_sceneParamResource = nullptr;
 	SceneParam* m_sceneParam = nullptr;
 	DirectX::XMFLOAT3 m_parallelLightVec = { };
-	BaseResource m_baseResource;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_postResource = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postRtvHeap = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_postSrvHeap = nullptr;
+	OffScreenResource m_offScreenResource;
 
 	Microsoft::WRL::ComPtr<ID3D12Fence> m_pFence = nullptr;
 	UINT64 m_fenceVal = 0;
@@ -131,6 +134,7 @@ private:
 	Pera m_pera;
 	Floor m_floor;
 	Bloom m_bloom;
+	DoF m_dof;
 	Shadow m_shadow;
 	RenderGraph m_graph;
 	ImguiIf m_imguif;

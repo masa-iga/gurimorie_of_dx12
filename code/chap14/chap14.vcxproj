@@ -94,10 +94,12 @@
   <ItemGroup>
     <ClCompile Include="bloom.cpp" />
     <ClCompile Include="debug.cpp" />
+    <ClCompile Include="dof.cpp" />
     <ClCompile Include="floor.cpp" />
     <ClCompile Include="graph.cpp" />
     <ClCompile Include="imgui_if.cpp" />
     <ClCompile Include="init.cpp" />
+    <ClCompile Include="input.cpp" />
     <ClCompile Include="loader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="observer.cpp" />
@@ -115,10 +117,12 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="constant.h" />
     <ClInclude Include="debug.h" />
+    <ClInclude Include="dof.h" />
     <ClInclude Include="floor.h" />
     <ClInclude Include="graph.h" />
     <ClInclude Include="imgui_if.h" />
     <ClInclude Include="init.h" />
+    <ClInclude Include="input.h" />
     <ClInclude Include="loader.h" />
     <ClInclude Include="observer.h" />
     <ClInclude Include="pera.h" />
@@ -152,6 +156,14 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="bloomVertex.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="dofPixel.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="dofVertex.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
@@ -242,9 +254,11 @@
     <None Include="..\resource\Motion\swing.vmd" />
     <None Include="BasicShaderHeader.hlsli" />
     <None Include="bloomHeader.hlsli" />
+    <None Include="dofHeader.hlsli" />
     <None Include="floorHeader.hlsli" />
     <None Include="packages.config" />
     <None Include="peraHeader.hlsli" />
+    <None Include="util.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\resource\Model\ao.bmp" />

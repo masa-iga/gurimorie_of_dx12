@@ -2,13 +2,20 @@
 #pragma warning(push, 0)
 #include <codeanalysis/warnings.h>
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
-#include <winnt.h>
 #include <cstdint>
+#include <d3d12.h>
+#include <d3dcompiler.h>
+#include <winnt.h>
 #pragma warning(pop)
 
 namespace Constant {
 	constexpr size_t kD3D12ConstantBufferAlignment = 256; // bytes
+	constexpr D3D_SHADER_MACRO* kCompileShaderDefines = nullptr;
 	constexpr LPCSTR kVsShaderModel = "vs_5_0";
 	constexpr LPCSTR kPsShaderModel = "ps_5_0";
+	constexpr UINT kCompileShaderFlags1 = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+	constexpr UINT kCompileShaderFlags2 = 0;
 	constexpr DXGI_FORMAT kDefaultRtFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	constexpr D3D_ROOT_SIGNATURE_VERSION kRootSignatureVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 }
+

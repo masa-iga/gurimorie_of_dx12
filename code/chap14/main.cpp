@@ -7,11 +7,13 @@
 #include <cassert>
 #include <dxgidebug.h>
 #include <tchar.h>
+#include <windowsx.h>
 #pragma warning(pop)
 #include "config.h"
 #include "debug.h"
 #include "imgui_if.h"
 #include "init.h"
+#include "input.h"
 #include "loader.h"
 #include "pmd_actor.h"
 #include "render.h"
@@ -21,16 +23,12 @@
 using namespace std;
 using namespace Microsoft::WRL;
 
-enum class Action {
-	kNone,
-	kQuit,
-};
-
 static LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
-static Action processKeyInput(const MSG& msg, Render* pRender);
 static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd);
 static void trackFrameTime();
 static float getFps();
+
+static uint64_t s_frame = 0;
 
 #ifdef _DEBUG
 int main()
@@ -81,7 +79,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		MSG msg = {};
 
-		for (UINT i = 0; ; ++i)
+		for (s_frame = 0; ; ++s_frame)
 		{
 			render.setFpsInImgui(getFps());
 			ThrowIfFailed(render.update());
@@ -91,19 +89,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 			{
+				if (msg.message == WM_QUIT)
+					break;
+
+				if (Input::processInputEvent(msg, &render) == Action::kQuit)
+				{
+					render.waitForEndOfRendering();
+					break;
+				}
+
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
-			}
-
-			if (msg.message == WM_QUIT)
-			{
-				break;
-			}
-
-			if (processKeyInput(msg, &render) == Action::kQuit)
-			{
-				render.waitForEndOfRendering();
-				break;
 			}
 
 			trackFrameTime();
@@ -127,54 +123,6 @@ LRESULT WindowProcedure(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 
 	ImguiIf::wndProcHandler(hwnd, msg, wparam, lparam);
 	return DefWindowProc(hwnd, msg, wparam, lparam);
-}
-
-static Action processKeyInput(const MSG& msg, Render* pRender)
-{
-	switch (msg.message) {
-	case WM_KEYDOWN:
-		switch (msg.wParam) {
-		case VK_ESCAPE:
-			return Action::kQuit;
-		case VK_SPACE:
-			pRender->toggleAnimationEnable();
-			break;
-		case VK_LEFT:
-			pRender->moveEye(MoveEye::kCounterClockwise);
-			break;
-		case VK_UP:
-			pRender->moveEye(MoveEye::kUp);
-			break;
-		case VK_RIGHT:
-			pRender->moveEye(MoveEye::kClockwise);
-			break;
-		case VK_DOWN:
-			pRender->moveEye(MoveEye::kDown);
-			break;
-		case 'A':
-			pRender->moveEye(MoveEye::kLeft);
-			break;
-		case 'W':
-			pRender->moveEye(MoveEye::kForward);
-			break;
-		case 'D':
-			pRender->moveEye(MoveEye::kRight);
-			break;
-		case 'S':
-			pRender->moveEye(MoveEye::kBackward);
-			break;
-		case 'R':
-			pRender->toggleAnimationReverse();
-			break;
-		default:
-			break;
-		}
-		break;
-	default:
-		break;
-	}
-
-	return Action::kNone;
 }
 
 static void tearDown(const WNDCLASSEX& wndClass, const HWND& hwnd)
