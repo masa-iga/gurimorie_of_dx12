@@ -18,6 +18,7 @@
 #include "pmd_actor.h"
 #include "pera.h"
 #include "shadow.h"
+#include "ssao.h"
 #include "timestamp.h"
 #include "toolkit.h"
 
@@ -135,6 +136,7 @@ private:
 	Floor m_floor;
 	Bloom m_bloom;
 	DoF m_dof;
+	Ssao m_ssao;
 	Shadow m_shadow;
 	RenderGraph m_graph;
 	ImguiIf m_imguif;

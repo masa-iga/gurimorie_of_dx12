@@ -296,6 +296,7 @@ HRESULT Render::init(HWND hwnd)
 	ThrowIfFailed(m_floor.init());
 	ThrowIfFailed(m_bloom.init(Config::kWindowWidth, Config::kWindowHeight));
 	ThrowIfFailed(m_dof.init(Config::kWindowWidth, Config::kWindowHeight));
+	ThrowIfFailed(m_ssao.init(Config::kWindowWidth, Config::kWindowHeight));
 	ThrowIfFailed(m_shadow.init());
 	ThrowIfFailed(m_graph.init());
 	ThrowIfFailed(m_imguif.init(hwnd));
@@ -780,6 +781,11 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 	const PixScopedEvent pixScopedEvent(list, "PostProcess");
 
 	m_offScreenResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	// post process: SSAO
+	{
+		;
+	}
 
 	// post process: bloom
 	{

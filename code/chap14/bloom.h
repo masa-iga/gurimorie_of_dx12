@@ -47,7 +47,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_workResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapRtv = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapSrv = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer = { };
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	std::array<Microsoft::WRL::ComPtr<ID3D12RootSignature>, kNumOfType> m_rootSignatures = { };
 	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, kNumOfType> m_pipelineStates = { };

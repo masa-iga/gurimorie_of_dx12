@@ -354,7 +354,7 @@ HRESULT Bloom::createRootSignature()
 
 	auto ret = D3D12SerializeRootSignature(
 		&rootSignatureDesc,
-		D3D_ROOT_SIGNATURE_VERSION_1_0,
+		Constant::kRootSignatureVersion,
 		rootSigBlob.ReleaseAndGetAddressOf(),
 		errorBlob.ReleaseAndGetAddressOf());
 
