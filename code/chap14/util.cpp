@@ -65,7 +65,7 @@ TimeCounter::~TimeCounter()
 
 size_t alignmentedSize(size_t size, size_t alignment)
 {
-	return size + alignment - (size % alignment);
+	return (size % alignment) == 0 ? size : size + (alignment - size % alignment);
 }
 
 std::wstring getWideStringFromString(const std::string& str)

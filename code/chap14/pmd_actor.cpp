@@ -143,10 +143,15 @@ static constexpr D3D12_INPUT_ELEMENT_DESC kInputLayout[] = {
 		D3D12_APPEND_ALIGNED_ELEMENT,
 		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 	},
+	{
+		"PADDING", 0, DXGI_FORMAT_R8G8_UINT, 0,
+		D3D12_APPEND_ALIGNED_ELEMENT,
+		D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+	},
 };
 
-const std::vector<PMDVertex> s_debugVertices = {
-	PMDVertex{
+const std::vector<PMDVertexForLoader> s_debugVertices = {
+	PMDVertexForLoader{
 		DirectX::XMFLOAT3(-0.5f, -0.5f, 0.5f),
 		DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f),
 		DirectX::XMFLOAT2(0.0f, 0.0f),
@@ -154,7 +159,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 		0,
 		0
 	},
-	PMDVertex{
+	PMDVertexForLoader{
 		DirectX::XMFLOAT3(0.0f, 0.5f, 0.5f),
 		DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f),
 		DirectX::XMFLOAT2(0.0f, 0.0f),
@@ -162,7 +167,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 		0,
 		0
 	},
-	PMDVertex{
+	PMDVertexForLoader{
 		DirectX::XMFLOAT3(0.5f, -0.5f, 0.5f),
 		DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f),
 		DirectX::XMFLOAT2(0.0f, 0.0f),
@@ -170,7 +175,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 		0,
 		0
 	},
-	PMDVertex{
+	PMDVertexForLoader{
 		DirectX::XMFLOAT3(-0.5f, 0.5f, 0.2f),
 		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
 		DirectX::XMFLOAT2(0.0f, 0.0f),
@@ -178,7 +183,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 		0,
 		0
 	},
-	PMDVertex{
+	PMDVertexForLoader{
 		DirectX::XMFLOAT3(0.0f, -0.5f, 0.2f),
 		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
 		DirectX::XMFLOAT2(0.0f, 0.0f),
@@ -186,7 +191,7 @@ const std::vector<PMDVertex> s_debugVertices = {
 		0,
 		0
 	},
-	PMDVertex{
+	PMDVertexForLoader{
 		DirectX::XMFLOAT3(0.5f, 0.5f, 0.2f),
 		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
 		DirectX::XMFLOAT2(0.0f, 0.0f),
@@ -201,7 +206,6 @@ static const std::string kMotionDir = "../resource/Motion";
 static const std::string kToonDir = "../resource/toon";
 static constexpr char kSignature[] = "Pmd";
 static constexpr size_t kNumSignature = 3;
-static constexpr size_t kPmdVertexSize = sizeof(PMDVertex);
 const std::vector<UINT16> s_debugIndices = { 0, 1, 2, 3, 4, 5 };
 
 static HRESULT setViewportScissor(int32_t width, int32_t height);
@@ -791,8 +795,24 @@ HRESULT PmdActor::loadPmd(Model model)
 
 		ThrowIfFalse(fread(&m_vertNum, sizeof(m_vertNum), 1, fp) == 1);
 
-		m_vertices.resize(m_vertNum * kPmdVertexSize);
-		ThrowIfFalse(fread(m_vertices.data(), m_vertices.size(), 1, fp) == 1);
+		std::vector<PMDVertexForLoader> vertices; // unaligned to 4 bytes
+		{
+			vertices.resize(m_vertNum * sizeof(PMDVertexForLoader));
+			ThrowIfFalse(fread(vertices.data(), vertices.size(), 1, fp) == 1);
+		}
+
+		m_vertices.resize(m_vertNum * sizeof(PmdVertexForDx)); // should be aligned to 4 bytes
+
+		for (size_t i = 0; i < m_vertNum; ++i)
+		{
+			m_vertices.at(i).pos = vertices.at(i).pos;
+			m_vertices.at(i).normal = vertices.at(i).normal;
+			m_vertices.at(i).uv = vertices.at(i).uv;
+			m_vertices.at(i).boneNo[0] = vertices.at(i).boneNo[0];
+			m_vertices.at(i).boneNo[1] = vertices.at(i).boneNo[1];
+			m_vertices.at(i).boneWeight = vertices.at(i).boneWeight;
+			m_vertices.at(i).edgeFlag = vertices.at(i).edgeFlag;
+		}
 
 		ThrowIfFalse(fread(&m_indicesNum, sizeof(m_indicesNum), 1, fp) == 1);
 
@@ -1906,7 +1926,7 @@ createVertexBufferResource(ComPtr<ID3D12Resource>* vertResource, const std::vect
 		{
 			vbView.BufferLocation = (*vertResource)->GetGPUVirtualAddress();
 			vbView.SizeInBytes = static_cast<UINT>(sizeInBytes);
-			vbView.StrideInBytes = kPmdVertexSize;
+			vbView.StrideInBytes = static_cast<UINT>(Util::alignmentedSize(sizeof(PmdVertexForDx), 4));
 		}
 
 		T* vertMap = nullptr;

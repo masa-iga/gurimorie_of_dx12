@@ -25,7 +25,7 @@ enum class BoneType
 };
 
 #pragma pack(1) // size of the struct is 38 bytes, so need to prevent padding
-struct PMDVertex
+struct PMDVertexForLoader
 {
 	DirectX::XMFLOAT3 pos = { };
 	DirectX::XMFLOAT3 normal = { };
@@ -34,8 +34,20 @@ struct PMDVertex
 	UINT8 boneWeight = 0;
 	UINT8 edgeFlag = 0;
 };
-static_assert(sizeof(PMDVertex) == 38);
+static_assert(sizeof(PMDVertexForLoader) == 38);
 #pragma pack()
+
+struct PmdVertexForDx
+{
+	DirectX::XMFLOAT3 pos = { };
+	DirectX::XMFLOAT3 normal = { };
+	DirectX::XMFLOAT2 uv = { };
+	UINT16 boneNo[2] = { };
+	UINT8 boneWeight = 0;
+	UINT8 edgeFlag = 0;
+	UINT8 padding[2] = { };
+};
+static_assert((sizeof(PmdVertexForDx) % 4) == 0); // must be aligned with 4 bytes
 
 struct MaterialForHlsl
 {
@@ -152,7 +164,7 @@ private:
 
 	bool m_bAnimation = false;
 	DWORD m_animationStartTime = 0;
-	std::vector<PMDVertex> m_vertices;
+	std::vector<PmdVertexForDx> m_vertices;
 	std::vector<UINT16> m_indices;
 	std::vector<Material> m_materials;
 	UINT m_vertNum = 0;
