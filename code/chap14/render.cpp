@@ -774,7 +774,9 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 
 	// post process: SSAO
 	{
-		;
+		m_ssao.render(
+			list,
+			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kPostSsao));
 	}
 
 	// post process: bloom
