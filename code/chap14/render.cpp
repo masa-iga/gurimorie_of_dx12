@@ -44,20 +44,11 @@ HRESULT OffScreenResource::createResource(DXGI_FORMAT format)
 {
 	// create resource for render-to-texture
 	{
-		D3D12_HEAP_PROPERTIES heapProp = { };
-		{
 #if NO_UPDATE_TEXTURE_FROM_CPU
-			heapProp.Type = D3D12_HEAP_TYPE_DEFAULT;
-			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT, 0, 0);
 #else
-			heapProp.Type = D3D12_HEAP_TYPE_CUSTOM;
-			heapProp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
-			heapProp.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_CPU_PAGE_PROPERTY_WRITE_BACK, D3D12_MEMORY_POOL_L0, 0, 0);
 #endif // NO_UPDATE_TEXTURE_FROM_CPU
-			heapProp.CreationNodeMask = 0;
-			heapProp.VisibleNodeMask = 0;
-		}
 
 		D3D12_RESOURCE_DESC resDesc = Resource::instance()->getFrameBuffer(0)->GetDesc();
 
@@ -119,11 +110,10 @@ HRESULT OffScreenResource::createResource(DXGI_FORMAT format)
 	}
 	// create RTV views
 	{
-		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = { };
-		{
-			rtvDesc.Format = format;
-			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-		}
+		const D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {
+			.Format = format,
+			.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
+		};
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_rtvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 
@@ -139,13 +129,12 @@ HRESULT OffScreenResource::createResource(DXGI_FORMAT format)
 
 	// create SRV heap
 	{
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc = { };
-		{
-			heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-			heapDesc.NumDescriptors = kNumResource;
-			heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-			heapDesc.NodeMask = 0;
-		}
+		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.NumDescriptors = kNumResource,
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+			.NodeMask = 0,
+		};
 
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
@@ -157,16 +146,17 @@ HRESULT OffScreenResource::createResource(DXGI_FORMAT format)
 	}
 	// create SR views
 	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = { };
-		{
-			srvDesc.Format = format;
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Texture2D.MostDetailedMip = 0;
-			srvDesc.Texture2D.MipLevels = 1;
-			srvDesc.Texture2D.PlaneSlice = 0;
-			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-		}
+		const D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
+			.Format = format,
+			.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+			.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+			.Texture2D = {
+				.MostDetailedMip = 0,
+				.MipLevels = 1,
+				.PlaneSlice = 0,
+				.ResourceMinLODClamp = 0.0f,
+			},
+		};
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_srvHeap.Get()->GetCPUDescriptorHandleForHeapStart();
 

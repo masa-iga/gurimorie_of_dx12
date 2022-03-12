@@ -48,11 +48,12 @@ public:
 		kColor,
 		kNormal,
 		kLuminance,
+		kPostSsao,
 		kPostBloom,
 		kPostDof,
-		// Do not forget increase kNumResource if you add a new field
+		// Do not forget to increase kNumResource if you add a new field
 	};
-	static constexpr size_t kNumResource = 5;
+	static constexpr size_t kNumResource = 6;
 
 	HRESULT createResource(DXGI_FORMAT format);
 	HRESULT clearRenderTargets(ID3D12GraphicsCommandList* list) const;
@@ -68,6 +69,7 @@ private:
 		1.0f, 1.0f, 1.0f, 1.0f,
 		1.0f, 1.0f, 1.0f, 1.0f,
 		0.0f, 0.0f, 0.0f, 1.0f,
+		0.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 0.0f,
 	};
