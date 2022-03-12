@@ -11,7 +11,7 @@ class Ssao
 {
 public:
 	HRESULT init(UINT64 width, UINT64 height);
-	HRESULT render(ID3D12GraphicsCommandList* list);
+	HRESULT render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv);
 
 private:
 	static constexpr LPCWSTR kVsFile = L"ssaoVertex.hlsl";

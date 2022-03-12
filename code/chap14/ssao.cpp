@@ -18,17 +18,20 @@ HRESULT Ssao::init(UINT64 width, UINT64 height)
 	return S_OK;
 }
 
-HRESULT Ssao::render(ID3D12GraphicsCommandList* list)
+HRESULT Ssao::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv)
 {
+	// TODO:
 	// set root signature
 	// set pipeline state
 	// set descriptor heap
 	// set graphics root descriptor table
 	// viewport
 	// scissor
-	// set render target
-	// set primitive type
-	// set vertex buffer
+
+//	list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
+//	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+//	list->IASetVertexBuffers(); // TODO: create shared common vertex view for a quad
+
 	// draw
 	return S_OK;
 }
