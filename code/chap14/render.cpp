@@ -776,9 +776,23 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 
 	// post process: SSAO
 	{
+		const PixScopedEvent pixScopedEvent(list, "PostProcess : SSAO");
+
+		m_offScreenResource.buildBarrier(
+			list,
+			OffScreenResource::Type::kPostSsao,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+
 		m_ssao.render(
 			list,
 			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kPostSsao));
+
+		m_offScreenResource.buildBarrier(
+			list,
+			OffScreenResource::Type::kPostSsao,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	}
 
 	// post process: bloom
