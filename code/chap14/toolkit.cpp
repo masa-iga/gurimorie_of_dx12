@@ -449,3 +449,71 @@ HRESULT Toolkit::drawClearInternal(ID3D12GraphicsCommandList* list, D3D12_VIEWPO
 	return S_OK;
 }
 
+
+Microsoft::WRL::ComPtr<ID3D12Resource> CommonResource::m_vertexBuffer = nullptr;
+D3D12_VERTEX_BUFFER_VIEW CommonResource::m_vbView = { };
+
+HRESULT CommonResource::init()
+{
+	ThrowIfFailed(createVertexBuffer());
+	return S_OK;
+}
+
+void CommonResource::tearDown()
+{
+	m_vertexBuffer.Reset();
+}
+
+HRESULT CommonResource::createVertexBuffer()
+{
+	struct VertexBuffer
+	{
+		DirectX::XMFLOAT3 pos = { };
+		DirectX::XMFLOAT2 uv = { };
+	};
+
+	constexpr VertexBuffer vb[] = {
+		{{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}},
+		{{-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{ 1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
+		{{ 1.0f,  1.0f, 0.0f}, {1.0f, 0.0f}},
+	};
+
+	{
+		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD, 0, 0);
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(vb));
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(m_vertexBuffer.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_vertexBuffer.Get()->SetName(Util::getWideStringFromString("CommomResourceVertexBuffer").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		VertexBuffer* pVb = nullptr;
+
+		// map
+		auto result = m_vertexBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVb));
+		ThrowIfFailed(result);
+
+		std::copy(std::begin(vb), std::end(vb), pVb);
+
+		// unmap
+		m_vertexBuffer.Get()->Unmap(0, nullptr);
+	}
+
+	m_vbView = {
+		.BufferLocation = m_vertexBuffer.Get()->GetGPUVirtualAddress(),
+		.SizeInBytes = sizeof(vb),
+		.StrideInBytes = sizeof(VertexBuffer),
+	};
+
+	return S_OK;
+}

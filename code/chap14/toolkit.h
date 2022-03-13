@@ -76,3 +76,17 @@ private:
 	std::array<D3D12_VERTEX_BUFFER_VIEW, static_cast<uint32_t>(DrawType::kEnd)> m_vertexBufferViews = { };
 };
 
+class CommonResource
+{
+public:
+	static HRESULT init();
+	static void tearDown();
+	static const D3D12_VERTEX_BUFFER_VIEW* getVertexBufferView() { return &m_vbView; };
+
+private:
+	static HRESULT createVertexBuffer();
+
+	static Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
+	static D3D12_VERTEX_BUFFER_VIEW m_vbView;
+};
+
