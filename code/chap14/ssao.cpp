@@ -4,9 +4,11 @@
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <d3dcompiler.h>
 #pragma warning(pop)
+#include "config.h"
 #include "constant.h"
 #include "debug.h"
 #include "init.h"
+#include "toolkit.h"
 #include "util.h"
 
 using namespace Microsoft::WRL;
@@ -20,19 +22,29 @@ HRESULT Ssao::init(UINT64 width, UINT64 height)
 
 HRESULT Ssao::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv)
 {
+	list->SetGraphicsRootSignature(m_rootSignature.Get());
+	list->SetPipelineState(m_pipelineState.Get());
+
 	// TODO:
-	// set root signature
-	// set pipeline state
 	// set descriptor heap
 	// set graphics root descriptor table
-	// viewport
-	// scissor
 
-//	list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
-//	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-//	list->IASetVertexBuffers(); // TODO: create shared common vertex view for a quad
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
+		list->RSSetViewports(1, &viewport);
+	}
 
-	// draw
+	{
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+		list->RSSetScissorRects(1, &scissorRect);
+	}
+
+	list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
+	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	list->IASetVertexBuffers(0, 1, CommonResource::getVertexBufferView());
+
+	list->DrawInstanced(4, 1, 0, 0);
+
 	return S_OK;
 }
 

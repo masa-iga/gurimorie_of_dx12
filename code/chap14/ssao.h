@@ -20,6 +20,7 @@ private:
 	static constexpr LPCSTR kPsEntryPoint = "main";
 
 	HRESULT compileShaders();
+	HRESULT createResource(UINT64 dstWidth, UINT dstHeight);
 	HRESULT createRootSignature();
 	HRESULT createPipelineState();
 
