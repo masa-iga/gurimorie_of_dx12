@@ -268,6 +268,7 @@ HRESULT Render::init(HWND hwnd)
 	ThrowIfFailed(createSceneMatrixBuffer());
 	ThrowIfFailed(createViews());
 
+	ThrowIfFailed(CommonResource::init());
 	ThrowIfFailed(s_toolkit.init());
 
 	m_pmdActors.resize(1);
@@ -299,6 +300,7 @@ HRESULT Render::init(HWND hwnd)
 
 void Render::teardown()
 {
+	CommonResource::tearDown();
 	s_toolkit.teardown();
 	m_imguif.teardown();
 	m_imguif.removeObserver(this);
