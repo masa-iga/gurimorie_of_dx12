@@ -301,6 +301,9 @@
     <None Include="util.hlsli">
       <Filter>シェーダ ファイル</Filter>
     </None>
+    <None Include="ssaoHeader.hlsli">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="..\resource\Model\ao.bmp">

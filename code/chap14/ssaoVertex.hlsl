@@ -1,4 +1,12 @@
-float4 main( float4 pos : POSITION ) : SV_POSITION
+#include "ssaoHeader.hlsli"
+
+VsOut main( float4 pos : POSITION )
 {
-	return pos;
+    VsOut vsOut;
+    {
+        vsOut.svpos = pos;
+        vsOut.uv = float2(0, 0);
+    }
+
+	return vsOut;
 }
