@@ -59,6 +59,7 @@ public:
 	HRESULT clearRenderTargets(ID3D12GraphicsCommandList* list) const;
 	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, Type type, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
 	HRESULT buildBarrier(ID3D12GraphicsCommandList* list, D3D12_RESOURCE_STATES StateBefore, D3D12_RESOURCE_STATES StateAfter) const;
+	Microsoft::WRL::ComPtr<ID3D12Resource> getResource(Type type) const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getRtvHeap() const;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getSrvHeap() const;
 	D3D12_CPU_DESCRIPTOR_HANDLE getRtvCpuDescHandle(Type type) const;

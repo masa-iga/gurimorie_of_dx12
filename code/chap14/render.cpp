@@ -216,6 +216,11 @@ HRESULT OffScreenResource::buildBarrier(ID3D12GraphicsCommandList* list, D3D12_R
 	return S_OK;
 }
 
+Microsoft::WRL::ComPtr<ID3D12Resource> OffScreenResource::getResource(Type type) const
+{
+	return m_resources.at(static_cast<size_t>(type));
+}
+
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> OffScreenResource::getRtvHeap() const
 {
 	return m_rtvHeap;
