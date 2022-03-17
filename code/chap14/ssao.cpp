@@ -136,7 +136,7 @@ HRESULT Ssao::createResource(UINT64 dstWidth, UINT dstHeight)
 		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
 			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 			.NumDescriptors = 2,
-			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 			.NodeMask = 0,
 		};
 
@@ -155,7 +155,7 @@ HRESULT Ssao::createResource(UINT64 dstWidth, UINT dstHeight)
 HRESULT Ssao::createRootSignature()
 {
 	const D3D12_DESCRIPTOR_RANGE descRanges[] = {
-		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0 /* slot */),
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0 /* slot */),
 	};
 
 	const D3D12_ROOT_PARAMETER rootParams[] = {
@@ -339,13 +339,8 @@ HRESULT Ssao::renderSsao(ID3D12GraphicsCommandList* list)
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 	list->SetPipelineState(m_pipelineState.Get());
 
-#if 0 // TODO: imple
-	ID3D12DescriptorHeap* heap = nullptr;
-	list->SetDescriptorHeaps(1, &heap); // TODO
-
-	D3D12_GPU_DESCRIPTOR_HANDLE texDesc = { };
-	list->SetGraphicsRootDescriptorTable(0, texDesc); // TODO
-#endif
+	list->SetDescriptorHeaps(1, m_workDescHeapSrv.GetAddressOf());
+	list->SetGraphicsRootDescriptorTable(0 /* RootParameterIndex */, m_workDescHeapSrv.Get()->GetGPUDescriptorHandleForHeapStart());
 
 	{
 		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
