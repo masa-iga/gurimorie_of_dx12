@@ -789,9 +789,11 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-		m_ssao.render(
-			list,
-			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kPostSsao));
+		m_ssao.setResource(Ssao::TargetResource::kDstRt, m_offScreenResource.getResource(OffScreenResource::Type::kPostSsao));
+		m_ssao.setResource(Ssao::TargetResource::kSrcDepth, m_depthResource);
+		m_ssao.setResource(Ssao::TargetResource::kSrcNormal, m_offScreenResource.getResource(OffScreenResource::Type::kNormal));
+
+		m_ssao.render(list);
 
 		m_offScreenResource.buildBarrier(
 			list,

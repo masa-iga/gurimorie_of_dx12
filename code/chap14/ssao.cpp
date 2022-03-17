@@ -17,33 +17,27 @@ HRESULT Ssao::init(UINT64 width, UINT64 height)
 {
 	ThrowIfFailed(compileShaders());
 	ThrowIfFailed(createPipelineState());
+	ThrowIfFailed(createResource(width, static_cast<UINT>(height)));
 	return S_OK;
 }
 
-HRESULT Ssao::render(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE dstRtv)
+void Ssao::setResource(TargetResource target, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
 {
-	list->SetGraphicsRootSignature(m_rootSignature.Get());
-	list->SetPipelineState(m_pipelineState.Get());
-
-	// TODO:
-	// set descriptor heap
-	// set graphics root descriptor table
-
-	{
-		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
-		list->RSSetViewports(1, &viewport);
+	switch (target) {
+	case TargetResource::kDstRt: m_dstResource = resource; break;
+	case TargetResource::kSrcDepth: m_srcDepthResource = resource; break;
+	case TargetResource::kSrcNormal: m_srcNormalResource = resource; break;
+	default: Debug::debugOutputFormatString("illegal case. (%d)\n", target); ThrowIfFalse(false);
 	}
+}
 
-	{
-		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
-		list->RSSetScissorRects(1, &scissorRect);
-	}
+HRESULT Ssao::render(ID3D12GraphicsCommandList* list)
+{
+	setupRenderTargetView();
+	setupShaderResourceView();
 
-	list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
-	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	list->IASetVertexBuffers(0, 1, CommonResource::getVertexBufferView());
-
-	list->DrawInstanced(4, 1, 0, 0);
+	ThrowIfFailed(renderSsao(list));
+	ThrowIfFailed(renderToTarget(list));
 
 	return S_OK;
 }
@@ -88,6 +82,71 @@ HRESULT Ssao::compileShaders()
 			Debug::outputDebugMessage(errorBlob.Get());
 			return E_FAIL;
 		}
+	}
+
+	return S_OK;
+}
+
+HRESULT Ssao::createResource(UINT64 dstWidth, UINT dstHeight)
+{
+	{
+		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+			Constant::kDefaultRtFormat,
+			dstWidth,
+			dstHeight,
+			1,
+			0,
+			1,
+			0,
+			D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+		const D3D12_CLEAR_VALUE clearValue = CD3DX12_CLEAR_VALUE(resourceDesc.Format, kClearColor);
+
+		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
+			&heapProp,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			&clearValue,
+			IID_PPV_ARGS(m_workResource.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_workResource.Get()->SetName(Util::getWideStringFromString("ssaoWorkResource").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+			.NumDescriptors = 2,
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+			.NodeMask = 0,
+		};
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_workDescHeapRtv.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_workDescHeapRtv.Get()->SetName(Util::getWideStringFromString("ssaoWorkRtvDescHeap").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
+			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+			.NumDescriptors = 2,
+			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
+			.NodeMask = 0,
+		};
+
+		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+			&heapDesc,
+			IID_PPV_ARGS(m_workDescHeapSrv.ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_workDescHeapSrv.Get()->SetName(Util::getWideStringFromString("ssaoWorkSrvDescHeap").c_str());
+		ThrowIfFailed(result);
 	}
 
 	return S_OK;
@@ -207,3 +266,114 @@ HRESULT Ssao::createPipelineState()
 
 	return S_OK;
 }
+
+void Ssao::setupRenderTargetView()
+{
+	ThrowIfFalse(m_dstResource != nullptr);
+
+	ID3D12Resource* resources[] = {
+		m_workResource.Get(),
+		m_dstResource.Get(),
+	};
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = m_workDescHeapRtv.Get()->GetCPUDescriptorHandleForHeapStart();
+
+	for (auto& resource : resources)
+	{
+		const D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {
+			.Format = resource->GetDesc().Format,
+			.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
+			.Texture2D = { 0, 0 },
+		};
+
+		Resource::instance()->getDevice()->CreateRenderTargetView(
+			resource,
+			&rtvDesc,
+			cpuDescHandle);
+
+		cpuDescHandle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	}
+}
+
+void Ssao::setupShaderResourceView()
+{
+	ThrowIfFalse(m_srcDepthResource != nullptr);
+	ThrowIfFalse(m_srcNormalResource != nullptr);
+
+	ID3D12Resource* resources[] = {
+		m_srcDepthResource.Get(),
+		m_srcNormalResource.Get(),
+	};
+
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = m_workDescHeapSrv.Get()->GetCPUDescriptorHandleForHeapStart();
+
+	for (auto& resource : resources)
+	{
+		const DXGI_FORMAT format = (resource->GetDesc().Format == DXGI_FORMAT_R32_TYPELESS) ?
+			DXGI_FORMAT_R32_FLOAT :
+			resource->GetDesc().Format;
+
+		const D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
+			.Format = format,
+			.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+			.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+			.Texture2D = {
+				.MostDetailedMip = 0,
+				.MipLevels = 1,
+				.PlaneSlice = 0,
+				.ResourceMinLODClamp = 0.0f,
+			},
+		};
+
+		Resource::instance()->getDevice()->CreateShaderResourceView(
+			resource,
+			&srvDesc,
+			cpuDescHandle);
+
+		cpuDescHandle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	}
+}
+
+HRESULT Ssao::renderSsao(ID3D12GraphicsCommandList* list)
+{
+	list->SetGraphicsRootSignature(m_rootSignature.Get());
+	list->SetPipelineState(m_pipelineState.Get());
+
+#if 0 // TODO: imple
+	ID3D12DescriptorHeap* heap = nullptr;
+	list->SetDescriptorHeaps(1, &heap); // TODO
+
+	D3D12_GPU_DESCRIPTOR_HANDLE texDesc = { };
+	list->SetGraphicsRootDescriptorTable(0, texDesc); // TODO
+#endif
+
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
+		list->RSSetViewports(1, &viewport);
+	}
+
+	{
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+		list->RSSetScissorRects(1, &scissorRect);
+	}
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE dstRtv = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+		m_workDescHeapRtv.Get()->GetCPUDescriptorHandleForHeapStart(),
+		0,
+		Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+
+	list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
+	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	list->IASetVertexBuffers(0, 1, CommonResource::getVertexBufferView());
+
+	list->DrawInstanced(4, 1, 0, 0);
+
+	return S_OK;
+}
+
+HRESULT Ssao::renderToTarget(ID3D12GraphicsCommandList* list)
+{
+	// TODO: imple
+	return S_OK;
+}
+
