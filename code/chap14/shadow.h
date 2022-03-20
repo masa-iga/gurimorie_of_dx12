@@ -14,7 +14,6 @@ public:
 	{
 		kQuadR,
 		kQuadRgba,
-		kFrameLine,
 		kEnd,
 	};
 
@@ -23,6 +22,12 @@ public:
 	HRESULT render(ID3D12GraphicsCommandList* pList, D3D12_CPU_DESCRIPTOR_HANDLE dstRt);
 
 private:
+	enum class TypeInternal
+	{
+		kFrameLine = static_cast<int32_t>(Type::kEnd),
+		kEnd,
+	};
+
 	enum class MeshType
 	{
 		kQuad,
@@ -53,9 +58,9 @@ private:
 	void setupSrv();
 
 	Microsoft::WRL::ComPtr<ID3DBlob> m_commonVs = nullptr;
-	std::array<Microsoft::WRL::ComPtr<ID3DBlob>, static_cast<size_t>(Type::kEnd)> m_psArray = { };
+	std::array<Microsoft::WRL::ComPtr<ID3DBlob>, static_cast<size_t>(TypeInternal::kEnd)> m_psArray = { };
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
-	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(Type::kEnd)> m_pipelineStates = { };
+	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(TypeInternal::kEnd)> m_pipelineStates = { };
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, static_cast<size_t>(MeshType::kEnd)> m_vbResources = { };
 	std::array<D3D12_VERTEX_BUFFER_VIEW, static_cast<size_t>(MeshType::kEnd)> m_vbViews = { };
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvDescHeap = nullptr;

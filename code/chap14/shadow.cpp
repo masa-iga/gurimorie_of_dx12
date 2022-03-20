@@ -41,7 +41,7 @@ HRESULT Shadow::render(ID3D12GraphicsCommandList* pList, D3D12_CPU_DESCRIPTOR_HA
     {
         const D3D12_GPU_DESCRIPTOR_HANDLE gpuDescHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(
             m_srvDescHeap.Get()->GetGPUDescriptorHandleForHeapStart(),
-            i,
+            static_cast<INT>(i),
             Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
 		pList->RSSetViewports(1, &m_commands.at(i).m_viewport);
@@ -67,7 +67,7 @@ HRESULT Shadow::render(ID3D12GraphicsCommandList* pList, D3D12_CPU_DESCRIPTOR_HA
 
         // draw frame
         {
-            pList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kFrameLine)).Get());
+            pList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(TypeInternal::kFrameLine)).Get());
             pList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
             pList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kFrameLine)));
 
@@ -143,7 +143,7 @@ HRESULT Shadow::compileShaders()
         "ps_5_0",
         0,
         0,
-        m_psArray.at(static_cast<size_t>(Type::kFrameLine)).ReleaseAndGetAddressOf(),
+        m_psArray.at(static_cast<size_t>(TypeInternal::kFrameLine)).ReleaseAndGetAddressOf(),
         errBlob.ReleaseAndGetAddressOf());
 
     if (FAILED(result))
@@ -472,11 +472,11 @@ HRESULT Shadow::createPipelineState()
     }
 
     {
-		pipelineDesc.PS = { m_psArray.at(static_cast<size_t>(Type::kFrameLine)).Get()->GetBufferPointer(), m_psArray.at(static_cast<size_t>(Type::kFrameLine)).Get()->GetBufferSize() };
+		pipelineDesc.PS = { m_psArray.at(static_cast<size_t>(TypeInternal::kFrameLine)).Get()->GetBufferPointer(), m_psArray.at(static_cast<size_t>(TypeInternal::kFrameLine)).Get()->GetBufferSize() };
         pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     }
     {
-        auto& pipelineState = m_pipelineStates.at(static_cast<size_t>(Type::kFrameLine));
+        auto& pipelineState = m_pipelineStates.at(static_cast<size_t>(TypeInternal::kFrameLine));
 
         auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
             &pipelineDesc,
@@ -512,8 +512,6 @@ HRESULT Shadow::createDescriptorHeap()
 
 void Shadow::setupSrv()
 {
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = m_srvDescHeap.Get()->GetCPUDescriptorHandleForHeapStart();
-
     for (size_t i = 0; i < m_numCommand; ++i)
     {
         auto resource = m_commands.at(i).m_resource;
@@ -525,7 +523,7 @@ void Shadow::setupSrv()
             format = DXGI_FORMAT_R32_FLOAT;
         }
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
+        const D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
             .Format = format,
             .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
             .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
@@ -537,11 +535,14 @@ void Shadow::setupSrv()
 			},
         };
 
+        const D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+            m_srvDescHeap.Get()->GetCPUDescriptorHandleForHeapStart(),
+            static_cast<INT>(i),
+            Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+
         Resource::instance()->getDevice()->CreateShaderResourceView(
             resource,
             &srvDesc,
             cpuDescHandle);
-
-        cpuDescHandle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
     }
 }
