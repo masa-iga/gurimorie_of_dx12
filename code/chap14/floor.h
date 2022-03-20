@@ -15,7 +15,7 @@ public:
 	HRESULT init();
 	HRESULT renderShadow(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthHeap);
 	HRESULT render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, ID3D12DescriptorHeap* depthLightSrvHeap);
-	HRESULT renderAxis(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap);
+	HRESULT renderAxis(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, D3D12_CPU_DESCRIPTOR_HANDLE dstRt, D3D12_CPU_DESCRIPTOR_HANDLE dstDrt);
 
 private:
 	struct VsType

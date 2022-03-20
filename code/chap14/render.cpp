@@ -388,6 +388,29 @@ HRESULT Render::render()
 
 	renderDebugPass(list, &rtvH);
 
+	// UI: axis
+	{
+		{
+			const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+				m_depthResource.Get(),
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_DEPTH_READ,
+				0);
+			list->ResourceBarrier(1, &barrier);
+		}
+
+		m_floor.renderAxis(list, m_sceneDescHeap.Get(), rtvH, dsvH);
+
+		{
+			const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+				m_depthResource.Get(),
+				D3D12_RESOURCE_STATE_DEPTH_READ,
+				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+				0);
+			list->ResourceBarrier(1, &barrier);
+		}
+	}
+
 	// UI: render imgui
 	{
 		const PixScopedEvent pixScopedEvent(list, "IMGUI");
@@ -764,7 +787,6 @@ void Render::renderBasePass(ID3D12GraphicsCommandList* list)
 
 	{
 		m_floor.render(list, m_sceneDescHeap.Get(), m_lightDepthSrvHeap.Get());
-		m_floor.renderAxis(list, m_sceneDescHeap.Get());
 
 		for (const auto& actor : m_pmdActors)
 		{

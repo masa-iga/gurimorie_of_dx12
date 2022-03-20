@@ -117,7 +117,7 @@ HRESULT Floor::render(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sce
 	return S_OK;
 }
 
-HRESULT Floor::renderAxis(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap)
+HRESULT Floor::renderAxis(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap* sceneDescHeap, D3D12_CPU_DESCRIPTOR_HANDLE dstRt, D3D12_CPU_DESCRIPTOR_HANDLE dstDrt)
 {
 	ThrowIfFalse(list != nullptr);
 	ThrowIfFalse(sceneDescHeap != nullptr);
@@ -127,6 +127,7 @@ HRESULT Floor::renderAxis(ID3D12GraphicsCommandList* list, ID3D12DescriptorHeap*
 		list->IASetVertexBuffers(0, 1, &m_vbViews.at(VbType::kAxis));
 	}
 	setRasterizer(list, Config::kWindowWidth, Config::kWindowHeight);
+	list->OMSetRenderTargets(1, &dstRt, false, &dstDrt);
 
 	list->SetPipelineState(m_pipelineStates.at(PipelineType::kAxis).Get());
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
@@ -560,6 +561,7 @@ HRESULT Floor::createGraphicsPipeline()
 	{
 		pipelineStateDesc.VS = { m_vsArray.at(VsType::kAxis).Get()->GetBufferPointer(), m_vsArray.at(VsType::kAxis).Get()->GetBufferSize() };
 		pipelineStateDesc.PS = { m_psArray.at(PsType::kAxis).Get()->GetBufferPointer(), m_psArray.at(PsType::kAxis).Get()->GetBufferSize() };
+		pipelineStateDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 		pipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 		pipelineStateDesc.NumRenderTargets = 2;
 		pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
