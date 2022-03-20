@@ -17,66 +17,67 @@ HRESULT Shadow::init()
     ThrowIfFailed(compileShaders());
     ThrowIfFailed(createVertexBuffer());
     ThrowIfFailed(createPipelineState());
+    ThrowIfFailed(createDescriptorHeap());
     return S_OK;
 }
 
-HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap)
+void Shadow::pushRenderCommand(Type type, ID3D12Resource* resource, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
 {
-    const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.f, 0.f, Config::kWindowWidth, Config::kWindowHeight);
-    const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
-    return render(pCommandList, pRtvHeap, texDescHeap, viewport, scissorRect);
+    ThrowIfFalse(resource != nullptr);
+
+    m_commands.at(m_numCommand) = Command(type, resource, viewport, scissorRect);
+    ++m_numCommand;
 }
 
-HRESULT Shadow::render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtDesc, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
+HRESULT Shadow::render(ID3D12GraphicsCommandList* pList, D3D12_CPU_DESCRIPTOR_HANDLE dstRt)
 {
-	pCommandList->OMSetRenderTargets(1, pRtDesc, false, nullptr);
+    setupSrv();
 
-	pCommandList->RSSetViewports(1, &viewport);
-	pCommandList->RSSetScissorRects(1, &scissorRect);
+	pList->SetGraphicsRootSignature(m_rootSignature.Get());
+	pList->SetDescriptorHeaps(1, m_srvDescHeap.GetAddressOf());
+	pList->OMSetRenderTargets(1, &dstRt, false, nullptr);
 
-	pCommandList->SetGraphicsRootSignature(m_rootSignature.Get());
-	pCommandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
-	pCommandList->SetGraphicsRootDescriptorTable(0, texDescHeap.Get()->GetGPUDescriptorHandleForHeapStart());
+    for (size_t i = 0; i < m_numCommand; ++i)
+    {
+        const D3D12_GPU_DESCRIPTOR_HANDLE gpuDescHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(
+            m_srvDescHeap.Get()->GetGPUDescriptorHandleForHeapStart(),
+            i,
+            Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
-	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kQuadR)).Get());
-	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kQuad)));
+		pList->RSSetViewports(1, &m_commands.at(i).m_viewport);
+		pList->RSSetScissorRects(1, &m_commands.at(i).m_scissorRect);
 
-	pCommandList->DrawInstanced(4, 1, 0, 0);
+        {
+            if (m_commands.at(i).m_type == Type::kQuadR)
+            {
+                pList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kQuadR)).Get());
+                pList->SetGraphicsRootDescriptorTable(static_cast<UINT>(RootParamIndex::kSrvR), gpuDescHandle);
+            }
+            else
+            {
+                pList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kQuadRgba)).Get());
+                pList->SetGraphicsRootDescriptorTable(static_cast<UINT>(RootParamIndex::kSrvRgba), gpuDescHandle);
+            }
 
-	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kFrameLine)).Get());
-    pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
-    pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kFrameLine)));
+            pList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+            pList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kQuad)));
 
-	pCommandList->DrawInstanced(5, 1, 0, 0);
+            pList->DrawInstanced(4, 1, 0, 0);
+        }
 
-	return S_OK;
-}
+        // draw frame
+        {
+            pList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kFrameLine)).Get());
+            pList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
+            pList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kFrameLine)));
 
-HRESULT Shadow::renderRgba(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtDesc, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_GPU_DESCRIPTOR_HANDLE texDesc, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect)
-{
-	pCommandList->OMSetRenderTargets(1, pRtDesc, false, nullptr);
+            pList->DrawInstanced(5, 1, 0, 0);
+        }
+    }
 
-	pCommandList->RSSetViewports(1, &viewport);
-	pCommandList->RSSetScissorRects(1, &scissorRect);
+    m_numCommand = 0;
 
-	pCommandList->SetGraphicsRootSignature(m_rootSignature.Get());
-	pCommandList->SetDescriptorHeaps(1, texDescHeap.GetAddressOf());
-	pCommandList->SetGraphicsRootDescriptorTable(1, texDesc);
-
-	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kQuadRgba)).Get());
-	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kQuad)));
-
-	pCommandList->DrawInstanced(4, 1, 0, 0);
-
-	pCommandList->SetPipelineState(m_pipelineStates.at(static_cast<size_t>(Type::kFrameLine)).Get());
-    pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
-    pCommandList->IASetVertexBuffers(0, 1, &m_vbViews.at(static_cast<size_t>(MeshType::kFrameLine)));
-
-	pCommandList->DrawInstanced(5, 1, 0, 0);
-
-	return S_OK;
+    return S_OK;
 }
 
 HRESULT Shadow::compileShaders()
@@ -487,4 +488,60 @@ HRESULT Shadow::createPipelineState()
     }
 
     return S_OK;
+}
+
+HRESULT Shadow::createDescriptorHeap()
+{
+    const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
+		.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+		.NumDescriptors = kMaxNumDescriptor,
+		.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
+		.NodeMask = 0,
+    };
+
+	auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
+		&heapDesc,
+		IID_PPV_ARGS(m_srvDescHeap.ReleaseAndGetAddressOf()));
+    ThrowIfFailed(result);
+
+    result = m_srvDescHeap.Get()->SetName(Util::getWideStringFromString("shadowDescHeap").c_str());
+    ThrowIfFailed(result);
+
+    return S_OK;
+}
+
+void Shadow::setupSrv()
+{
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = m_srvDescHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+
+    for (size_t i = 0; i < m_numCommand; ++i)
+    {
+        auto resource = m_commands.at(i).m_resource;
+
+        DXGI_FORMAT format = resource->GetDesc().Format;
+
+        if (format == DXGI_FORMAT_R32_TYPELESS)
+        {
+            format = DXGI_FORMAT_R32_FLOAT;
+        }
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
+            .Format = format,
+            .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+            .Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Texture2D = {
+				.MostDetailedMip = 0,
+				.MipLevels = 1,
+				.PlaneSlice = 0,
+				.ResourceMinLODClamp = 0.0f,
+			},
+        };
+
+        Resource::instance()->getDevice()->CreateShaderResourceView(
+            resource,
+            &srvDesc,
+            cpuDescHandle);
+
+        cpuDescHandle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    }
 }

@@ -894,7 +894,7 @@ void Render::renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DE
 			Config::kWindowWidth / 4,
 			Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
-		m_shadow.render(list, pRtCpuDescHandle, m_lightDepthSrvHeap, viewport, scissorRect);
+		m_shadow.pushRenderCommand(Shadow::Type::kQuadR, m_lightDepthResource.Get(), viewport, scissorRect);
 	}
 
 	if (bDebugBloomLuminance)
@@ -905,21 +905,8 @@ void Render::renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DE
 			Config::kWindowWidth / 4,
 			Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
-		const D3D12_GPU_DESCRIPTOR_HANDLE texGpuDesc = m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance);
 
-		m_shadow.renderRgba(list, pRtCpuDescHandle, m_offScreenResource.getSrvHeap(), texGpuDesc, viewport, scissorRect);
-	}
-
-	if (bDebugGraph)
-	{
-		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
-			0.f,
-			Config::kWindowHeight - Config::kWindowHeight / 8,
-			Config::kWindowWidth / 4,
-			Config::kWindowHeight / 8);
-		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
-
-		m_graph.render(list, viewport, scissorRect);
+		m_shadow.pushRenderCommand(Shadow::Type::kQuadRgba, m_offScreenResource.getResource(OffScreenResource::Type::kLuminance).Get(), viewport, scissorRect);
 	}
 
 	if (bDebugRenderDepth)
@@ -930,7 +917,7 @@ void Render::renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DE
 			Config::kWindowWidth / 4,
 			Config::kWindowHeight / 4);
 		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
-		m_shadow.render(list, pRtCpuDescHandle, m_depthSrvHeap, viewport, scissorRect);
+		m_shadow.pushRenderCommand(Shadow::Type::kQuadR, m_depthResource.Get(), viewport, scissorRect);
 	}
 
 	if (bDebugNormal)
@@ -946,7 +933,23 @@ void Render::renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DE
 			1,
 			Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
-		m_shadow.renderRgba(list, pRtCpuDescHandle, m_offScreenResource.getSrvHeap(), texGpuDesc, viewport, scissorRect);
+		m_shadow.pushRenderCommand(Shadow::Type::kQuadRgba, m_offScreenResource.getResource(OffScreenResource::Type::kNormal).Get(), viewport, scissorRect);
+	}
+
+	if (bDebugGraph)
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(
+			0.f,
+			Config::kWindowHeight - Config::kWindowHeight / 8,
+			Config::kWindowWidth / 4,
+			Config::kWindowHeight / 8);
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+
+		m_graph.render(list, viewport, scissorRect);
+	}
+
+	{
+		m_shadow.render(list, *pRtCpuDescHandle);
 	}
 }
 

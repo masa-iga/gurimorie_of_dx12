@@ -10,12 +10,6 @@
 
 class Shadow {
 public:
-	HRESULT init();
-	HRESULT render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtvHeap, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap);
-	HRESULT render(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtDesc, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect);
-	HRESULT renderRgba(ID3D12GraphicsCommandList* pCommandList, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtDesc, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> texDescHeap, D3D12_GPU_DESCRIPTOR_HANDLE texDesc, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect);
-
-private:
 	enum class Type
 	{
 		kQuadR,
@@ -24,6 +18,11 @@ private:
 		kEnd,
 	};
 
+	HRESULT init();
+	void pushRenderCommand(Type type, ID3D12Resource* resource, D3D12_VIEWPORT viewport, D3D12_RECT scissorRect);
+	HRESULT render(ID3D12GraphicsCommandList* pList, D3D12_CPU_DESCRIPTOR_HANDLE dstRt);
+
+private:
 	enum class MeshType
 	{
 		kQuad,
@@ -31,9 +30,27 @@ private:
 		kEnd,
 	};
 
+	enum class RootParamIndex
+	{
+		kSrvR,
+		kSrvRgba,
+	};
+
+	struct Command {
+		Type m_type = Type::kQuadR;
+		ID3D12Resource* m_resource = nullptr;
+		D3D12_VIEWPORT m_viewport = { };
+		D3D12_RECT m_scissorRect = { };
+	};
+
+	static constexpr size_t kMaxNumCommand = 8;
+    static constexpr UINT kMaxNumDescriptor = kMaxNumCommand;
+
 	HRESULT compileShaders();
 	HRESULT createVertexBuffer();
 	HRESULT createPipelineState();
+	HRESULT createDescriptorHeap();
+	void setupSrv();
 
 	Microsoft::WRL::ComPtr<ID3DBlob> m_commonVs = nullptr;
 	std::array<Microsoft::WRL::ComPtr<ID3DBlob>, static_cast<size_t>(Type::kEnd)> m_psArray = { };
@@ -41,5 +58,8 @@ private:
 	std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(Type::kEnd)> m_pipelineStates = { };
 	std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, static_cast<size_t>(MeshType::kEnd)> m_vbResources = { };
 	std::array<D3D12_VERTEX_BUFFER_VIEW, static_cast<size_t>(MeshType::kEnd)> m_vbViews = { };
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_srvDescHeap = nullptr;
+	std::array<Command, kMaxNumCommand> m_commands = { };
+	size_t m_numCommand = 0;
 };
 
