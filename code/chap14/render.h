@@ -108,6 +108,7 @@ private:
 	void renderBasePass(ID3D12GraphicsCommandList* list);
 	void renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE fbRtvHandle);
 	void renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle);
+	void resolveResourceBarrier(ID3D12GraphicsCommandList* list, ID3D12Resource* backBufferResource);
 
 	static Toolkit s_toolkit;
 

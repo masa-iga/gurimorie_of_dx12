@@ -400,15 +400,6 @@ HRESULT Render::render()
 		}
 
 		m_floor.renderAxis(list, m_sceneDescHeap.Get(), rtvH, dsvH);
-
-		{
-			const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-				m_depthResource.Get(),
-				D3D12_RESOURCE_STATE_DEPTH_READ,
-				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-				0);
-			list->ResourceBarrier(1, &barrier);
-		}
 	}
 
 	// UI: render imgui
@@ -428,15 +419,7 @@ HRESULT Render::render()
 		m_timeStamp.resolve(list);
 	}
 
-	// make ensure that the back buffer can be presented
-	{
-		const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			backBufferResource,
-			D3D12_RESOURCE_STATE_RENDER_TARGET,
-			D3D12_RESOURCE_STATE_PRESENT,
-			0);
-		list->ResourceBarrier(1, &barrier);
-	}
+	resolveResourceBarrier(list, backBufferResource);
 
 	// execute command lists
 	ThrowIfFailed(list->Close());
@@ -972,6 +955,28 @@ void Render::renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DE
 
 	{
 		m_shadow.render(list, *pRtCpuDescHandle);
+	}
+}
+
+void Render::resolveResourceBarrier(ID3D12GraphicsCommandList* list, ID3D12Resource* backBufferResource)
+{
+	// make ensure that the back buffer can be presented
+	{
+		const D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			backBufferResource,
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT,
+			0);
+		list->ResourceBarrier(1, &barrier);
+	}
+
+	{
+		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_depthResource.Get(),
+			D3D12_RESOURCE_STATE_DEPTH_READ,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			0);
+		list->ResourceBarrier(1, &barrier);
 	}
 }
 
