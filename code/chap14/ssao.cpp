@@ -209,27 +209,6 @@ HRESULT Ssao::createPipelineState()
 {
 	ThrowIfFailed(createRootSignature());
 
-	D3D12_INPUT_ELEMENT_DESC inputElementDesc[] = {
-		{
-			.SemanticName = "POSITION",
-			.SemanticIndex = 0,
-			.Format = DXGI_FORMAT_R32G32B32_FLOAT,
-			.InputSlot = 0,
-			.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
-			.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			.InstanceDataStepRate = 0,
-		},
-		{
-			.SemanticName = "TEXCOORD",
-			.SemanticIndex = 0,
-			.Format = DXGI_FORMAT_R32G32_FLOAT,
-			.InputSlot = 0,
-			.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
-			.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			.InstanceDataStepRate = 0,
-		}
-	};
-
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = {
 		.pRootSignature = m_rootSignature.Get(),
 		.VS = { m_vsBlob.Get()->GetBufferPointer(), m_vsBlob.Get()->GetBufferSize() },
@@ -242,7 +221,7 @@ HRESULT Ssao::createPipelineState()
 		.SampleMask = D3D12_DEFAULT_SAMPLE_MASK,
 		.RasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT()),
 		.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(CD3DX12_DEFAULT()),
-		.InputLayout = { inputElementDesc, _countof(inputElementDesc) },
+		.InputLayout = { CommonResource::getInputElementDesc(), CommonResource::getInputElementNum() },
 		.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
 		.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
 		.NumRenderTargets = 1,

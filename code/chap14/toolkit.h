@@ -82,8 +82,31 @@ public:
 	static HRESULT init();
 	static void tearDown();
 	static const D3D12_VERTEX_BUFFER_VIEW* getVertexBufferView() { return &m_vbView; };
+	static const D3D12_INPUT_ELEMENT_DESC* getInputElementDesc() { return kInputElementDesc; };
+	static UINT getInputElementNum() { return _countof(kInputElementDesc); }
 
 private:
+	constexpr static D3D12_INPUT_ELEMENT_DESC kInputElementDesc[] = {
+		{
+			.SemanticName = "POSITION",
+			.SemanticIndex = 0,
+			.Format = DXGI_FORMAT_R32G32B32_FLOAT,
+			.InputSlot = 0,
+			.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
+			.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			.InstanceDataStepRate = 0,
+		},
+		{
+			.SemanticName = "TEXCOORD",
+			.SemanticIndex = 0,
+			.Format = DXGI_FORMAT_R32G32_FLOAT,
+			.InputSlot = 0,
+			.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT,
+			.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			.InstanceDataStepRate = 0,
+		}
+	};
+
 	static HRESULT createVertexBuffer();
 
 	static Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
