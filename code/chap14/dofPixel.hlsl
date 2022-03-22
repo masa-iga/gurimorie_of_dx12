@@ -54,7 +54,7 @@ float4 main(VsOut psIn) : SV_TARGET
     }
     else
     {
-        for (int i = 1; i <= 8; ++i)
+        [unroll] for (int i = 1; i <= 8; ++i)
         {
             if (i - no < 0)
             {
