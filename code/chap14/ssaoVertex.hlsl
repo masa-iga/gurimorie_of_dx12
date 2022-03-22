@@ -1,11 +1,11 @@
 #include "ssaoHeader.hlsli"
 
-VsOut main( float4 pos : POSITION )
+VsOut main( float4 pos : POSITION , float2 uv : TEXCOORD)
 {
     VsOut vsOut;
     {
         vsOut.svpos = pos;
-        vsOut.uv = float2(0, 0);
+        vsOut.uv = uv;
     }
 
 	return vsOut;
