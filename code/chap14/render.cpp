@@ -386,8 +386,6 @@ HRESULT Render::render()
 
 	renderPostPass(list, rtvH);
 
-	renderDebugPass(list, &rtvH);
-
 	// UI: axis
 	{
 		{
@@ -401,6 +399,8 @@ HRESULT Render::render()
 
 		m_floor.renderAxis(list, m_sceneDescHeap.Get(), rtvH, dsvH);
 	}
+
+	renderDebugPass(list, &rtvH);
 
 	// UI: render imgui
 	{
