@@ -656,6 +656,7 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 		);
 
 		m_sceneParam->proj = projMat;
+		m_sceneParam->invProj = XMMatrixInverse(nullptr, projMat);
 	}
 
 	{

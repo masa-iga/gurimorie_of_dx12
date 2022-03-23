@@ -26,6 +26,7 @@ struct SceneParam
 {
 	DirectX::XMMATRIX view = { };
 	DirectX::XMMATRIX proj = { };
+	DirectX::XMMATRIX invProj = { };
 	DirectX::XMMATRIX lightCamera = { };
 	DirectX::XMMATRIX shadow = { };
 	DirectX::XMFLOAT3 eye = { };
