@@ -1,4 +1,5 @@
 #include "BasicShaderHeader.hlsli"
+#include "commonParam.hlsli"
 
 struct PixelOutput
 {

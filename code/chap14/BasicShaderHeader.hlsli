@@ -10,17 +10,6 @@ struct Output
 	uint instNo : SV_InstanceID;
 };
 
-cbuffer SceneParam : register(b0)
-{
-	matrix view;
-	matrix proj;
-    matrix invProj;
-	matrix lightCamera;
-	matrix shadow;
-	float3 eye;
-    float highLuminanceThreshold;
-}
-
 cbuffer Transform: register(b1)
 {
 	matrix world;
