@@ -5,6 +5,7 @@
 #include <d3dcompiler.h>
 #pragma warning(pop)
 #include "config.h"
+#include "constant.h"
 #include "debug.h"
 #include "init.h"
 #include "loader.h"
@@ -34,7 +35,7 @@ HRESULT Pera::compileShaders()
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main",
-		"vs_5_0",
+		Constant::kVsShaderModel,
 		0,
 		0,
 		m_vs.ReleaseAndGetAddressOf(),
@@ -51,7 +52,7 @@ HRESULT Pera::compileShaders()
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"peraPs",
-		"ps_5_0",
+		Constant::kPsShaderModel,
 		0,
 		0,
 		m_ps_bokehH.ReleaseAndGetAddressOf(),
@@ -68,7 +69,7 @@ HRESULT Pera::compileShaders()
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"verticalBokehPs",
-		"ps_5_0",
+		Constant::kPsShaderModel,
 		0,
 		0,
 		m_ps_bokehV.ReleaseAndGetAddressOf(),
@@ -85,7 +86,7 @@ HRESULT Pera::compileShaders()
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"effectPs",
-		"ps_5_0",
+		Constant::kPsShaderModel,
 		0,
 		0,
 		m_ps_effect.ReleaseAndGetAddressOf(),

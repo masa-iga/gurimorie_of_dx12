@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <d3dcompiler.h>
 #pragma warning(pop)
+#include "constant.h"
 #include "debug.h"
 #include "init.h"
 #include "render.h"
@@ -67,7 +68,7 @@ HRESULT RenderGraph::compileShaders()
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main",
-		"vs_5_0",
+		Constant::kVsShaderModel,
 		0,
 		0,
 		m_vs.ReleaseAndGetAddressOf(),
@@ -84,7 +85,7 @@ HRESULT RenderGraph::compileShaders()
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"main",
-		"ps_5_0",
+		Constant::kPsShaderModel,
 		0,
 		0,
 		m_ps.ReleaseAndGetAddressOf(),

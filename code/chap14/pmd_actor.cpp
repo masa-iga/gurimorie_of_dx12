@@ -11,6 +11,7 @@
 #include <timeapi.h>
 #pragma warning(pop)
 #include "config.h"
+#include "constant.h"
 #include "debug.h"
 #include "init.h"
 #include "loader.h"
@@ -485,7 +486,7 @@ HRESULT PmdActor::loadShaders()
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"BasicVs",
-		"vs_5_0",
+		Constant::kVsShaderModel,
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
 		m_vsBlob.ReleaseAndGetAddressOf(),
@@ -504,7 +505,7 @@ HRESULT PmdActor::loadShaders()
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"MrtWithShadowMapPs",
-		"ps_5_0",
+		Constant::kPsShaderModel,
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
 		m_psBlob.ReleaseAndGetAddressOf(),
@@ -523,7 +524,7 @@ HRESULT PmdActor::loadShaders()
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE,
 		"shadowVs",
-		"vs_5_0",
+		Constant::kVsShaderModel,
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION,
 		0,
 		m_shadowVsBlob.ReleaseAndGetAddressOf(),

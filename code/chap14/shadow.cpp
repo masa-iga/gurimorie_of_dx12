@@ -6,6 +6,7 @@
 #include <DirectXMath.h>
 #pragma warning(pop)
 #include "config.h"
+#include "constant.h"
 #include "debug.h"
 #include "init.h"
 #include "util.h"
@@ -89,7 +90,7 @@ HRESULT Shadow::compileShaders()
         nullptr,
         D3D_COMPILE_STANDARD_FILE_INCLUDE,
         "main",
-        "vs_5_0",
+        Constant::kVsShaderModel,
         0,
         0,
         m_commonVs.ReleaseAndGetAddressOf(),
@@ -106,7 +107,7 @@ HRESULT Shadow::compileShaders()
         nullptr,
         D3D_COMPILE_STANDARD_FILE_INCLUDE,
         "main",
-        "ps_5_0",
+        Constant::kPsShaderModel,
         0,
         0,
         m_psArray.at(static_cast<size_t>(Type::kQuadR)).ReleaseAndGetAddressOf(),
@@ -123,7 +124,7 @@ HRESULT Shadow::compileShaders()
         nullptr,
         D3D_COMPILE_STANDARD_FILE_INCLUDE,
         "mainRgba",
-        "ps_5_0",
+        Constant::kPsShaderModel,
         0,
         0,
         m_psArray.at(static_cast<size_t>(Type::kQuadRgba)).ReleaseAndGetAddressOf(),
@@ -140,7 +141,7 @@ HRESULT Shadow::compileShaders()
         nullptr,
         D3D_COMPILE_STANDARD_FILE_INCLUDE,
         "black",
-        "ps_5_0",
+        Constant::kPsShaderModel,
         0,
         0,
         m_psArray.at(static_cast<size_t>(TypeInternal::kFrameLine)).ReleaseAndGetAddressOf(),
