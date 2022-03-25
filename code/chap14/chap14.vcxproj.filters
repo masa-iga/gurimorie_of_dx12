@@ -157,9 +157,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="BasicPixelShader.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
     <FxCompile Include="BasicVertexShader.hlsl">
       <Filter>シェーダ ファイル</Filter>
     </FxCompile>
@@ -209,6 +206,9 @@
       <Filter>シェーダ ファイル</Filter>
     </FxCompile>
     <FxCompile Include="ssaoPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </FxCompile>
+    <FxCompile Include="BasicPixelShader.hlsl">
       <Filter>シェーダ ファイル</Filter>
     </FxCompile>
   </ItemGroup>
