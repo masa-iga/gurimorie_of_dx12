@@ -1,4 +1,5 @@
-cbuffer SceneParam : register(b0)
+/* Common resource, assigned to space 1 */
+cbuffer SceneParam : register(b0, space1)
 {
 	matrix view;
 	matrix proj;

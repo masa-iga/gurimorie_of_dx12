@@ -622,110 +622,74 @@ HRESULT PmdActor::createRootSignature(ComPtr<ID3D12RootSignature>* rootSignature
 	ThrowIfFalse(rootSignature != nullptr);
 	ThrowIfFalse(rootSignature->Get() == nullptr);
 
-	D3D12_DESCRIPTOR_RANGE descTblRange[5] = { };
+	const D3D12_DESCRIPTOR_RANGE descTblRange[] = {
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 1 /* register space */),
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1),
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 2),
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0),
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 4),
+	};
+
+	const D3D12_ROOT_PARAMETER rootParams[] = {
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable = {
+				.NumDescriptorRanges = 1,
+				.pDescriptorRanges = &descTblRange[0],
+			},
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+		},
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable = {
+				.NumDescriptorRanges = 1,
+				.pDescriptorRanges = &descTblRange[1],
+			},
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+		},
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable = {
+				.NumDescriptorRanges = 2,
+				.pDescriptorRanges = &descTblRange[2],
+			},
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+		},
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable = {
+				.NumDescriptorRanges = 1,
+				.pDescriptorRanges = &descTblRange[4],
+			},
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+		},
+	};
+
+	D3D12_STATIC_SAMPLER_DESC samplerDescs[] = {
+		CD3DX12_STATIC_SAMPLER_DESC(0, D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT),
+		CD3DX12_STATIC_SAMPLER_DESC(1, D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT),
+		CD3DX12_STATIC_SAMPLER_DESC(2,
+		D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+		D3D12_TEXTURE_ADDRESS_MODE_CLAMP),
+	};
 	{
-		// view & proj matrix
-		descTblRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		descTblRange[0].NumDescriptors = 1;
-		descTblRange[0].BaseShaderRegister = 0; // b0
-		descTblRange[0].RegisterSpace = 0;
-		descTblRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		// transform matrix
-		descTblRange[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		descTblRange[1].NumDescriptors = 1;
-		descTblRange[1].BaseShaderRegister = 1; // b1
-		descTblRange[1].RegisterSpace = 0;
-		descTblRange[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		// material
-		descTblRange[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		descTblRange[2].NumDescriptors = 1;
-		descTblRange[2].BaseShaderRegister = 2; // b2
-		descTblRange[2].RegisterSpace = 0;
-		descTblRange[2].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		// textures
-		descTblRange[3].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		descTblRange[3].NumDescriptors = 4;
-		descTblRange[3].BaseShaderRegister = 0; // t0, t1, t2, t3
-		descTblRange[3].RegisterSpace = 0;
-		descTblRange[3].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		// texture to read shadow map
-		descTblRange[4].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		descTblRange[4].NumDescriptors = 1;
-		descTblRange[4].BaseShaderRegister = 4; // t4
-		descTblRange[4].RegisterSpace = 0;
-		descTblRange[4].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		samplerDescs[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+		samplerDescs[0].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+		samplerDescs[1].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+		samplerDescs[1].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+		samplerDescs[2].MaxAnisotropy = 1;
+		samplerDescs[2].ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	}
 
-	// create descriptor table to bind resources (e.g. texture, constant buffer, etc.)
-	D3D12_ROOT_PARAMETER rootParam[4] = { };
-	{
-		// view & proj matrix
-		rootParam[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParam[0].DescriptorTable.NumDescriptorRanges = 1;
-		rootParam[0].DescriptorTable.pDescriptorRanges = &descTblRange[0];
-		rootParam[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		// transform matrix
-		rootParam[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParam[1].DescriptorTable.NumDescriptorRanges = 1;
-		rootParam[1].DescriptorTable.pDescriptorRanges = &descTblRange[1];
-		rootParam[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-		// material & texture
-		rootParam[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-		rootParam[2].DescriptorTable.NumDescriptorRanges = 2;
-		rootParam[2].DescriptorTable.pDescriptorRanges = &descTblRange[2];
-		rootParam[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		// texture (shadow map)
-		CD3DX12_ROOT_PARAMETER::InitAsDescriptorTable(rootParam[3], 1, &descTblRange[4]);
-	}
-
-	D3D12_STATIC_SAMPLER_DESC samplerDesc[3] = { };
-	{
-		samplerDesc[0].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-		samplerDesc[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		samplerDesc[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		samplerDesc[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		samplerDesc[0].MipLODBias = 0.0f;
-		samplerDesc[0].MaxAnisotropy = 0;
-		samplerDesc[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-		samplerDesc[0].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-		samplerDesc[0].MinLOD = 0.0f;
-		samplerDesc[0].MaxLOD = D3D12_FLOAT32_MAX;
-		samplerDesc[0].ShaderRegister = 0;
-		samplerDesc[0].RegisterSpace = 0;
-		samplerDesc[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-		samplerDesc[1].Filter = D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
-		samplerDesc[1].AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-		samplerDesc[1].AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-		samplerDesc[1].AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-		samplerDesc[1].MipLODBias = 0.0f;
-		samplerDesc[1].MaxAnisotropy = 0;
-		samplerDesc[1].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-		samplerDesc[1].BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-		samplerDesc[1].MinLOD = 0.0f;
-		samplerDesc[1].MaxLOD = D3D12_FLOAT32_MAX;
-		samplerDesc[1].ShaderRegister = 1;
-		samplerDesc[1].RegisterSpace = 0;
-		samplerDesc[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-		samplerDesc[2] = CD3DX12_STATIC_SAMPLER_DESC(
-			2,
-			D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR,
-			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-			D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-			D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
-		samplerDesc[2].MaxAnisotropy = 1;
-		samplerDesc[2].ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-	}
-
-	D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = { };
-	{
-		rootSignatureDesc.NumParameters = 4;
-		rootSignatureDesc.pParameters = &rootParam[0];
-		rootSignatureDesc.NumStaticSamplers = 3;
-		rootSignatureDesc.pStaticSamplers = &samplerDesc[0];
-		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-	}
+	const D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {
+		.NumParameters = 4,
+		.pParameters = &rootParams[0],
+		.NumStaticSamplers = 3,
+		.pStaticSamplers = &samplerDescs[0],
+		.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT,
+	};
 
 	ComPtr<ID3DBlob> rootSigBlob = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;
