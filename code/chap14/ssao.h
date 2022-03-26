@@ -14,6 +14,7 @@ public:
 		kDstRt,
 		kSrcDepth,
 		kSrcNormal,
+		kSrcSceneParam,
 	};
 
 	HRESULT init(UINT64 width, UINT64 height);
@@ -42,7 +43,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_workResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapRtv = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapSrv = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapCbvSrv = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
@@ -51,4 +52,5 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_dstResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_srcDepthResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_srcNormalResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_srcSceneParamResource = nullptr;
 };

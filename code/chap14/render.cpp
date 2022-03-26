@@ -798,6 +798,7 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 		m_ssao.setResource(Ssao::TargetResource::kDstRt, m_offScreenResource.getResource(OffScreenResource::Type::kPostSsao));
 		m_ssao.setResource(Ssao::TargetResource::kSrcDepth, m_depthResource);
 		m_ssao.setResource(Ssao::TargetResource::kSrcNormal, m_offScreenResource.getResource(OffScreenResource::Type::kNormal));
+		m_ssao.setResource(Ssao::TargetResource::kSrcSceneParam, m_sceneParamResource);
 
 		m_ssao.render(list);
 

@@ -27,6 +27,7 @@ void Ssao::setResource(TargetResource target, Microsoft::WRL::ComPtr<ID3D12Resou
 	case TargetResource::kDstRt: m_dstResource = resource; break;
 	case TargetResource::kSrcDepth: m_srcDepthResource = resource; break;
 	case TargetResource::kSrcNormal: m_srcNormalResource = resource; break;
+	case TargetResource::kSrcSceneParam: m_srcSceneParamResource = resource; break;
 	default: Debug::debugOutputFormatString("illegal case. (%d)\n", target); ThrowIfFalse(false);
 	}
 }
@@ -135,17 +136,17 @@ HRESULT Ssao::createResource(UINT64 dstWidth, UINT dstHeight)
 	{
 		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
 			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-			.NumDescriptors = 2,
+			.NumDescriptors = 3,
 			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 			.NodeMask = 0,
 		};
 
 		auto result = Resource::instance()->getDevice()->CreateDescriptorHeap(
 			&heapDesc,
-			IID_PPV_ARGS(m_workDescHeapSrv.ReleaseAndGetAddressOf()));
+			IID_PPV_ARGS(m_workDescHeapCbvSrv.ReleaseAndGetAddressOf()));
 		ThrowIfFailed(result);
 
-		result = m_workDescHeapSrv.Get()->SetName(Util::getWideStringFromString("ssaoWorkSrvDescHeap").c_str());
+		result = m_workDescHeapCbvSrv.Get()->SetName(Util::getWideStringFromString("ssaoWorkCbvSrvDescHeap").c_str());
 		ThrowIfFailed(result);
 	}
 
@@ -155,13 +156,19 @@ HRESULT Ssao::createResource(UINT64 dstWidth, UINT dstHeight)
 HRESULT Ssao::createRootSignature()
 {
 	const D3D12_DESCRIPTOR_RANGE descRanges[] = {
-		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0 /* slot */),
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0), // tex depth & normal
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 1 /* register space */), // SceneParam (mvp)
 	};
 
 	const D3D12_ROOT_PARAMETER rootParams[] = {
 		{
 			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
 			.DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRanges[0]),
+			.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
+		},
+		{
+			.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+			.DescriptorTable = CD3DX12_ROOT_DESCRIPTOR_TABLE(1, &descRanges[1]),
 			.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL,
 		},
 	};
@@ -278,38 +285,58 @@ void Ssao::setupShaderResourceView()
 {
 	ThrowIfFalse(m_srcDepthResource != nullptr);
 	ThrowIfFalse(m_srcNormalResource != nullptr);
+	ThrowIfFalse(m_srcSceneParamResource != nullptr);
 
-	ID3D12Resource* resources[] = {
-		m_srcDepthResource.Get(),
-		m_srcNormalResource.Get(),
-	};
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = m_workDescHeapCbvSrv.Get()->GetCPUDescriptorHandleForHeapStart();
 
-	D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = m_workDescHeapSrv.Get()->GetCPUDescriptorHandleForHeapStart();
-
-	for (auto& resource : resources)
 	{
-		const DXGI_FORMAT format = (resource->GetDesc().Format == DXGI_FORMAT_R32_TYPELESS) ?
-			DXGI_FORMAT_R32_FLOAT :
-			resource->GetDesc().Format;
-
-		const D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
-			.Format = format,
-			.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
-			.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
-			.Texture2D = {
-				.MostDetailedMip = 0,
-				.MipLevels = 1,
-				.PlaneSlice = 0,
-				.ResourceMinLODClamp = 0.0f,
-			},
+		ID3D12Resource* const resources[] = {
+			m_srcDepthResource.Get(),
+			m_srcNormalResource.Get(),
 		};
 
-		Resource::instance()->getDevice()->CreateShaderResourceView(
-			resource,
-			&srvDesc,
-			cpuDescHandle);
+		for (auto& resource : resources)
+		{
+			const DXGI_FORMAT format = (resource->GetDesc().Format == DXGI_FORMAT_R32_TYPELESS) ?
+				DXGI_FORMAT_R32_FLOAT :
+				resource->GetDesc().Format;
 
-		cpuDescHandle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			const D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {
+				.Format = format,
+				.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
+				.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+				.Texture2D = {
+					.MostDetailedMip = 0,
+					.MipLevels = 1,
+					.PlaneSlice = 0,
+					.ResourceMinLODClamp = 0.0f,
+				},
+			};
+
+			Resource::instance()->getDevice()->CreateShaderResourceView(
+				resource,
+				&srvDesc,
+				cpuDescHandle);
+
+			cpuDescHandle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
+	{
+		ID3D12Resource* const resources[] = {
+			m_srcSceneParamResource.Get(),
+		};
+
+		for (auto& resource : resources)
+		{
+			const D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {
+				.BufferLocation = m_srcSceneParamResource.Get()->GetGPUVirtualAddress(),
+				.SizeInBytes = static_cast<UINT>(m_srcSceneParamResource.Get()->GetDesc().Width),
+			};
+
+			Resource::instance()->getDevice()->CreateConstantBufferView(&cbvDesc, cpuDescHandle);
+			cpuDescHandle.ptr += Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
 	}
 }
 
@@ -318,8 +345,12 @@ HRESULT Ssao::renderSsao(ID3D12GraphicsCommandList* list)
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
 	list->SetPipelineState(m_pipelineState.Get());
 
-	list->SetDescriptorHeaps(1, m_workDescHeapSrv.GetAddressOf());
-	list->SetGraphicsRootDescriptorTable(0 /* RootParameterIndex */, m_workDescHeapSrv.Get()->GetGPUDescriptorHandleForHeapStart());
+	list->SetDescriptorHeaps(1, m_workDescHeapCbvSrv.GetAddressOf());
+	list->SetGraphicsRootDescriptorTable(0, m_workDescHeapCbvSrv.Get()->GetGPUDescriptorHandleForHeapStart());
+	list->SetGraphicsRootDescriptorTable(1, CD3DX12_GPU_DESCRIPTOR_HANDLE(
+		m_workDescHeapCbvSrv.Get()->GetGPUDescriptorHandleForHeapStart(),
+		2,
+		Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)));
 
 	{
 		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));

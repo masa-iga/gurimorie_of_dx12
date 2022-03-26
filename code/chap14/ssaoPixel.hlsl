@@ -1,4 +1,5 @@
 #include "ssaoHeader.hlsli"
+#include "commonParam.hlsli"
 
 Texture2D<float> texDepth : register(t0);
 Texture2D<float4> texNormal : register(t1);
