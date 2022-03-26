@@ -1,14 +1,5 @@
 #include "floorHeader.hlsli"
-
-cbuffer SceneBuffer : register(b0)
-{
-	matrix view;
-	matrix proj;
-    matrix invProj;
-	matrix lightCamera;
-	matrix shadow;
-	float3 eye;
-}
+#include "commonParam.hlsli"
 
 cbuffer Transform : register(b1)
 {

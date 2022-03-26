@@ -415,7 +415,7 @@ HRESULT Floor::createRootSignature()
 {
 	D3D12_DESCRIPTOR_RANGE descRange[3] = { };
 	{
-		descRange[0] = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0); // b0: scene matrix
+		descRange[0] = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 1 /* register space */); // b0: scene matrix
 		descRange[1] = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1); // b1: world matrix
 		descRange[2] = CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); // t0: depth light map
 	}
