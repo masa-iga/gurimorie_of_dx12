@@ -783,7 +783,17 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 {
 	const PixScopedEvent pixScopedEvent(list, "PostProcess");
 
-	m_offScreenResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	// resource barrier
+	{
+		m_offScreenResource.buildBarrier(list, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_depthResource.Get(),
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			0);
+		list->ResourceBarrier(1, &barrier);
+	}
 
 	// post process: SSAO
 	{
@@ -840,15 +850,6 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 	// post process: depth of field
 	{
 		const PixScopedEvent pixScopedEvent(list, "PostProcess : DoF");
-
-		{
-			const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-				m_depthResource.Get(),
-				D3D12_RESOURCE_STATE_DEPTH_WRITE,
-				D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-				0);
-			list->ResourceBarrier(1, &barrier);
-		}
 
 		m_offScreenResource.buildBarrier(
 			list,
