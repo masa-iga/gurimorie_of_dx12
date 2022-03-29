@@ -35,6 +35,7 @@ static float4 Get5x5GaussianBlur(Texture2D<float4> tex, SamplerState smp, float2
 	return ret;
 }
 
+// return a random value ranging from 0.0f to 1.0f
 static float random(float2 uv)
 {
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
