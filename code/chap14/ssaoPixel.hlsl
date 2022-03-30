@@ -41,7 +41,7 @@ float4 main(VsOut vsOut) : SV_TARGET
             omega *= sign(dt);
 
             float4 rpos = mul(proj, float4(respos.xyz + omega * radius, 1));
-            rpos.xyz = rpos.w;
+            rpos.xyz /= rpos.w;
 
             dt *= sgn;
             div += dt;
