@@ -376,6 +376,7 @@ HRESULT Render::render()
 		clearRenderTarget(list, rtvH, kClearColorRenderTarget);
 		clearDepthRenderTargets(list);
 		m_offScreenResource.clearRenderTargets(list);
+		m_ssao.clearRenderTarget(list);
 		m_bloom.clearWorkRenderTarget(list);
 		m_dof.clearWorkRenderTarget(list);
 	}

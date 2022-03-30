@@ -18,7 +18,7 @@ public:
 	};
 
 	HRESULT init(UINT64 width, UINT64 height);
-	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list); // TODO: imple
+	HRESULT clearRenderTarget(ID3D12GraphicsCommandList* list);
 	void setResource(TargetResource target, Microsoft::WRL::ComPtr<ID3D12Resource> resource);
 	Microsoft::WRL::ComPtr<ID3D12Resource> getWorkResource() const { return m_workResource; }
 	HRESULT render(ID3D12GraphicsCommandList* list);

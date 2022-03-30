@@ -21,6 +21,18 @@ HRESULT Ssao::init(UINT64 width, UINT64 height)
 	return S_OK;
 }
 
+HRESULT Ssao::clearRenderTarget(ID3D12GraphicsCommandList* list)
+{
+	auto rtv = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+		m_workDescHeapRtv.Get()->GetCPUDescriptorHandleForHeapStart(),
+		0,
+		Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+
+	list->ClearRenderTargetView(rtv, kClearColor, 0, nullptr);
+
+	return S_OK;
+}
+
 void Ssao::setResource(TargetResource target, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
 {
 	switch (target) {
@@ -131,6 +143,8 @@ HRESULT Ssao::createResource(UINT64 dstWidth, UINT dstHeight)
 
 		result = m_workDescHeapRtv.Get()->SetName(Util::getWideStringFromString("ssaoWorkRtvDescHeap").c_str());
 		ThrowIfFailed(result);
+
+		setupRenderTargetView();
 	}
 
 	{
@@ -255,8 +269,6 @@ HRESULT Ssao::createPipelineState()
 
 void Ssao::setupRenderTargetView()
 {
-	ThrowIfFalse(m_dstResource != nullptr);
-
 	ID3D12Resource* resources[] = {
 		m_workResource.Get(),
 		m_dstResource.Get(),
@@ -266,6 +278,9 @@ void Ssao::setupRenderTargetView()
 
 	for (auto& resource : resources)
 	{
+		if (resource == nullptr)
+			continue;
+
 		const D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {
 			.Format = resource->GetDesc().Format,
 			.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D,
