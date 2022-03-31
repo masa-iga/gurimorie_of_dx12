@@ -27,7 +27,7 @@ float4 main(VsOut vsOut) : SV_TARGET
 
     if (dp < 1.0f)
     {
-        for (int i = 0; i < trycnt; ++i)
+        [unroll] for (int i = 0; i < trycnt; ++i)
         {
             const float rnd1 = random(float2(i * dx, i * dy)) * 2 - 1;
             const float rnd2 = random(float2(rnd1, i * dy)) * 2 - 1;
