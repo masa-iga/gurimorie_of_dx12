@@ -8,7 +8,7 @@ SamplerState smp : register(s0);
 
 static float2 getDxDy(Texture2D<float> tex);
 
-float4 main(VsOut vsOut) : SV_TARGET
+float4 ssao(VsOut vsOut) : SV_TARGET
 {
     const float dp = texDepth.Sample(smp, vsOut.uv);
 
@@ -53,6 +53,11 @@ float4 main(VsOut vsOut) : SV_TARGET
     }
     
     return 1.0f - ao;
+}
+
+float4 resolve(VsOut vsOut) : SV_TARGET
+{
+    return 0;
 }
 
 static float2 getDxDy(Texture2D<float> tex)

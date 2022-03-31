@@ -2,8 +2,10 @@
 #pragma warning(push, 0)
 #include <codeanalysis/warnings.h>
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
+#include <array>
 #include <Windows.h>
 #include <d3d12.h>
+#include <map>
 #include <wrl.h>
 #pragma warning(pop)
 
@@ -26,8 +28,8 @@ public:
 private:
 	static constexpr LPCWSTR kVsFile = L"ssaoVertex.hlsl";
 	static constexpr LPCWSTR kPsFile = L"ssaoPixel.hlsl";
-	static constexpr LPCSTR kVsEntryPoint = "main";
-	static constexpr LPCSTR kPsEntryPoint = "main";
+	static constexpr std::array<LPCSTR, 2> kVsEntryPoints = { "main", "main" };
+	static constexpr std::array<LPCSTR, 2> kPsEntryPoints = { "ssao", "resolve" };
 	static constexpr FLOAT kClearColor[4] = { 0, 0, 0, 0 };
 
 	HRESULT compileShaders();
@@ -39,8 +41,8 @@ private:
 	HRESULT renderSsao(ID3D12GraphicsCommandList* list);
 	HRESULT renderToTarget(ID3D12GraphicsCommandList* list);
 
-	Microsoft::WRL::ComPtr<ID3DBlob> m_vsBlob = nullptr;
-	Microsoft::WRL::ComPtr<ID3DBlob> m_psBlob = nullptr;
+	std::map<LPCSTR, Microsoft::WRL::ComPtr<ID3DBlob>> m_vsBlobTable;
+	std::map<LPCSTR, Microsoft::WRL::ComPtr<ID3DBlob>> m_psBlobTable;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_workResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapRtv = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapCbvSrv = nullptr;

@@ -57,18 +57,23 @@ HRESULT Ssao::render(ID3D12GraphicsCommandList* list)
 
 HRESULT Ssao::compileShaders()
 {
+	ComPtr<ID3DBlob> shaderBlob = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;
 
+	for (const auto& entryPoint : kVsEntryPoints)
 	{
+		if (m_vsBlobTable.find(entryPoint) != m_vsBlobTable.end())
+			continue;
+
 		auto result = D3DCompileFromFile(
 			kVsFile,
 			Constant::kCompileShaderDefines,
 			D3D_COMPILE_STANDARD_FILE_INCLUDE,
-			kVsEntryPoint,
+			entryPoint,
 			Constant::kVsShaderModel,
 			Constant::kCompileShaderFlags1,
 			Constant::kCompileShaderFlags2,
-			m_vsBlob.ReleaseAndGetAddressOf(),
+			shaderBlob.ReleaseAndGetAddressOf(),
 			errorBlob.ReleaseAndGetAddressOf());
 
 		if (FAILED(result))
@@ -76,18 +81,24 @@ HRESULT Ssao::compileShaders()
 			Debug::outputDebugMessage(errorBlob.Get());
 			return E_FAIL;
 		}
+
+		m_vsBlobTable[entryPoint] = shaderBlob;
 	}
 
+	for (const auto& entryPoint : kPsEntryPoints)
 	{
+		if (m_psBlobTable.find(entryPoint) != m_psBlobTable.end())
+			continue;
+
 		auto result = D3DCompileFromFile(
 			kPsFile,
 			Constant::kCompileShaderDefines,
 			D3D_COMPILE_STANDARD_FILE_INCLUDE,
-			kPsEntryPoint,
+			entryPoint,
 			Constant::kPsShaderModel,
 			Constant::kCompileShaderFlags1,
 			Constant::kCompileShaderFlags2,
-			m_psBlob.ReleaseAndGetAddressOf(),
+			shaderBlob.ReleaseAndGetAddressOf(),
 			errorBlob.ReleaseAndGetAddressOf());
 
 		if (FAILED(result))
@@ -95,6 +106,8 @@ HRESULT Ssao::compileShaders()
 			Debug::outputDebugMessage(errorBlob.Get());
 			return E_FAIL;
 		}
+
+		m_psBlobTable[entryPoint] = shaderBlob;
 	}
 
 	return S_OK;
@@ -232,8 +245,8 @@ HRESULT Ssao::createPipelineState()
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = {
 		.pRootSignature = m_rootSignature.Get(),
-		.VS = { m_vsBlob.Get()->GetBufferPointer(), m_vsBlob.Get()->GetBufferSize() },
-		.PS = { m_psBlob.Get()->GetBufferPointer(), m_psBlob.Get()->GetBufferSize() },
+		.VS = { m_vsBlobTable.at(kVsEntryPoints.at(0)).Get()->GetBufferPointer(), m_vsBlobTable.at(kVsEntryPoints.at(0)).Get()->GetBufferSize()},
+		.PS = { m_psBlobTable.at(kPsEntryPoints.at(0)).Get()->GetBufferPointer(), m_psBlobTable.at(kPsEntryPoints.at(0)).Get()->GetBufferSize() },
 		.DS = { nullptr, 0 },
 		.HS = { nullptr, 0 },
 		.GS = { nullptr, 0 },
