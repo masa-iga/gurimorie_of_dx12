@@ -26,10 +26,16 @@ public:
 	HRESULT render(ID3D12GraphicsCommandList* list);
 
 private:
+	enum class Type {
+		kSsao,
+		kResolve,
+		kEnd,
+	};
+
 	static constexpr LPCWSTR kVsFile = L"ssaoVertex.hlsl";
 	static constexpr LPCWSTR kPsFile = L"ssaoPixel.hlsl";
-	static constexpr std::array<LPCSTR, 2> kVsEntryPoints = { "main", "main" };
-	static constexpr std::array<LPCSTR, 2> kPsEntryPoints = { "ssao", "resolve" };
+	static constexpr std::array<LPCSTR, static_cast<size_t>(Type::kEnd)> kVsEntryPoints = { "main", "main" };
+	static constexpr std::array<LPCSTR, static_cast<size_t>(Type::kEnd)> kPsEntryPoints = { "ssao", "resolve" };
 	static constexpr FLOAT kClearColor[4] = { 0, 0, 0, 0 };
 
 	HRESULT compileShaders();
@@ -41,15 +47,15 @@ private:
 	HRESULT renderSsao(ID3D12GraphicsCommandList* list);
 	HRESULT renderToTarget(ID3D12GraphicsCommandList* list);
 
-	std::map<LPCSTR, Microsoft::WRL::ComPtr<ID3DBlob>> m_vsBlobTable;
-	std::map<LPCSTR, Microsoft::WRL::ComPtr<ID3DBlob>> m_psBlobTable;
+	std::map<Type, Microsoft::WRL::ComPtr<ID3DBlob>> m_vsBlobTable;
+	std::map<Type, Microsoft::WRL::ComPtr<ID3DBlob>> m_psBlobTable;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_workResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapRtv = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapCbvSrv = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_vbView = { };
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature = nullptr;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState = nullptr;
+	std::map<Type, Microsoft::WRL::ComPtr<ID3D12PipelineState>> m_pipelineStateTable;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_dstResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_srcDepthResource = nullptr;

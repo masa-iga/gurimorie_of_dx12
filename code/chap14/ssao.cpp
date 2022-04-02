@@ -60,16 +60,18 @@ HRESULT Ssao::compileShaders()
 	ComPtr<ID3DBlob> shaderBlob = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;
 
-	for (const auto& entryPoint : kVsEntryPoints)
+	for (size_t i = 0; i < kVsEntryPoints.size(); ++i)
 	{
-		if (m_vsBlobTable.find(entryPoint) != m_vsBlobTable.end())
+		const auto type = static_cast<Type>(i);
+
+		if (m_vsBlobTable.find(type) != m_vsBlobTable.end())
 			continue;
 
 		auto result = D3DCompileFromFile(
 			kVsFile,
 			Constant::kCompileShaderDefines,
 			D3D_COMPILE_STANDARD_FILE_INCLUDE,
-			entryPoint,
+			kVsEntryPoints.at(i),
 			Constant::kVsShaderModel,
 			Constant::kCompileShaderFlags1,
 			Constant::kCompileShaderFlags2,
@@ -82,19 +84,21 @@ HRESULT Ssao::compileShaders()
 			return E_FAIL;
 		}
 
-		m_vsBlobTable[entryPoint] = shaderBlob;
+		m_vsBlobTable[type] = shaderBlob;
 	}
 
-	for (const auto& entryPoint : kPsEntryPoints)
+	for (size_t i = 0; i < kPsEntryPoints.size(); ++i)
 	{
-		if (m_psBlobTable.find(entryPoint) != m_psBlobTable.end())
+		const auto type = static_cast<Type>(i);
+
+		if (m_psBlobTable.find(type) != m_psBlobTable.end())
 			continue;
 
 		auto result = D3DCompileFromFile(
 			kPsFile,
 			Constant::kCompileShaderDefines,
 			D3D_COMPILE_STANDARD_FILE_INCLUDE,
-			entryPoint,
+			kPsEntryPoints.at(i),
 			Constant::kPsShaderModel,
 			Constant::kCompileShaderFlags1,
 			Constant::kCompileShaderFlags2,
@@ -107,7 +111,7 @@ HRESULT Ssao::compileShaders()
 			return E_FAIL;
 		}
 
-		m_psBlobTable[entryPoint] = shaderBlob;
+		m_psBlobTable[type] = shaderBlob;
 	}
 
 	return S_OK;
@@ -245,8 +249,8 @@ HRESULT Ssao::createPipelineState()
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = {
 		.pRootSignature = m_rootSignature.Get(),
-		.VS = { m_vsBlobTable.at(kVsEntryPoints.at(0)).Get()->GetBufferPointer(), m_vsBlobTable.at(kVsEntryPoints.at(0)).Get()->GetBufferSize()},
-		.PS = { m_psBlobTable.at(kPsEntryPoints.at(0)).Get()->GetBufferPointer(), m_psBlobTable.at(kPsEntryPoints.at(0)).Get()->GetBufferSize() },
+		.VS = { m_vsBlobTable.at(Type::kSsao).Get()->GetBufferPointer(), m_vsBlobTable.at(Type::kSsao).Get()->GetBufferSize()},
+		.PS = { m_psBlobTable.at(Type::kSsao).Get()->GetBufferPointer(), m_psBlobTable.at(Type::kSsao).Get()->GetBufferSize()},
 		.DS = { nullptr, 0 },
 		.HS = { nullptr, 0 },
 		.GS = { nullptr, 0 },
@@ -271,10 +275,10 @@ HRESULT Ssao::createPipelineState()
 
 	auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 		&gpDesc,
-		IID_PPV_ARGS(m_pipelineState.ReleaseAndGetAddressOf()));
+		IID_PPV_ARGS(m_pipelineStateTable[Type::kSsao].ReleaseAndGetAddressOf()));
 	ThrowIfFailed(result);
 
-	result = m_pipelineState.Get()->SetName(Util::getWideStringFromString("ssaoPipelineState").c_str());
+	result = m_pipelineStateTable.at(Type::kSsao).Get()->SetName(Util::getWideStringFromString("ssaoPipelineState").c_str());
 	ThrowIfFailed(result);
 
 	return S_OK;
@@ -371,7 +375,7 @@ void Ssao::setupShaderResourceView()
 HRESULT Ssao::renderSsao(ID3D12GraphicsCommandList* list)
 {
 	list->SetGraphicsRootSignature(m_rootSignature.Get());
-	list->SetPipelineState(m_pipelineState.Get());
+	list->SetPipelineState(m_pipelineStateTable.at(Type::kSsao).Get());
 
 	list->SetDescriptorHeaps(1, m_workDescHeapCbvSrv.GetAddressOf());
 	list->SetGraphicsRootDescriptorTable(0, m_workDescHeapCbvSrv.Get()->GetGPUDescriptorHandleForHeapStart());
