@@ -273,13 +273,28 @@ HRESULT Ssao::createPipelineState()
 	gpDesc.DepthStencilState.DepthEnable = false;
 	gpDesc.RTVFormats[0] = Constant::kDefaultRtFormat;
 
-	auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
-		&gpDesc,
-		IID_PPV_ARGS(m_pipelineStateTable[Type::kSsao].ReleaseAndGetAddressOf()));
-	ThrowIfFailed(result);
+	{
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&gpDesc,
+			IID_PPV_ARGS(m_pipelineStateTable[Type::kSsao].ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
 
-	result = m_pipelineStateTable.at(Type::kSsao).Get()->SetName(Util::getWideStringFromString("ssaoPipelineState").c_str());
-	ThrowIfFailed(result);
+		result = m_pipelineStateTable.at(Type::kSsao).Get()->SetName(Util::getWideStringFromString("ssaoPipelineState").c_str());
+		ThrowIfFailed(result);
+	}
+
+	{
+		gpDesc.VS = { m_vsBlobTable.at(Type::kResolve).Get()->GetBufferPointer(), m_vsBlobTable.at(Type::kResolve).Get()->GetBufferSize() };
+		gpDesc.PS = { m_psBlobTable.at(Type::kResolve).Get()->GetBufferPointer(), m_psBlobTable.at(Type::kResolve).Get()->GetBufferSize() };
+
+		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
+			&gpDesc,
+			IID_PPV_ARGS(m_pipelineStateTable[Type::kResolve].ReleaseAndGetAddressOf()));
+		ThrowIfFailed(result);
+
+		result = m_pipelineStateTable.at(Type::kResolve).Get()->SetName(Util::getWideStringFromString("ssaoResolvePipelineState").c_str());
+		ThrowIfFailed(result);
+	}
 
 	return S_OK;
 }
