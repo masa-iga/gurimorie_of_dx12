@@ -39,6 +39,7 @@ void Ssao::setResource(TargetResource target, Microsoft::WRL::ComPtr<ID3D12Resou
 	case TargetResource::kDstRt: m_dstResource = resource; break;
 	case TargetResource::kSrcDepth: m_srcDepthResource = resource; break;
 	case TargetResource::kSrcNormal: m_srcNormalResource = resource; break;
+	case TargetResource::kSrcColor: m_srcColorResource = resource; break;
 	case TargetResource::kSrcSceneParam: m_srcSceneParamResource = resource; break;
 	default: Debug::debugOutputFormatString("illegal case. (%d)\n", target); ThrowIfFalse(false);
 	}
@@ -167,7 +168,7 @@ HRESULT Ssao::createResource(UINT64 dstWidth, UINT dstHeight)
 	{
 		const D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {
 			.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-			.NumDescriptors = 3,
+			.NumDescriptors = 5,
 			.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
 			.NodeMask = 0,
 		};
@@ -187,7 +188,7 @@ HRESULT Ssao::createResource(UINT64 dstWidth, UINT dstHeight)
 HRESULT Ssao::createRootSignature()
 {
 	const D3D12_DESCRIPTOR_RANGE descRanges[] = {
-		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0), // tex depth & normal
+		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0), // tex depth, tex normal, work, target
 		CD3DX12_DESCRIPTOR_RANGE(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 1 /* register space */), // SceneParam (mvp)
 	};
 
@@ -332,6 +333,8 @@ void Ssao::setupShaderResourceView()
 {
 	ThrowIfFalse(m_srcDepthResource != nullptr);
 	ThrowIfFalse(m_srcNormalResource != nullptr);
+	ThrowIfFalse(m_srcColorResource != nullptr);
+	ThrowIfFalse(m_workResource != nullptr);
 	ThrowIfFalse(m_srcSceneParamResource != nullptr);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = m_workDescHeapCbvSrv.Get()->GetCPUDescriptorHandleForHeapStart();
@@ -340,6 +343,8 @@ void Ssao::setupShaderResourceView()
 		ID3D12Resource* const resources[] = {
 			m_srcDepthResource.Get(),
 			m_srcNormalResource.Get(),
+			m_srcColorResource.Get(),
+			m_workResource.Get(),
 		};
 
 		for (auto& resource : resources)
@@ -396,7 +401,7 @@ HRESULT Ssao::renderSsao(ID3D12GraphicsCommandList* list)
 	list->SetGraphicsRootDescriptorTable(0, m_workDescHeapCbvSrv.Get()->GetGPUDescriptorHandleForHeapStart());
 	list->SetGraphicsRootDescriptorTable(1, CD3DX12_GPU_DESCRIPTOR_HANDLE(
 		m_workDescHeapCbvSrv.Get()->GetGPUDescriptorHandleForHeapStart(),
-		2,
+		4,
 		Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)));
 
 	{
@@ -418,14 +423,40 @@ HRESULT Ssao::renderSsao(ID3D12GraphicsCommandList* list)
 	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	list->IASetVertexBuffers(0, 1, CommonResource::getVertexBufferView());
 
-	list->DrawInstanced(4, 1, 0, 0);
+	list->DrawInstanced(CommonResource::getVertexCount(), 1, 0, 0);
 
 	return S_OK;
 }
 
 HRESULT Ssao::renderToTarget(ID3D12GraphicsCommandList* list)
 {
-	// TODO: imple
+	list->SetGraphicsRootSignature(m_rootSignature.Get());
+	list->SetPipelineState(m_pipelineStateTable.at(Type::kResolve).Get());
+
+	list->SetDescriptorHeaps(1, m_workDescHeapCbvSrv.GetAddressOf());
+	list->SetGraphicsRootDescriptorTable(0, m_workDescHeapCbvSrv.Get()->GetGPUDescriptorHandleForHeapStart());
+
+	{
+		const D3D12_VIEWPORT viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(Config::kWindowWidth), static_cast<float>(Config::kWindowHeight));
+		list->RSSetViewports(1, &viewport);
+	}
+
+	{
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+		list->RSSetScissorRects(1, &scissorRect);
+	}
+
+	const D3D12_CPU_DESCRIPTOR_HANDLE dstRtv = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+		m_workDescHeapRtv.Get()->GetCPUDescriptorHandleForHeapStart(),
+		1,
+		Resource::instance()->getDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+
+	list->OMSetRenderTargets(1, &dstRtv, false, nullptr);
+	list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	list->IASetVertexBuffers(0, 1, CommonResource::getVertexBufferView());
+
+	list->DrawInstanced(CommonResource::getVertexCount(), 1, 0, 0);
+
 	return S_OK;
 }
 

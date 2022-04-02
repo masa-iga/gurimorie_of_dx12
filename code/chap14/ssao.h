@@ -16,6 +16,7 @@ public:
 		kDstRt,
 		kSrcDepth,
 		kSrcNormal,
+		kSrcColor,
 		kSrcSceneParam,
 	};
 
@@ -60,5 +61,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_dstResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_srcDepthResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_srcNormalResource = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> m_srcColorResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_srcSceneParamResource = nullptr;
 };

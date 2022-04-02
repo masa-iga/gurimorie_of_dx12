@@ -4,6 +4,8 @@
 
 Texture2D<float> texDepth : register(t0);
 Texture2D<float4> texNormal : register(t1);
+Texture2D<float4> texColor: register(t2);
+Texture2D<float4> texWork : register(t3);
 SamplerState smp : register(s0);
 
 static float2 getDxDy(Texture2D<float> tex);
@@ -57,7 +59,10 @@ float4 ssao(VsOut vsOut) : SV_TARGET
 
 float4 resolve(VsOut vsOut) : SV_TARGET
 {
-    return 0;
+    const float ao = texWork.Sample(smp, vsOut.uv).x;
+    const float4 color = texColor.Sample(smp, vsOut.uv);
+
+    return float4(ao * color.rgb, color.a);
 }
 
 static float2 getDxDy(Texture2D<float> tex)
