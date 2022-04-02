@@ -81,11 +81,25 @@ class CommonResource
 public:
 	static HRESULT init();
 	static void tearDown();
+	static constexpr UINT getVertexCount() { return _countof(kVb); };
 	static const D3D12_VERTEX_BUFFER_VIEW* getVertexBufferView() { return &m_vbView; };
 	static const D3D12_INPUT_ELEMENT_DESC* getInputElementDesc() { return kInputElementDesc; };
 	static UINT getInputElementNum() { return _countof(kInputElementDesc); }
 
 private:
+	struct VertexBuffer
+	{
+		DirectX::XMFLOAT3 pos = { };
+		DirectX::XMFLOAT2 uv = { };
+	};
+
+	constexpr static VertexBuffer kVb[] = {
+		{{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}},
+		{{-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f}},
+		{{ 1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
+		{{ 1.0f,  1.0f, 0.0f}, {1.0f, 0.0f}},
+	};
+
 	constexpr static D3D12_INPUT_ELEMENT_DESC kInputElementDesc[] = {
 		{
 			.SemanticName = "POSITION",

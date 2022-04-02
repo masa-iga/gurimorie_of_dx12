@@ -467,22 +467,9 @@ void CommonResource::tearDown()
 
 HRESULT CommonResource::createVertexBuffer()
 {
-	struct VertexBuffer
-	{
-		DirectX::XMFLOAT3 pos = { };
-		DirectX::XMFLOAT2 uv = { };
-	};
-
-	constexpr VertexBuffer vb[] = {
-		{{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}},
-		{{-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f}},
-		{{ 1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
-		{{ 1.0f,  1.0f, 0.0f}, {1.0f, 0.0f}},
-	};
-
 	{
 		const D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD, 0, 0);
-		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(vb));
+		const D3D12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(kVb));
 
 		auto result = Resource::instance()->getDevice()->CreateCommittedResource(
 			&heapProp,
@@ -504,7 +491,7 @@ HRESULT CommonResource::createVertexBuffer()
 		auto result = m_vertexBuffer.Get()->Map(0, nullptr, reinterpret_cast<void**>(&pVb));
 		ThrowIfFailed(result);
 
-		std::copy(std::begin(vb), std::end(vb), pVb);
+		std::copy(std::begin(kVb), std::end(kVb), pVb);
 
 		// unmap
 		m_vertexBuffer.Get()->Unmap(0, nullptr);
@@ -512,7 +499,7 @@ HRESULT CommonResource::createVertexBuffer()
 
 	m_vbView = {
 		.BufferLocation = m_vertexBuffer.Get()->GetGPUVirtualAddress(),
-		.SizeInBytes = sizeof(vb),
+		.SizeInBytes = sizeof(kVb),
 		.StrideInBytes = sizeof(VertexBuffer),
 	};
 
