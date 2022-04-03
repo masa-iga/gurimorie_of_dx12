@@ -839,7 +839,7 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 			list,
 			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kPostBloom),
 			m_offScreenResource.getSrvHeap().Get(),
-			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kPostSsao),
 			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kLuminance));
 
 		m_offScreenResource.buildBarrier(
@@ -863,7 +863,7 @@ void Render::renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTO
 			list,
 			m_offScreenResource.getRtvCpuDescHandle(OffScreenResource::Type::kPostDof),
 			m_offScreenResource.getSrvHeap().Get(),
-			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kColor),
+			m_offScreenResource.getSrvGpuDescHandle(OffScreenResource::Type::kPostBloom),
 			m_depthSrvHeap.Get(),
 			m_depthSrvHeap.Get()->GetGPUDescriptorHandleForHeapStart());
 
