@@ -319,7 +319,7 @@ HRESULT Render::update()
 		actor.update(m_bAnimationReversed);
 
 
-	m_graph.set(m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k1) / 1000.0f);
+	m_graph.set(m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k3) / 1000.0f);
 	m_graph.update();
 
 	return S_OK;
@@ -360,7 +360,7 @@ HRESULT Render::render()
 	}
 
 	{
-		m_imguif.setRenderTime(m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k1) / 1000.0f);
+		m_imguif.setRenderTime(m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k3) / 1000.0f);
 	}
 
 	// get time stamp for starting
@@ -383,7 +383,15 @@ HRESULT Render::render()
 
 	renderShadowPass(list);
 
+	{
+		m_timeStamp.set(list, TimeStamp::Index::k1);
+	}
+
 	renderBasePass(list);
+
+	{
+		m_timeStamp.set(list, TimeStamp::Index::k2);
+	}
 
 	renderPostPass(list, rtvH);
 
@@ -412,7 +420,7 @@ HRESULT Render::render()
 
 	// time stamp for ending
 	{
-		m_timeStamp.set(list, TimeStamp::Index::k1);
+		m_timeStamp.set(list, TimeStamp::Index::k3);
 	}
 
 	// resolve time stamps
