@@ -157,62 +157,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="BasicVertexShader.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="peraPixel.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="peraVertex.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="shadowPixel.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="shadowVertex.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="floorVertex.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="floorPixel.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="graphVertex.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="graphPixel.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="toolkit_ps.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="toolkit_vs.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="bloomPixel.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="bloomVertex.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="dofPixel.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="dofVertex.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="ssaoVertex.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="ssaoPixel.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-    <FxCompile Include="BasicPixelShader.hlsl">
-      <Filter>シェーダ ファイル</Filter>
-    </FxCompile>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="BasicShaderHeader.hlsli">
       <Filter>シェーダ ファイル</Filter>
     </None>
@@ -305,6 +249,60 @@
       <Filter>シェーダ ファイル</Filter>
     </None>
     <None Include="commonParam.hlsli">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="BasicPixelShader.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="BasicVertexShader.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="bloomPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="bloomVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="dofPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="dofVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="floorPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="floorVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="graphPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="graphVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="peraPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="peraVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="shadowPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="shadowVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="ssaoPixel.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="ssaoVertex.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="toolkit_ps.hlsl">
+      <Filter>シェーダ ファイル</Filter>
+    </None>
+    <None Include="toolkit_vs.hlsl">
       <Filter>シェーダ ファイル</Filter>
     </None>
   </ItemGroup>
