@@ -20,6 +20,8 @@
 
 #pragma comment(lib, "dxguid.lib")
 
+#define ENABLE_STABLE_POWER (0)
+
 using namespace std;
 using namespace Microsoft::WRL;
 
@@ -68,6 +70,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	Resource::create();
 	ThrowIfFailed(Resource::instance()->allocate(hwnd));
+
+#if ENABLE_STABLE_POWER
+	auto result = Resource::instance()->getDevice()->SetStablePowerState(true);
+	ThrowIfFailed(result);
+#endif // ENABLE_STABLE_POWER
 
 	Loader::init();
 
