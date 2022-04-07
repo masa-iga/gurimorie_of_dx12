@@ -179,6 +179,7 @@ HRESULT Resource::listUpAdaptors(IDXGIFactory6* pDxgiFactory)
 HRESULT Resource::createDevice(ComPtr<ID3D12Device>* device, IUnknown* pAdapter)
 {
 	constexpr D3D_FEATURE_LEVEL levels[] = {
+		D3D_FEATURE_LEVEL_12_2,
 		D3D_FEATURE_LEVEL_12_1,
 		D3D_FEATURE_LEVEL_12_0,
 		D3D_FEATURE_LEVEL_11_1,
