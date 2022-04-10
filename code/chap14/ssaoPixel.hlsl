@@ -2,6 +2,10 @@
 #include "commonParam.hlsli"
 #include "util.hlsli"
 
+//#define TRYCNT (256)
+#define TRYCNT (64)
+//#define TRYCNT (1)
+
 Texture2D<float> texDepth : register(t0);
 Texture2D<float4> texNormal : register(t1);
 Texture2D<float4> texColor: register(t2);
@@ -22,7 +26,7 @@ float4 ssao(VsOut vsOut) : SV_TARGET
     const float dx = getDxDy(texDepth).x;
     const float dy = getDxDy(texDepth).y;
     const float3 norm = normalize((texNormal.Sample(smp, vsOut.uv).xyz * 2) - 1);
-    const int trycnt = 256;
+    const int trycnt = TRYCNT;
     const float radius = 0.5f;
     float div = 0.0f;
     float ao = 0.0f;
