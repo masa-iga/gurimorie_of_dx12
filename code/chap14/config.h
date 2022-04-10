@@ -2,6 +2,11 @@
 #include <cstdint>
 
 #define HIGH_RESOLUTION (1)
+#define USE_AGILITY_SDK (0)
+
+#if USE_AGILITY_SDK
+#define AGILITY_SDK_VERSION (600)
+#endif // USE_AGILITY_SDK
 
 namespace Config {
 #if HIGH_RESOLUTION

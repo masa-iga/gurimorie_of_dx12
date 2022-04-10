@@ -8,6 +8,11 @@
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 
+#if USE_AGILITY_SDK
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = AGILITY_SDK_VERSION; }
+extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
+#endif // USE_AGILITY_SDK
+
 using namespace Microsoft::WRL;
 
 static constexpr UINT kNumOfSwapBuffer = 2;
