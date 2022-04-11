@@ -48,8 +48,8 @@ private:
 	HRESULT renderSsao(ID3D12GraphicsCommandList* list);
 	HRESULT renderToTarget(ID3D12GraphicsCommandList* list);
 
-	std::map<Type, Microsoft::WRL::ComPtr<ID3DBlob>> m_vsBlobTable;
-	std::map<Type, Microsoft::WRL::ComPtr<ID3DBlob>> m_psBlobTable;
+	std::map<LPCSTR, Microsoft::WRL::ComPtr<ID3DBlob>> m_vsBlobTable;
+	std::map<LPCSTR, Microsoft::WRL::ComPtr<ID3DBlob>> m_psBlobTable;
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_workResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapRtv = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapCbvSrv = nullptr;

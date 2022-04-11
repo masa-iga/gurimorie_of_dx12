@@ -63,9 +63,8 @@ HRESULT Ssao::compileShaders()
 
 	for (size_t i = 0; i < kVsEntryPoints.size(); ++i)
 	{
-		const auto type = static_cast<Type>(i);
 
-		if (m_vsBlobTable.find(type) != m_vsBlobTable.end())
+		if (m_vsBlobTable.find(kVsEntryPoints.at(i)) != m_vsBlobTable.end())
 			continue;
 
 		auto result = D3DCompileFromFile(
@@ -85,14 +84,13 @@ HRESULT Ssao::compileShaders()
 			return E_FAIL;
 		}
 
-		m_vsBlobTable[type] = shaderBlob;
+		m_vsBlobTable[kVsEntryPoints.at(i)] = shaderBlob;
 	}
 
 	for (size_t i = 0; i < kPsEntryPoints.size(); ++i)
 	{
-		const auto type = static_cast<Type>(i);
 
-		if (m_psBlobTable.find(type) != m_psBlobTable.end())
+		if (m_psBlobTable.find(kPsEntryPoints.at(i)) != m_psBlobTable.end())
 			continue;
 
 		auto result = D3DCompileFromFile(
@@ -112,7 +110,7 @@ HRESULT Ssao::compileShaders()
 			return E_FAIL;
 		}
 
-		m_psBlobTable[type] = shaderBlob;
+		m_psBlobTable[kPsEntryPoints.at(i)] = shaderBlob;
 	}
 
 	return S_OK;
@@ -250,8 +248,10 @@ HRESULT Ssao::createPipelineState()
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = {
 		.pRootSignature = m_rootSignature.Get(),
-		.VS = { m_vsBlobTable.at(Type::kSsao).Get()->GetBufferPointer(), m_vsBlobTable.at(Type::kSsao).Get()->GetBufferSize()},
-		.PS = { m_psBlobTable.at(Type::kSsao).Get()->GetBufferPointer(), m_psBlobTable.at(Type::kSsao).Get()->GetBufferSize()},
+		.VS = { m_vsBlobTable.at(kVsEntryPoints.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferPointer(),
+			m_vsBlobTable.at(kVsEntryPoints.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferSize()},
+		.PS = { m_psBlobTable.at(kPsEntryPoints.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferPointer(),
+			m_psBlobTable.at(kPsEntryPoints.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferSize()},
 		.DS = { nullptr, 0 },
 		.HS = { nullptr, 0 },
 		.GS = { nullptr, 0 },
@@ -285,8 +285,10 @@ HRESULT Ssao::createPipelineState()
 	}
 
 	{
-		gpDesc.VS = { m_vsBlobTable.at(Type::kResolve).Get()->GetBufferPointer(), m_vsBlobTable.at(Type::kResolve).Get()->GetBufferSize() };
-		gpDesc.PS = { m_psBlobTable.at(Type::kResolve).Get()->GetBufferPointer(), m_psBlobTable.at(Type::kResolve).Get()->GetBufferSize() };
+		gpDesc.VS = { m_vsBlobTable.at(kVsEntryPoints.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferPointer(),
+			m_vsBlobTable.at(kVsEntryPoints.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferSize() };
+		gpDesc.PS = { m_psBlobTable.at(kPsEntryPoints.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferPointer(),
+			m_psBlobTable.at(kPsEntryPoints.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferSize() };
 
 		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 			&gpDesc,
