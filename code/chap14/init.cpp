@@ -6,6 +6,7 @@
 #include "util.h"
 
 #pragma comment(lib, "d3d12.lib")
+#pragma comment(lib, "dxcompiler.lib")
 #pragma comment(lib, "dxgi.lib")
 
 #if USE_AGILITY_SDK
@@ -141,6 +142,28 @@ ID3D12Resource* Resource::getFrameBuffer(UINT index)
 	auto buffer = m_frameBuffers.at(index);
 	ThrowIfFalse(buffer != nullptr);
 	return buffer.Get();
+}
+
+Microsoft::WRL::ComPtr<IDxcLibrary> Resource::getDxcLibrary()
+{
+	if (m_idxcLibrary != nullptr)
+		return m_idxcLibrary;
+
+	auto hr = DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(m_idxcLibrary.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(hr);
+
+	return m_idxcLibrary;
+}
+
+Microsoft::WRL::ComPtr<IDxcCompiler> Resource::getDxcCompiler()
+{
+	if (m_idxcCompiler != nullptr)
+		return m_idxcCompiler;
+
+	auto hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(m_idxcCompiler.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(hr);
+
+	return m_idxcCompiler;
 }
 
 HRESULT Resource::createDxFactory(ComPtr<IDXGIFactory6>* dxgiFactory)

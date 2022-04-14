@@ -3,6 +3,7 @@
 #include <codeanalysis/warnings.h>
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <d3d12.h>
+#include <dxcapi.h>
 #include <dxgi1_6.h>
 #include <Windows.h>
 #include <winerror.h>
@@ -44,6 +45,8 @@ public:
 	IDXGISwapChain4* getSwapChain();
 	ID3D12DescriptorHeap* getRtvHeaps();
 	ID3D12Resource* getFrameBuffer(UINT index);
+	Microsoft::WRL::ComPtr<IDxcLibrary> getDxcLibrary();
+	Microsoft::WRL::ComPtr<IDxcCompiler> getDxcCompiler();
 
 private:
 	Resource() = default;
@@ -67,4 +70,6 @@ private:
 	Microsoft::WRL::ComPtr<IDXGISwapChain4> m_pSwapChain = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_pRtvHeaps = nullptr;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_frameBuffers;
+	Microsoft::WRL::ComPtr<IDxcLibrary> m_idxcLibrary = nullptr;
+	Microsoft::WRL::ComPtr<IDxcCompiler> m_idxcCompiler = nullptr;
 };
