@@ -67,6 +67,21 @@ namespace Debug {
 
 		OutputDebugStringA(errStr.c_str());
 	}
+
+	void outputDebugMessage(IDxcOperationResult* result)
+	{
+		if (result == nullptr)
+			return;
+
+		Microsoft::WRL::ComPtr<IDxcBlobEncoding> errorBlob = nullptr;
+
+		auto hr = result->GetErrorBuffer(errorBlob.ReleaseAndGetAddressOf());
+
+		if (SUCCEEDED(hr) && errorBlob != nullptr)
+		{
+			Debug::debugOutputFormatString("%hs\n", reinterpret_cast<const char*>(errorBlob->GetBufferPointer()));
+		}
+	}
 } // namespace Debug
 
 void ThrowIfFailed(HRESULT hr)
