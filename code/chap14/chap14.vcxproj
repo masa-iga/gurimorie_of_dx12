@@ -70,7 +70,8 @@
       <ShaderModel>5.1</ShaderModel>
     </FxCompile>
     <PostBuildEvent>
-      <Command>xcopy /Y $(ProjectDir)..\dxc\bin\x64\dxcompiler.dll $(OutDir)</Command>
+      <Command>xcopy /Y $(ProjectDir)..\dxc\bin\x64\dxcompiler.dll $(OutDir)
+xcopy /Y $(ProjectDir)..\dxc\bin\x64\dxil.dll $(OutDir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -97,7 +98,8 @@
       <ShaderModel>5.1</ShaderModel>
     </FxCompile>
     <PostBuildEvent>
-      <Command>xcopy /Y $(ProjectDir)..\dxc\bin\x64\dxcompiler.dll $(OutDir)</Command>
+      <Command>xcopy /Y $(ProjectDir)..\dxc\bin\x64\dxcompiler.dll $(OutDir)
+xcopy /Y $(ProjectDir)..\dxc\bin\x64\dxil.dll $(OutDir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
