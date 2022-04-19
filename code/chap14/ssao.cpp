@@ -58,11 +58,113 @@ HRESULT Ssao::render(ID3D12GraphicsCommandList* list)
 
 HRESULT Ssao::compileShaders()
 {
+#if USE_DXC_IN_SSAO
+	for (size_t i = 0; i < kVsEntryPointsDxc.size(); ++i)
+	{
+		//Util::TimeCounter tc("dxc vs ssao");
+
+		if (m_vsBlobTableDxc.find(kVsEntryPointsDxc.at(i)) != m_vsBlobTableDxc.end())
+			continue;
+
+		uint32_t codePage = CP_UTF8;
+		ComPtr<IDxcBlobEncoding> sourceBlob = nullptr;
+
+		auto hr = Resource::instance()->getDxcLibrary()->CreateBlobFromFile(
+			kVsFile,
+			&codePage,
+			sourceBlob.ReleaseAndGetAddressOf());
+		ThrowIfFailed(hr);
+
+		ComPtr<IDxcIncludeHandler> includeHandler = nullptr;
+		hr = Resource::instance()->getDxcLibrary()->CreateIncludeHandler(includeHandler.ReleaseAndGetAddressOf());
+		ThrowIfFailed(hr);
+
+		ComPtr<IDxcOperationResult> result = nullptr;
+
+		hr = Resource::instance()->getDxcCompiler()->Compile(
+			sourceBlob.Get(),
+			kVsFile,
+			kVsEntryPointsDxc.at(i),
+			Constant::kDxcVsShaderModel,
+			nullptr,
+			0,
+			NULL,
+			0,
+			includeHandler.Get(),
+			result.ReleaseAndGetAddressOf());
+		ThrowIfFailed(hr);
+
+		if (SUCCEEDED(hr))
+		{
+			result->GetStatus(&hr);
+		}
+
+		if (FAILED(hr))
+		{
+			Debug::outputDebugMessage(result.Get());
+			ThrowIfFalse(false);
+		}
+
+		m_vsBlobTableDxc[kVsEntryPointsDxc.at(i)] = nullptr;
+		result->GetResult(m_vsBlobTableDxc[kVsEntryPointsDxc.at(i)].ReleaseAndGetAddressOf());
+	}
+
+	for (size_t i = 0; i < kPsEntryPointsDxc.size(); ++i)
+	{
+		//Util::TimeCounter tc("dxc ps ssao");
+
+		if (m_psBlobTableDxc.find(kPsEntryPointsDxc.at(i)) != m_psBlobTableDxc.end())
+			continue;
+
+		uint32_t codePage = CP_UTF8;
+		ComPtr<IDxcBlobEncoding> sourceBlob = nullptr;
+
+		auto hr = Resource::instance()->getDxcLibrary()->CreateBlobFromFile(
+			kPsFile,
+			&codePage,
+			sourceBlob.ReleaseAndGetAddressOf());
+		ThrowIfFailed(hr);
+
+		ComPtr<IDxcIncludeHandler> includeHandler = nullptr;
+		hr = Resource::instance()->getDxcLibrary()->CreateIncludeHandler(includeHandler.ReleaseAndGetAddressOf());
+		ThrowIfFailed(hr);
+
+		ComPtr<IDxcOperationResult> result = nullptr;
+
+		hr = Resource::instance()->getDxcCompiler()->Compile(
+			sourceBlob.Get(),
+			kPsFile,
+			kPsEntryPointsDxc.at(i),
+			Constant::kDxcPsShaderModel,
+			nullptr,
+			0,
+			NULL,
+			0,
+			includeHandler.Get(),
+			result.ReleaseAndGetAddressOf());
+		ThrowIfFailed(hr);
+
+		if (SUCCEEDED(hr))
+		{
+			result->GetStatus(&hr);
+		}
+
+		if (FAILED(hr))
+		{
+			Debug::outputDebugMessage(result.Get());
+			ThrowIfFalse(false);
+		}
+
+		m_psBlobTableDxc[kPsEntryPointsDxc.at(i)] = nullptr;
+		result->GetResult(m_psBlobTableDxc[kPsEntryPointsDxc.at(i)].ReleaseAndGetAddressOf());
+	}
+#else
 	ComPtr<ID3DBlob> shaderBlob = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;
 
 	for (size_t i = 0; i < kVsEntryPoints.size(); ++i)
 	{
+		Util::TimeCounter tc("ssao vs compile" + std::to_string(i));
 
 		if (m_vsBlobTable.find(kVsEntryPoints.at(i)) != m_vsBlobTable.end())
 			continue;
@@ -89,6 +191,7 @@ HRESULT Ssao::compileShaders()
 
 	for (size_t i = 0; i < kPsEntryPoints.size(); ++i)
 	{
+		Util::TimeCounter tc("ssao ps compile" + std::to_string(i));
 
 		if (m_psBlobTable.find(kPsEntryPoints.at(i)) != m_psBlobTable.end())
 			continue;
@@ -112,6 +215,7 @@ HRESULT Ssao::compileShaders()
 
 		m_psBlobTable[kPsEntryPoints.at(i)] = shaderBlob;
 	}
+#endif // USE_DXC_IN_SSAO
 
 	return S_OK;
 }
@@ -248,10 +352,17 @@ HRESULT Ssao::createPipelineState()
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC gpDesc = {
 		.pRootSignature = m_rootSignature.Get(),
+#if USE_DXC_IN_SSAO
+		.VS = { m_vsBlobTableDxc.at(kVsEntryPointsDxc.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferPointer(),
+			m_vsBlobTableDxc.at(kVsEntryPointsDxc.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferSize()},
+		.PS = { m_psBlobTableDxc.at(kPsEntryPointsDxc.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferPointer(),
+			m_psBlobTableDxc.at(kPsEntryPointsDxc.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferSize()},
+#else
 		.VS = { m_vsBlobTable.at(kVsEntryPoints.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferPointer(),
 			m_vsBlobTable.at(kVsEntryPoints.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferSize()},
 		.PS = { m_psBlobTable.at(kPsEntryPoints.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferPointer(),
 			m_psBlobTable.at(kPsEntryPoints.at(static_cast<size_t>(Type::kSsao))).Get()->GetBufferSize()},
+#endif // USE_DXC_IN_SSAO
 		.DS = { nullptr, 0 },
 		.HS = { nullptr, 0 },
 		.GS = { nullptr, 0 },
@@ -285,10 +396,17 @@ HRESULT Ssao::createPipelineState()
 	}
 
 	{
+#if USE_DXC_IN_SSAO
+		gpDesc.VS = { m_vsBlobTableDxc.at(kVsEntryPointsDxc.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferPointer(),
+			m_vsBlobTableDxc.at(kVsEntryPointsDxc.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferSize() };
+		gpDesc.PS = { m_psBlobTableDxc.at(kPsEntryPointsDxc.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferPointer(),
+			m_psBlobTableDxc.at(kPsEntryPointsDxc.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferSize() };
+#else
 		gpDesc.VS = { m_vsBlobTable.at(kVsEntryPoints.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferPointer(),
 			m_vsBlobTable.at(kVsEntryPoints.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferSize() };
 		gpDesc.PS = { m_psBlobTable.at(kPsEntryPoints.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferPointer(),
 			m_psBlobTable.at(kPsEntryPoints.at(static_cast<size_t>(Type::kResolve))).Get()->GetBufferSize() };
+#endif // USE_DXC_IN_SSAO
 
 		auto result = Resource::instance()->getDevice()->CreateGraphicsPipelineState(
 			&gpDesc,

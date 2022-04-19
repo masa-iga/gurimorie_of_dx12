@@ -2,8 +2,8 @@
 #include "commonParam.hlsli"
 #include "util.hlsli"
 
-//#define TRYCNT (256)
-#define TRYCNT (64)
+#define TRYCNT (256)
+//#define TRYCNT (64)
 //#define TRYCNT (1)
 
 Texture2D<float> texDepth : register(t0);
@@ -33,7 +33,7 @@ float4 ssao(VsOut vsOut) : SV_TARGET
 
     if (dp < 1.0f)
     {
-        [unroll] for (int i = 0; i < trycnt; ++i)
+        for (int i = 0; i < trycnt; ++i)
         {
             const float rnd1 = random(float2(i * dx, i * dy)) * 2 - 1;
             const float rnd2 = random(float2(rnd1, i * dy)) * 2 - 1;

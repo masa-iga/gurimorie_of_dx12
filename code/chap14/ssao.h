@@ -5,9 +5,12 @@
 #include <array>
 #include <Windows.h>
 #include <d3d12.h>
+#include <dxcapi.h>
 #include <map>
 #include <wrl.h>
 #pragma warning(pop)
+
+#define USE_DXC_IN_SSAO (1)
 
 class Ssao
 {
@@ -35,8 +38,13 @@ private:
 
 	static constexpr LPCWSTR kVsFile = L"ssaoVertex.hlsl";
 	static constexpr LPCWSTR kPsFile = L"ssaoPixel.hlsl";
+#if USE_DXC_IN_SSAO
+	static constexpr std::array<LPCWSTR, static_cast<size_t>(Type::kEnd)> kVsEntryPointsDxc = { L"main", L"main" };
+	static constexpr std::array<LPCWSTR, static_cast<size_t>(Type::kEnd)> kPsEntryPointsDxc = { L"ssao", L"resolve" };
+#else
 	static constexpr std::array<LPCSTR, static_cast<size_t>(Type::kEnd)> kVsEntryPoints = { "main", "main" };
 	static constexpr std::array<LPCSTR, static_cast<size_t>(Type::kEnd)> kPsEntryPoints = { "ssao", "resolve" };
+#endif // USE_DXC_IN_SSAO
 	static constexpr FLOAT kClearColor[4] = { 0, 0, 0, 0 };
 
 	HRESULT compileShaders();
@@ -48,8 +56,13 @@ private:
 	HRESULT renderSsao(ID3D12GraphicsCommandList* list);
 	HRESULT renderToTarget(ID3D12GraphicsCommandList* list);
 
+#if USE_DXC_IN_SSAO
+	std::map<LPCWSTR, Microsoft::WRL::ComPtr<IDxcBlob>> m_vsBlobTableDxc;
+	std::map<LPCWSTR, Microsoft::WRL::ComPtr<IDxcBlob>> m_psBlobTableDxc;
+#else
 	std::map<LPCSTR, Microsoft::WRL::ComPtr<ID3DBlob>> m_vsBlobTable;
 	std::map<LPCSTR, Microsoft::WRL::ComPtr<ID3DBlob>> m_psBlobTable;
+#endif // USE_DXC_IN_SSAO
 	Microsoft::WRL::ComPtr<ID3D12Resource> m_workResource = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapRtv = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_workDescHeapCbvSrv = nullptr;
