@@ -57,12 +57,12 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(DXTEX_DIR)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(DXTEX_DIR);$(SolutionDir)effekseer\\include\Effekseer;$(SolutionDir)effekseer\\include\EffekseerRendererDX12</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Debug</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(SolutionDir)effekseer\lib;$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>imgui.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile />
@@ -83,14 +83,14 @@ xcopy /Y $(ProjectDir)..\dxc\bin\x64\dxil.dll $(OutDir)</Command>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(DXTEX_DIR)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(DXTEX_DIR);$(SolutionDir)effekseer\\include\Effekseer;$(SolutionDir)effekseer\\include\EffekseerRendererDX12</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Release</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(Configuration);$(SolutionDir)effekseer\lib;$(DXTEX_DIR)\Bin\Desktop_2019_Win10\x64\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>imgui.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <FxCompile />
@@ -106,6 +106,7 @@ xcopy /Y $(ProjectDir)..\dxc\bin\x64\dxil.dll $(OutDir)</Command>
     <ClCompile Include="bloom.cpp" />
     <ClCompile Include="debug.cpp" />
     <ClCompile Include="dof.cpp" />
+    <ClCompile Include="effekseer_proxy.cpp" />
     <ClCompile Include="floor.cpp" />
     <ClCompile Include="graph.cpp" />
     <ClCompile Include="imgui_if.cpp" />
@@ -130,6 +131,7 @@ xcopy /Y $(ProjectDir)..\dxc\bin\x64\dxil.dll $(OutDir)</Command>
     <ClInclude Include="constant.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="dof.h" />
+    <ClInclude Include="effekseer_proxy.h" />
     <ClInclude Include="floor.h" />
     <ClInclude Include="graph.h" />
     <ClInclude Include="imgui_if.h" />
