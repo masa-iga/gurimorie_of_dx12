@@ -11,6 +11,7 @@
 #include "bloom.h"
 #include "config.h"
 #include "dof.h"
+#include "effekseer_proxy.h"
 #include "floor.h"
 #include "graph.h"
 #include "observer.h"
@@ -100,6 +101,7 @@ public:
 	void moveEye(MoveEye moveEye, float val = 0.0f);
 
 private:
+	HRESULT initEffekseer();
 	HRESULT createSceneMatrixBuffer();
 	HRESULT createViews();
 	HRESULT updateMvpMatrix(bool animationReversed);
@@ -145,6 +147,7 @@ private:
 	Shadow m_shadow;
 	RenderGraph m_graph;
 	ImguiIf m_imguif;
+	EffekseerProxy m_effekseerProxy;
 
 	TimeStamp m_timeStamp;
 };

@@ -297,6 +297,7 @@ HRESULT Render::init(HWND hwnd)
 	ThrowIfFailed(m_graph.init());
 	ThrowIfFailed(m_imguif.init(hwnd));
 	m_imguif.addObserver(this);
+	ThrowIfFailed(initEffekseer());
 
 	ThrowIfFailed(m_timeStamp.init());
 
@@ -520,6 +521,26 @@ void Render::moveEye(MoveEye moveEye, float val)
 		ThrowIfFalse(false);
 		break;
 	}
+}
+
+HRESULT Render::initEffekseer()
+{
+	DXGI_FORMAT rtFormats[] = { Resource::instance()->getFrameBuffer(0)->GetDesc().Format };
+	constexpr DXGI_FORMAT depthFormat = DXGI_FORMAT_D32_FLOAT;
+	constexpr bool bReverseDepth = false;
+	constexpr int32_t kSquareMaxCount = 10'000;
+
+	ThrowIfFailed(m_effekseerProxy.init(
+		Resource::instance()->getDevice(),
+		Resource::instance()->getCommandQueue(),
+		2,
+		rtFormats,
+		_countof(rtFormats),
+		depthFormat,
+		bReverseDepth,
+		kSquareMaxCount));
+
+	return S_OK;
 }
 
 HRESULT Render::createSceneMatrixBuffer()

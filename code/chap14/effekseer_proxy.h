@@ -9,10 +9,10 @@
 
 class EffekseerProxy {
 public:
-	HRESULT init();
+	HRESULT init(ID3D12Device* device, ID3D12CommandQueue* commandQueue, int32_t swapBufferCount, DXGI_FORMAT* renderTargetFormats, int32_t renderTargetCount, DXGI_FORMAT depthFormat, bool isReversedDepth, int32_t squareMaxCount);
 
 private:
-	EffekseerRenderer::Renderer* m_efkRenderer = nullptr;
+	EffekseerRenderer::RendererRef m_efkRendererRef = nullptr;
 	Effekseer::Manager* m_efkManager = nullptr;
 	EffekseerRenderer::SingleFrameMemoryPool* m_efkMemoryPool = nullptr;
 	EffekseerRenderer::CommandList* m_efkCmdList = nullptr;
