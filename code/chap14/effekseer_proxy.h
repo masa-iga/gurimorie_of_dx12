@@ -10,14 +10,18 @@
 class EffekseerProxy {
 public:
 	HRESULT init(ID3D12Device* device, ID3D12CommandQueue* commandQueue, int32_t swapBufferCount, DXGI_FORMAT* renderTargetFormats, int32_t renderTargetCount, DXGI_FORMAT depthFormat, bool isReversedDepth, int32_t squareMaxCount);
+	HRESULT load();
 
 private:
+	inline static const char16_t kEffectPath[] = u"../effekseer/resource/10/SimpleLaser.efk";
+	inline static const char16_t kMaterialPath[] = u"../effekseer/resource/10";
+
 	HRESULT config();
 
 	EffekseerRenderer::RendererRef m_efkRenderer = nullptr;
 	Effekseer::ManagerRef m_efkManager = nullptr;
 	Effekseer::RefPtr<EffekseerRenderer::SingleFrameMemoryPool> m_efkMemoryPool = nullptr;
 	Effekseer::RefPtr<EffekseerRenderer::CommandList> m_efkCmdList = nullptr;
-	Effekseer::Effect* m_effect = nullptr;
+	Effekseer::RefPtr<Effekseer::Effect> m_effect = nullptr;
 	Effekseer::Handle m_efkHandle = { };
 };

@@ -298,6 +298,7 @@ HRESULT Render::init(HWND hwnd)
 	ThrowIfFailed(m_imguif.init(hwnd));
 	m_imguif.addObserver(this);
 	ThrowIfFailed(initEffekseer());
+	ThrowIfFailed(m_effekseerProxy.load());
 
 	ThrowIfFailed(m_timeStamp.init());
 

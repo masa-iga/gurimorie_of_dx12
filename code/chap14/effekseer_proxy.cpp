@@ -25,6 +25,18 @@ HRESULT EffekseerProxy::init(ID3D12Device* device, ID3D12CommandQueue* commandQu
 	return S_OK;
 }
 
+HRESULT EffekseerProxy::load()
+{
+	m_effect = Effekseer::Effect::Create(
+		m_efkManager,
+		kEffectPath,
+		1.0f,
+		kMaterialPath);
+	ThrowIfFalse(m_effect != nullptr);
+
+	return S_OK;
+}
+
 HRESULT EffekseerProxy::config()
 {
 	m_efkManager->SetCoordinateSystem(Effekseer::CoordinateSystem::LH);
