@@ -2,6 +2,7 @@
 #pragma warning(push, 0)
 #include <codeanalysis/warnings.h>
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
+#include <DirectXMath.h>
 #include <Winerror.h>
 #include <Effekseer.h>
 #include <EffekseerRendererDX12.h>
@@ -11,6 +12,11 @@ class EffekseerProxy {
 public:
 	HRESULT init(ID3D12Device* device, ID3D12CommandQueue* commandQueue, int32_t swapBufferCount, DXGI_FORMAT* renderTargetFormats, int32_t renderTargetCount, DXGI_FORMAT depthFormat, bool isReversedDepth, int32_t squareMaxCount);
 	HRESULT load();
+	HRESULT play();
+	HRESULT update();
+	void setCameraMatrix(const DirectX::XMMATRIX& mat);
+	void setProjectionMatrix(const DirectX::XMMATRIX& mat);
+	HRESULT draw(ID3D12GraphicsCommandList* cmdList);
 
 private:
 	inline static const char16_t kEffectPath[] = u"../effekseer/resource/10/SimpleLaser.efk";

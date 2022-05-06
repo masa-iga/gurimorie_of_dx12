@@ -299,6 +299,7 @@ HRESULT Render::init(HWND hwnd)
 	m_imguif.addObserver(this);
 	ThrowIfFailed(initEffekseer());
 	ThrowIfFailed(m_effekseerProxy.load());
+	ThrowIfFailed(m_effekseerProxy.play());
 
 	ThrowIfFailed(m_timeStamp.init());
 
@@ -318,11 +319,13 @@ HRESULT Render::update()
 	updateMvpMatrix(m_bAnimationReversed);
 
 	for (auto& actor : m_pmdActors)
+	{
 		actor.update(m_bAnimationReversed);
-
+	}
 
 	m_graph.set(m_timeStamp.getInUsec(TimeStamp::Index::k0, TimeStamp::Index::k3) / 1000.0f);
 	m_graph.update();
+	m_effekseerProxy.update();
 
 	return S_OK;
 }
@@ -397,8 +400,15 @@ HRESULT Render::render()
 
 	renderPostPass(list, rtvH);
 
+	{
+		const PixScopedEvent pixScopedEvent(list, "Effekseer");
+		m_effekseerProxy.draw(list);
+	}
+
 	// UI: axis
 	{
+		const PixScopedEvent pixScopedEvent(list, "Axis");
+
 		{
 			const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 				m_depthResource.Get(),
@@ -527,7 +537,7 @@ void Render::moveEye(MoveEye moveEye, float val)
 HRESULT Render::initEffekseer()
 {
 	DXGI_FORMAT rtFormats[] = { Resource::instance()->getFrameBuffer(0)->GetDesc().Format };
-	constexpr DXGI_FORMAT depthFormat = DXGI_FORMAT_D32_FLOAT;
+	constexpr DXGI_FORMAT depthFormat = DXGI_FORMAT_UNKNOWN;
 	constexpr bool bReverseDepth = false;
 	constexpr int32_t kSquareMaxCount = 10'000;
 
@@ -707,6 +717,11 @@ HRESULT Render::updateMvpMatrix(bool animationReversed)
 		m_imguif.setEyePos(eyePos);
 		m_imguif.setFocusPos(focusPos);
 		m_imguif.setLightPos(lightPos);
+	}
+
+	{
+		m_effekseerProxy.setCameraMatrix(m_sceneParam->view);
+		m_effekseerProxy.setProjectionMatrix(m_sceneParam->proj);
 	}
 
 	return S_OK;
