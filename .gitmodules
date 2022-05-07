@@ -1,0 +1,3 @@
+[submodule "code/effekseer/resource/testData"]
+	path = code/effekseer/resource/testData
+	url = git@github.com:effekseer/TestData.git
