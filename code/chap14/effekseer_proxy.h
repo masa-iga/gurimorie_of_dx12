@@ -19,8 +19,8 @@ public:
 	HRESULT draw(ID3D12GraphicsCommandList* cmdList);
 
 private:
-	inline static const char16_t kEffectPath[] = u"../effekseer/resource/10/SimpleLaser.efk";
-	inline static const char16_t kMaterialPath[] = u"../effekseer/resource/10";
+	inline static const char16_t kEffectPath[] = u"../effekseer/resource/testData/Effects/10/SimpleLaser.efk";
+	inline static const char16_t kMaterialPath[] = u"../effekseer/resource/testData/Effects/10";
 
 	HRESULT config();
 
