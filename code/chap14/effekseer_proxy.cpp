@@ -48,8 +48,21 @@ HRESULT EffekseerProxy::play()
 
 HRESULT EffekseerProxy::update()
 {
+	static size_t s_frame = 0;
+
+	if (s_frame > 180)
+	{
+		s_frame = 0;
+		play();
+
+		return S_OK;
+	}
+
+	++s_frame;
+
 	m_efkManager->Update();
 	m_efkMemoryPool->NewFrame();
+
 	return S_OK;
 }
 
