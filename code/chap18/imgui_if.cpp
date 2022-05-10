@@ -1,0 +1,234 @@
+#include "imgui_if.h"
+#pragma warning(push, 0)
+#include <codeanalysis/warnings.h>
+#pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
+#include <d3dx12.h>
+#pragma warning(pop)
+#include "debug.h"
+#include "init.h"
+#include "util.h"
+#include "../imgui/src/imgui_impl_win32.h"
+#include "../imgui/src/imgui_impl_dx12.h"
+
+using namespace Microsoft::WRL;
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+HRESULT ImguiIf::init(HWND hwnd)
+{
+	auto context = ImGui::CreateContext();
+
+	if (context == nullptr)
+	{
+		ThrowIfFalse(false);
+		return E_FAIL;
+	}
+
+	auto ret = ImGui_ImplWin32_Init(hwnd);
+
+	if (!ret)
+	{
+		ThrowIfFalse(false);
+		return E_FAIL;
+	}
+
+	m_descHeap = createDescriptorHeap();
+
+	if (m_descHeap == nullptr)
+	{
+		ThrowIfFalse(false);
+		return E_FAIL;
+	}
+
+	constexpr int32_t kNumFramesInFlight = 3;
+
+	ret = ImGui_ImplDX12_Init(
+		Resource::instance()->getDevice(),
+		kNumFramesInFlight,
+		Resource::instance()->getFrameBuffer(0)->GetDesc().Format,
+		m_descHeap.Get(),
+		m_descHeap.Get()->GetCPUDescriptorHandleForHeapStart(),
+		m_descHeap.Get()->GetGPUDescriptorHandleForHeapStart()
+	);
+
+	if (!ret)
+	{
+		ThrowIfFailed(false);
+		return E_FAIL;
+	}
+
+	// disable create ini file
+	auto& io = ImGui::GetIO();
+	io.IniFilename = nullptr;
+
+	return S_OK;
+}
+
+void ImguiIf::teardown()
+{
+	ImGui_ImplWin32_Shutdown();
+	ImGui_ImplDX12_Shutdown();
+}
+
+void ImguiIf::newFrame()
+{
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+}
+
+void ImguiIf::build()
+{
+	ImGui::Begin("Information");
+	{
+		static bool bFirst = true;
+
+		if (bFirst)
+		{
+			bFirst = false;
+			ImGui::SetWindowPos(kWindowPos);
+			ImGui::SetWindowSize(kWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
+		}
+
+		ImGui::Text("FPS   : %2.1f\n", m_fps);
+		ImGui::Text("Render: %2.1f ms\n", m_renderingTimeInMs);
+		ImGui::Text("Eye   : %2.2f %2.2f %2.2f\n", m_eyePos.x, m_eyePos.y, m_eyePos.z);
+		ImGui::Text("Focus : %2.2f %2.2f %2.2f\n", m_focusPos.x, m_focusPos.y, m_focusPos.z);
+		ImGui::Text("Light : %2.2f %2.2f %2.2f\n", m_lightPos.x, m_lightPos.y, m_lightPos.z);
+		{
+			const bool bUpdated = ImGui::SliderFloat("high luminance threashold", &m_highLuminanceThreashold, 0.0f, 1.0f);
+
+			if (bUpdated)
+			{
+				const UiEventDataUpdateHighLuminanceThreshold uiEventData = { .val = m_highLuminanceThreashold };
+				notify(UiEvent::kUpdateHighLuminanceThreshold, &uiEventData);
+			}
+		}
+
+		{
+			static bool bCheck = false;
+			const bool bUpdated = ImGui::Checkbox("Auto moving eye position", &bCheck);
+
+			if (bUpdated)
+			{
+				const UiEventDataUpdateAutoMovePos uiEventData = { .flag = bCheck };
+				notify(UiEvent::kUpdateAutoMovePos, &uiEventData);
+			}
+		}
+
+		{
+			static bool bCheck = false;
+			const bool bUpdated = ImGui::Checkbox("Auto moving light position", &bCheck);
+
+			if (bUpdated)
+			{
+				const UiEventDataUpdateAutoLightPos uiEventData = { .flag = bCheck };
+				notify(UiEvent::kUpdateAutoLightPos, &uiEventData);
+			}
+		}
+	}
+	ImGui::End();
+}
+
+void ImguiIf::render(ID3D12GraphicsCommandList* list)
+{
+	ThrowIfFalse(list != nullptr);
+
+	ImGui::Render();
+
+	list->SetDescriptorHeaps(1, getDescHeap().GetAddressOf());
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), list);
+}
+
+LRESULT ImguiIf::wndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+{
+	return ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
+}
+
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::createDescriptorHeap() const
+{
+	ComPtr<ID3D12DescriptorHeap> descHeap = nullptr;
+
+	D3D12_DESCRIPTOR_HEAP_DESC desc = { };
+	{
+		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		desc.NumDescriptors = 1;
+		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		desc.NodeMask = 0;
+	}
+
+	auto ret = Resource::instance()->getDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(descHeap.ReleaseAndGetAddressOf()));
+	ThrowIfFailed(ret);
+
+	ret = descHeap.Get()->SetName(Util::getWideStringFromString("DescHeapImgui").c_str());
+	ThrowIfFailed(ret);
+
+	return descHeap;
+}
+
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> ImguiIf::getDescHeap()
+{
+	return m_descHeap;
+}
+
+void ImguiIf::buildTestWindow()
+{
+	ImGui::Begin("Rendering Test Menu");
+	{
+		static bool bFirst = true;
+
+		if (bFirst)
+		{
+			bFirst = false;
+			ImGui::SetWindowPos(kTestWindowPos);
+			ImGui::SetWindowSize(kTestWindowSize, ImGuiCond_::ImGuiCond_FirstUseEver);
+		}
+
+		if (true /* test */)
+		{
+			{
+				static bool blnChk = false;
+				bool bUpdated = ImGui::Checkbox("CheckboxTest", &blnChk);
+			}
+
+			{
+				bool bUpdated = false;
+
+				static int32_t radio = 0;
+				bUpdated |= ImGui::RadioButton("Radio 1", &radio, 0);
+				ImGui::SameLine();
+				bUpdated |= ImGui::RadioButton("Radio 2", &radio, 1);
+				ImGui::SameLine();
+				bUpdated |= ImGui::RadioButton("Radio 3", &radio, 2);
+
+				if (bUpdated)
+				{
+					//debugOutputFormatString("Radio button updated. (%d)\n", radio);
+				}
+			}
+
+			{
+				static int32_t nSlider = 0;
+				bool bUpdated = ImGui::SliderInt("Int Slider", &nSlider, 0, 100);
+			}
+
+			{
+				static float fSlider = 0.0f;
+				bool bUpdated = ImGui::SliderFloat("Float Slider", &fSlider, 0.0f, 100.0f);
+			}
+
+			{
+				static float col3[3] = { };
+				bool bUpdated = ImGui::ColorPicker3("ColorPicker3", col3, ImGuiColorEditFlags_::ImGuiColorEditFlags_DisplayRGB);
+			}
+
+			{
+				static float col4[4] = { };
+				bool bUpdated = ImGui::ColorPicker4("ColorPicker4", col4,
+					ImGuiColorEditFlags_::ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_::ImGuiColorEditFlags_AlphaBar);
+			}
+		}
+	}
+	ImGui::End();
+}
+
+
