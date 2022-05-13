@@ -1068,7 +1068,7 @@ namespace {
 
 			D3D12_CLEAR_VALUE clearVal = { };
 			{
-				clearVal.Format = DXGI_FORMAT_D32_FLOAT;
+				clearVal.Format = Constant::kDefaultDrtFormat;
 				clearVal.DepthStencil.Depth = 1.0f;
 				clearVal.DepthStencil.Stencil = 0;
 			}
@@ -1107,7 +1107,7 @@ namespace {
 		{
 			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = { };
 			{
-				dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+				dsvDesc.Format = Constant::kDefaultDrtFormat;
 				dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 				dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 				dsvDesc.Texture2D.MipSlice = 0;
@@ -1187,7 +1187,7 @@ namespace {
 
 			D3D12_CLEAR_VALUE clearVal = { };
 			{
-				clearVal.Format = DXGI_FORMAT_D32_FLOAT;
+				clearVal.Format = Constant::kDefaultDrtFormat;
 				clearVal.DepthStencil.Depth = 1.0f;
 				clearVal.DepthStencil.Stencil = 0;
 			}
@@ -1226,7 +1226,7 @@ namespace {
 		{
 			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = { };
 			{
-				dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+				dsvDesc.Format = Constant::kDefaultDrtFormat;
 				dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 				dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 				dsvDesc.Texture2D.MipSlice = 0;

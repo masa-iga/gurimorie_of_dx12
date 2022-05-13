@@ -526,9 +526,9 @@ HRESULT Floor::createGraphicsPipeline()
 		//D3D12_INDEX_BUFFER_STRIP_CUT_VALUE IBStripCutValue;
 		pipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		pipelineStateDesc.NumRenderTargets = 2;
-		pipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		pipelineStateDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		pipelineStateDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+		pipelineStateDesc.RTVFormats[0] = Constant::kDefaultRtFormat;
+		pipelineStateDesc.RTVFormats[1] = Constant::kDefaultRtFormat;
+		pipelineStateDesc.DSVFormat = Constant::kDefaultDrtFormat;
 		pipelineStateDesc.SampleDesc = { 1, 0 };
 		//UINT NodeMask;
 		//D3D12_CACHED_PIPELINE_STATE CachedPSO;
