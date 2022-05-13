@@ -11,6 +11,7 @@
 #include "bloom.h"
 #include "config.h"
 #include "dof.h"
+#include "dxtk_if.h"
 #include "effekseer_proxy.h"
 #include "floor.h"
 #include "graph.h"
@@ -148,6 +149,7 @@ private:
 	RenderGraph m_graph;
 	ImguiIf m_imguif;
 	EffekseerProxy m_effekseerProxy;
+	DxtkIf m_dxtkIf;
 
 	TimeStamp m_timeStamp;
 };

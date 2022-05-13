@@ -300,6 +300,7 @@ HRESULT Render::init(HWND hwnd)
 	ThrowIfFailed(initEffekseer());
 	ThrowIfFailed(m_effekseerProxy.load());
 	ThrowIfFailed(m_effekseerProxy.play());
+	ThrowIfFailed(m_dxtkIf.init(Resource::instance()->getDevice(), Constant::kDefaultRtFormat, Constant::kDefaultDrtFormat));
 
 	ThrowIfFailed(m_timeStamp.init());
 
