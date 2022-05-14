@@ -7,6 +7,7 @@
 #include <SpriteFont.h>
 #include <Winerror.h>
 #include <memory>
+#include <wrl.h>
 #pragma warning(pop)
 
 class DxtkIf {
@@ -14,7 +15,10 @@ public:
 	HRESULT init(ID3D12Device* device, DXGI_FORMAT rtFormat, DXGI_FORMAT dsFormat);
 
 private:
+	const wchar_t* kFilePath = L"../resource/dxtk/fonttest.spritefont";
+
 	std::unique_ptr<DirectX::GraphicsMemory> m_gfxMemory = nullptr;
-	DirectX::SpriteFont* m_spriteFont = nullptr;
-	DirectX::SpriteBatch* m_spriteBatch = nullptr;
+	std::unique_ptr<DirectX::SpriteFont> m_spriteFont = nullptr;
+	std::unique_ptr<DirectX::SpriteBatch> m_spriteBatch = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_descHeap = nullptr;
 };
