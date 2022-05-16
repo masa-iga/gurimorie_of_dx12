@@ -4,6 +4,7 @@
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <cassert>
 #include <d3dx12.h>
+#include <functional>
 #include <DirectXMath.h>
 #include <synchapi.h>
 #pragma warning(pop)
@@ -301,6 +302,10 @@ HRESULT Render::init(HWND hwnd)
 	ThrowIfFailed(m_effekseerProxy.load());
 	ThrowIfFailed(m_effekseerProxy.play());
 	ThrowIfFailed(m_dxtkIf.init(Resource::instance()->getDevice(), Constant::kDefaultRtFormat, Constant::kDefaultDrtFormat));
+	{
+		auto f = std::bind(&Render::waitForEndOfRenderingInternal, this, std::placeholders::_1);
+		ThrowIfFailed(m_dxtkIf.upload(Resource::instance()->getCommandQueue(), f));
+	}
 
 	ThrowIfFailed(m_timeStamp.init());
 
@@ -454,33 +459,7 @@ HRESULT Render::render()
 
 HRESULT Render::waitForEndOfRendering()
 {
-	m_fenceVal++;
-	ThrowIfFailed(Resource::instance()->getCommandQueue()->Signal(m_pFence.Get(), m_fenceVal));
-
-	while (m_pFence->GetCompletedValue() < m_fenceVal)
-	{
-		HANDLE event = CreateEvent(nullptr, false, false, nullptr);
-
-		if (event == nullptr)
-		{
-			ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
-		}
-
-		ThrowIfFailed(m_pFence->SetEventOnCompletion(m_fenceVal, event));
-
-		auto ret = WaitForSingleObject(event, INFINITE);
-		ThrowIfFalse(ret == WAIT_OBJECT_0);
-
-		BOOL ret2 = CloseHandle(event); // fail‚·‚é
-
-		if (!ret2)
-		{
-			Debug::debugOutputFormatString("failed to close handle. (ret %d error %d)\n", ret2, GetLastError());
-			ThrowIfFalse(FALSE);
-		}
-	}
-
-	return S_OK;
+	return waitForEndOfRenderingInternal(Resource::instance()->getCommandQueue());
 }
 
 HRESULT Render::swap()
@@ -1029,6 +1008,37 @@ void Render::resolveResourceBarrier(ID3D12GraphicsCommandList* list, ID3D12Resou
 			0);
 		list->ResourceBarrier(1, &barrier);
 	}
+}
+
+HRESULT Render::waitForEndOfRenderingInternal(ID3D12CommandQueue* queue)
+{
+	m_fenceVal++;
+	ThrowIfFailed(queue->Signal(m_pFence.Get(), m_fenceVal));
+
+	while (m_pFence->GetCompletedValue() < m_fenceVal)
+	{
+		HANDLE event = CreateEvent(nullptr, false, false, nullptr);
+
+		if (event == nullptr)
+		{
+			ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
+		}
+
+		ThrowIfFailed(m_pFence->SetEventOnCompletion(m_fenceVal, event));
+
+		auto ret = WaitForSingleObject(event, INFINITE);
+		ThrowIfFalse(ret == WAIT_OBJECT_0);
+
+		BOOL ret2 = CloseHandle(event); // fail‚·‚é
+
+		if (!ret2)
+		{
+			Debug::debugOutputFormatString("failed to close handle. (ret %d error %d)\n", ret2, GetLastError());
+			ThrowIfFalse(FALSE);
+		}
+	}
+
+	return S_OK;
 }
 
 namespace {

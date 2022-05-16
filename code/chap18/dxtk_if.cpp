@@ -5,7 +5,6 @@
 #pragma warning(disable: ALL_CODE_ANALYSIS_WARNINGS)
 #include <d3dx12.h>
 #include <SpriteFont.h>
-#include <ResourceUploadBatch.h>
 #pragma warning(pop)
 #include "debug.h"
 
@@ -42,5 +41,21 @@ HRESULT DxtkIf::init(ID3D12Device* device, DXGI_FORMAT rtFormat, DXGI_FORMAT dsF
 		m_descHeap.Get()->GetGPUDescriptorHandleForHeapStart()));
 	ThrowIfFalse(m_spriteFont != nullptr);
 
+	m_resourceUploadBatch = std::make_unique<DirectX::ResourceUploadBatch>(std::move(resourceUploadBatch));
+
 	return S_OK;
 }
+
+HRESULT DxtkIf::upload(ID3D12CommandQueue* queue, std::function<HRESULT(ID3D12CommandQueue* queue)> callbackWaitForCompletion)
+{
+	ThrowIfFalse(queue != nullptr);
+
+	auto future = m_resourceUploadBatch.get()->End(queue);
+
+	// wait until command queue is processed
+	callbackWaitForCompletion(queue);
+	future.wait();
+
+	return S_OK;
+}
+

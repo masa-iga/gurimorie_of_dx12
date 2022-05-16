@@ -113,6 +113,7 @@ private:
 	void renderPostPass(ID3D12GraphicsCommandList* list, D3D12_CPU_DESCRIPTOR_HANDLE fbRtvHandle);
 	void renderDebugPass(ID3D12GraphicsCommandList* list, const D3D12_CPU_DESCRIPTOR_HANDLE* pRtCpuDescHandle);
 	void resolveResourceBarrier(ID3D12GraphicsCommandList* list, ID3D12Resource* backBufferResource);
+	HRESULT waitForEndOfRenderingInternal(ID3D12CommandQueue* queue);
 
 	static Toolkit s_toolkit;
 
