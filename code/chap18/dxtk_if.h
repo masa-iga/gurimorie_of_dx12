@@ -16,6 +16,9 @@ class DxtkIf {
 public:
 	HRESULT init(ID3D12Device* device, DXGI_FORMAT rtFormat, DXGI_FORMAT dsFormat);
 	HRESULT upload(ID3D12CommandQueue* queue, std::function<HRESULT(ID3D12CommandQueue* queue)> callbackWaitForCompletion);
+	HRESULT draw(ID3D12GraphicsCommandList* list);
+	HRESULT commit(ID3D12CommandQueue* queue);
+	void setViewport(const D3D12_VIEWPORT& viewPort);
 
 private:
 	const wchar_t* kFilePath = L"../resource/dxtk/fonttest.spritefont";

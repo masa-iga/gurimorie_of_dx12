@@ -59,3 +59,39 @@ HRESULT DxtkIf::upload(ID3D12CommandQueue* queue, std::function<HRESULT(ID3D12Co
 	return S_OK;
 }
 
+HRESULT DxtkIf::draw(ID3D12GraphicsCommandList* list)
+{
+	ThrowIfFalse(list != nullptr);
+
+	list->SetDescriptorHeaps(1, m_descHeap.GetAddressOf());
+
+	m_spriteBatch->Begin(list);
+	{
+		m_spriteFont->DrawString(
+			m_spriteBatch.get(),
+			"Hello World",
+			DirectX::XMFLOAT2(102, 102),
+			DirectX::Colors::Black);
+
+		m_spriteFont->DrawString(
+			m_spriteBatch.get(),
+			"Hello World",
+			DirectX::XMFLOAT2(100, 100),
+			DirectX::Colors::Yellow);
+	}
+	m_spriteBatch->End();
+
+	return S_OK;
+}
+
+HRESULT DxtkIf::commit(ID3D12CommandQueue* queue)
+{
+	m_gfxMemory->Commit(queue);
+	return S_OK;
+}
+
+void DxtkIf::setViewport(const D3D12_VIEWPORT& viewPort)
+{
+	m_spriteBatch.get()->SetViewport(viewPort);
+}
+

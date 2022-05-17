@@ -436,6 +436,18 @@ HRESULT Render::render()
 		m_imguif.render(list);
 	}
 
+	// Text
+	{
+		const D3D12_VIEWPORT viewPort = CD3DX12_VIEWPORT(
+			0.0f,
+			0.0f,
+			Config::kWindowWidth,
+			Config::kWindowHeight);
+
+		m_dxtkIf.setViewport(viewPort);
+		ThrowIfFailed(m_dxtkIf.draw(list));
+	}
+
 	// time stamp for ending
 	{
 		m_timeStamp.set(list, TimeStamp::Index::k3);
@@ -465,6 +477,7 @@ HRESULT Render::waitForEndOfRendering()
 HRESULT Render::swap()
 {
 	ThrowIfFailed(Resource::instance()->getSwapChain()->Present(1, 0));
+	ThrowIfFailed(m_dxtkIf.commit(Resource::instance()->getCommandQueue()));
 
 	return S_OK;
 }
