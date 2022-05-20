@@ -16,7 +16,7 @@ class DxtkIf {
 public:
 	HRESULT init(ID3D12Device* device, DXGI_FORMAT rtFormat, DXGI_FORMAT dsFormat);
 	HRESULT upload(ID3D12CommandQueue* queue, std::function<HRESULT(ID3D12CommandQueue* queue)> callbackWaitForCompletion);
-	HRESULT draw(ID3D12GraphicsCommandList* list);
+	HRESULT draw(ID3D12GraphicsCommandList* list, float posx, float posy);
 	HRESULT commit(ID3D12CommandQueue* queue);
 	void setViewport(const D3D12_VIEWPORT& viewPort);
 

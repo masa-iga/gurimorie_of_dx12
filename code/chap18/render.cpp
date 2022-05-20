@@ -438,6 +438,11 @@ HRESULT Render::render()
 
 	// Text
 	{
+		const PixScopedEvent pixScopedEvent(list, "Text");
+
+		const D3D12_RECT scissorRect = CD3DX12_RECT(0, 0, Config::kWindowWidth, Config::kWindowHeight);
+		list->RSSetScissorRects(1, &scissorRect);
+
 		const D3D12_VIEWPORT viewPort = CD3DX12_VIEWPORT(
 			0.0f,
 			0.0f,
@@ -445,7 +450,7 @@ HRESULT Render::render()
 			Config::kWindowHeight);
 
 		m_dxtkIf.setViewport(viewPort);
-		ThrowIfFailed(m_dxtkIf.draw(list));
+		ThrowIfFailed(m_dxtkIf.draw(list, Config::kWindowWidth / 2.0f, Config::kWindowHeight / 2.0f));
 	}
 
 	// time stamp for ending

@@ -59,7 +59,7 @@ HRESULT DxtkIf::upload(ID3D12CommandQueue* queue, std::function<HRESULT(ID3D12Co
 	return S_OK;
 }
 
-HRESULT DxtkIf::draw(ID3D12GraphicsCommandList* list)
+HRESULT DxtkIf::draw(ID3D12GraphicsCommandList* list, float posx, float posy)
 {
 	ThrowIfFalse(list != nullptr);
 
@@ -70,13 +70,13 @@ HRESULT DxtkIf::draw(ID3D12GraphicsCommandList* list)
 		m_spriteFont->DrawString(
 			m_spriteBatch.get(),
 			"Hello World",
-			DirectX::XMFLOAT2(102, 102),
+			DirectX::XMFLOAT2(posx + 2, posy + 2),
 			DirectX::Colors::Black);
 
 		m_spriteFont->DrawString(
 			m_spriteBatch.get(),
 			"Hello World",
-			DirectX::XMFLOAT2(100, 100),
+			DirectX::XMFLOAT2(posx, posy),
 			DirectX::Colors::Yellow);
 	}
 	m_spriteBatch->End();
